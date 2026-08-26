@@ -1,0 +1,127 @@
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  TextInput,
+} from "react-native";
+import ScreenContainer from "../../components/ScreenContainer";
+import LogoMark from "../../components/LogoMark";
+import SocialButton from "../../components/SocialButton";
+import Button from "../../components/Button";
+import { colors, radii, spacing } from "../../theme";
+import { validateEmail } from "../../utils/validation";
+import { RootScreenProps } from "../../navigation/types";
+
+export default function SignInScreen({ navigation }: RootScreenProps<"SignIn">) {
+  const [email, setEmail] = useState("");
+  const [touched, setTouched] = useState(false);
+
+  const error = touched ? validateEmail(email) : undefined;
+  const canContinue = !validateEmail(email);
+
+  const submit = () => {
+    setTouched(true);
+    if (!canContinue) return;
+    navigation.navigate("Password", { email: email.trim() });
+  };
+
+  return (
+    <ScreenContainer scroll backgroundColor={colors.surface}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+        <View style={styles.body}>
+          <LogoMark size={52} style={styles.logo} />
+          <Text style={styles.title}>Hi there!</Text>
+          <Text style={styles.subtitle}>Sign in to your account</Text>
+
+          <View style={styles.socials}>
+            <SocialButton provider="google" mode="in" onPress={() => navigation.replace("MainTabs")} />
+            <SocialButton provider="amazon" mode="in" onPress={() => navigation.replace("MainTabs")} />
+            <SocialButton provider="apple" mode="in" onPress={() => navigation.replace("MainTabs")} />
+          </View>
+
+          <View style={styles.dividerRow}>
+            <View style={styles.divider} />
+            <Text style={styles.dividerText}>OR SIGN IN WITH EMAIL</Text>
+            <View style={styles.divider} />
+          </View>
+
+          <Text style={styles.fieldLabel}>Email /Username</Text>
+          <TextInput
+            style={[styles.input, !!error && styles.inputError]}
+            placeholder="Enter email address"
+            placeholderTextColor={colors.tertiaryText}
+            value={email}
+            onChangeText={setEmail}
+            onBlur={() => setTouched(true)}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="email"
+            textContentType="emailAddress"
+            keyboardType="email-address"
+            returnKeyType="go"
+            onSubmitEditing={submit}
+            selectionColor={colors.primary}
+            accessibilityLabel="Email or username"
+          />
+          {error ? (
+            <Text style={styles.errorText} accessibilityLiveRegion="polite">
+              {error}
+            </Text>
+          ) : null}
+          <Button
+            label="Continue"
+            variant="pill"
+            disabled={email.trim().length === 0}
+            onPress={submit}
+            style={{ marginTop: 20 }}
+          />
+
+          <TouchableOpacity
+          style={styles.footer}
+          onPress={() => navigation.navigate("SignUpEmail")}
+          accessibilityRole="link"
+          accessibilityLabel="Don't have an account? Sign up"
+        >
+            <Text style={styles.footerText}>Dont have an account? Sign up</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </ScreenContainer>
+  );
+}
+
+const styles = StyleSheet.create({
+  body: { flex: 1, paddingHorizontal: spacing.xl, paddingTop: 64 },
+  logo: { alignSelf: "flex-start" },
+  title: { fontSize: 26, fontWeight: "700", color: colors.text, marginTop: 18 },
+  subtitle: { fontSize: 24, fontWeight: "400", color: colors.text, marginTop: 2, marginBottom: 28 },
+  socials: { marginBottom: 8 },
+  dividerRow: { flexDirection: "row", alignItems: "center", marginVertical: 18 },
+  divider: { flex: 1, height: 1, backgroundColor: "#9CA3AF" },
+  dividerText: { fontSize: 11, color: colors.secondaryText, marginHorizontal: 10, letterSpacing: 0.4 },
+  fieldLabel: { fontSize: 14, fontWeight: "500", color: colors.text, marginBottom: 8 },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.text,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    height: 48,
+    paddingHorizontal: 20,
+    fontSize: 14.5,
+    color: colors.text,
+    minWidth: 0,
+  },
+  inputError: { borderColor: colors.error },
+  errorText: { fontSize: 12, color: colors.error, marginTop: 8 },
+  footer: { alignItems: "center", marginTop: 24, paddingBottom: 24 },
+  footerText: {
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: colors.text,
+    textDecorationLine: "underline",
+  },
+});
