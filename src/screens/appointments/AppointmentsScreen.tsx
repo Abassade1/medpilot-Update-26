@@ -1,22 +1,29 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  RefreshControl,
+} from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
 import ScreenContainer from "../../components/ScreenContainer";
 import AppHeader from "../../components/AppHeader";
 import SegmentTabs from "../../components/SegmentTabs";
 import LogoBox from "../../components/LogoBox";
-import {
-  hospitals,
-  medicalAppointments,
-  transportBookings,
-  transportProviders,
-} from "../../data/mock";
+import ListStateView from "../../components/ListStateView";
+import { useAppointments, useTransportBookings } from "../../api/queries";
+import { assetSource } from "../../api/assets";
 import { colors, radii, shadows, spacing } from "../../theme";
 
 export default function AppointmentsScreen() {
-  const navigation = useNavigation();
   const [tab, setTab] = useState(0);
+  const appointmentsQuery = useAppointments();
+  const transportQuery = useTransportBookings();
+  const active = tab === 0 ? appointmentsQuery : transportQuery;
+  const rows = active.data ?? [];
 
   return (
     <ScreenContainer>
@@ -35,7 +42,13 @@ export default function AppointmentsScreen() {
         onChange={setTab}
       />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.list}
+        refreshControl={
+          <RefreshControl refreshing={active.isRefetching} onRefresh={() => void active.refetch()} />
+        }
+      >
         <View style={styles.sectionRow}>
           <Text style={styles.sectionTitle}>
             {tab === 0 ? "Medical Appointments" : "Transportation booking"}
@@ -46,97 +59,136 @@ export default function AppointmentsScreen() {
           </TouchableOpacity>
         </View>
 
-        {tab === 0
-          ? medicalAppointments.map((a) => {
-              const hospital = hospitals.find((h) => h.id === a.hospitalId)!;
-              return (
-                <View key={a.id} style={styles.card}>
-                  <View style={styles.cardTop}>
-                    <LogoBox text={hospital.logoText} color={hospital.logoColor} size={38} image={hospital.logo} />
-                    <View style={{ flex: 1, marginLeft: 10 }}>
-                      <Text style={styles.hospitalName} numberOfLines={1}>
-                        {hospital.name}
-                      </Text>
-                      <Text style={styles.appointmentMeta} numberOfLines={1}>
-                        {a.type} | {a.location}
-                      </Text>
-                      <View style={styles.dateRow}>
-                        <MaterialCommunityIcons name="calendar-month-outline" size={13} color={colors.primary} />
-                        <Text style={styles.dateText}>{a.date}</Text>
-                      </View>
-                    </View>
-                  </View>
-                  <View style={styles.divider} />
-                  <View style={styles.cardBottom}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.smallLabel}>Contact Person</Text>
-                      <View style={styles.contactRow}>
-                        <Image source={a.contactPhoto} style={styles.contactPhoto} />
-                        <View style={{ marginLeft: 8 }}>
-                          <Text style={styles.contactName}>{a.contactName}</Text>
-                          <Text style={styles.contactRole}>{a.contactRole}</Text>
-                        </View>
-                      </View>
-                    </View>
-                    <View style={{ alignItems: "flex-end" }}>
-                      <Text style={styles.smallLabel}>Booking ID</Text>
-                      <Text style={styles.bookingId}>{a.bookingId}</Text>
-                    </View>
-                  </View>
-                </View>
-              );
-            })
-          : transportBookings.map((t) => {
-              const provider = transportProviders.find((p) => p.id === t.providerId)!;
-              return (
-                <View key={t.id} style={styles.card}>
-                  <View style={styles.flightRow}>
-                    <View style={styles.flightEnd}>
-                      <Text style={styles.flightCode}>{t.fromCode}</Text>
-                      <Text style={styles.flightCity}>{t.fromCity}</Text>
-                      <Text style={styles.flightTime}>{t.fromTime}</Text>
-                    </View>
-                    <View style={styles.flightMiddle}>
-                      <Text style={styles.flightDuration}>{t.duration}</Text>
-                      <View style={styles.flightPathRow}>
-                        <View style={styles.flightDot} />
-                        <View style={styles.flightLine} />
-                        <Ionicons name="airplane" size={15} color={colors.primary} />
-                        <View style={styles.flightLine} />
-                        <View style={styles.flightDot} />
-                      </View>
-                    </View>
-                    <View style={[styles.flightEnd, { alignItems: "flex-end" }]}>
-                      <Text style={styles.flightCode}>{t.toCode}</Text>
-                      <Text style={styles.flightCity}>{t.toCity}</Text>
-                      <Text style={styles.flightTime}>{t.toTime}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.divider} />
-                  <View style={styles.cardBottom}>
-                    <View>
-                      <Text style={styles.smallLabel}>Departure Date</Text>
-                      <Text style={styles.bookingId}>{t.departureDate}</Text>
-                    </View>
-                    <View style={{ alignItems: "flex-end" }}>
-                      <Text style={styles.smallLabel}>Flight Number</Text>
-                      <Text style={styles.bookingId}>{t.flightNumber}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.divider} />
-                  <View style={styles.providerRow}>
-                    <LogoBox text={provider.logoText} color={provider.logoColor} size={32} dark={provider.logoDark} image={provider.logo} />
-                    <View style={{ marginLeft: 10 }}>
-                      <Text style={styles.contactName}>{provider.name}</Text>
-                      <Text style={styles.providerTags}>{provider.tags}</Text>
-                    </View>
+        {active.isPending ? (
+          <ListStateView kind="loading" message="Loading your bookings…" />
+        ) : active.isError ? (
+          <ListStateView kind="error" onRetry={() => void active.refetch()} />
+        ) : rows.length === 0 ? (
+          <ListStateView
+            kind="empty"
+            title={tab === 0 ? "No appointments yet" : "No transport booked"}
+            message={
+              tab === 0
+                ? "Book a hospital appointment and it will appear here."
+                : "Request medical transport and it will appear here."
+            }
+          />
+        ) : tab === 0 ? (
+          (appointmentsQuery.data ?? []).map((a) => (
+            <View key={a.id} style={styles.card}>
+              <View style={styles.cardTop}>
+                <LogoBox
+                  text={a.hospital.name.slice(0, 2).toUpperCase()}
+                  color={colors.surfaceAlt}
+                  size={38}
+                  image={assetSource(a.hospital.logoAsset)}
+                />
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={styles.hospitalName} numberOfLines={1}>
+                    {a.hospital.name}
+                  </Text>
+                  <Text style={styles.appointmentMeta} numberOfLines={1}>
+                    {a.appointmentTypeLabel} | {a.hospital.location}
+                  </Text>
+                  <View style={styles.dateRow}>
+                    <MaterialCommunityIcons
+                      name="calendar-month-outline"
+                      size={13}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.dateText}>{a.requestedDate}</Text>
+                    <Text style={[styles.statusPill, statusStyle(a.status)]}>{a.status}</Text>
                   </View>
                 </View>
-              );
-            })}
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.cardBottom}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.smallLabel}>Contact Person</Text>
+                  {a.contactPerson ? (
+                    <View style={styles.contactRow}>
+                      <Image
+                        source={assetSource(a.contactPerson.photoAsset)}
+                        style={styles.contactPhoto}
+                      />
+                      <View style={{ marginLeft: 8 }}>
+                        <Text style={styles.contactName}>{a.contactPerson.name}</Text>
+                        <Text style={styles.contactRole}>{a.contactPerson.role}</Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <Text style={styles.contactRole}>Assigned once confirmed</Text>
+                  )}
+                </View>
+                <View style={{ alignItems: "flex-end" }}>
+                  <Text style={styles.smallLabel}>Booking ID</Text>
+                  <Text style={styles.bookingId}>{a.reference}</Text>
+                </View>
+              </View>
+            </View>
+          ))
+        ) : (
+          (transportQuery.data ?? []).map((t) => (
+            <View key={t.id} style={styles.card}>
+              <View style={styles.flightRow}>
+                <View style={styles.flightEnd}>
+                  <Text style={styles.flightCode}>{t.pickup.siteCode ?? "—"}</Text>
+                  <Text style={styles.flightCity}>{t.pickup.region ?? t.pickup.country}</Text>
+                  <Text style={styles.flightTime}>{t.pickup.time ?? "—"}</Text>
+                </View>
+                <View style={styles.flightMiddle}>
+                  <Text style={styles.flightDuration}>{t.returnTrip ? "Return" : "One way"}</Text>
+                  <View style={styles.flightPathRow}>
+                    <View style={styles.flightDot} />
+                    <View style={styles.flightLine} />
+                    <Ionicons name="airplane" size={15} color={colors.primary} />
+                    <View style={styles.flightLine} />
+                    <View style={styles.flightDot} />
+                  </View>
+                </View>
+                <View style={[styles.flightEnd, { alignItems: "flex-end" }]}>
+                  <Text style={styles.flightCode}>{t.dropoff.siteCode ?? "—"}</Text>
+                  <Text style={styles.flightCity}>{t.dropoff.region ?? t.dropoff.country}</Text>
+                  <Text style={styles.flightTime}>{t.status}</Text>
+                </View>
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.cardBottom}>
+                <View>
+                  <Text style={styles.smallLabel}>Departure Date</Text>
+                  <Text style={styles.bookingId}>{t.pickup.date}</Text>
+                </View>
+                <View style={{ alignItems: "flex-end" }}>
+                  <Text style={styles.smallLabel}>Flight Number</Text>
+                  <Text style={styles.bookingId}>{t.flightNumber ?? "Pending"}</Text>
+                </View>
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.providerRow}>
+                <LogoBox
+                  text={t.provider.name.slice(0, 2).toUpperCase()}
+                  color={colors.surfaceAlt}
+                  size={32}
+                  image={assetSource(t.provider.logoAsset)}
+                />
+                <View style={{ marginLeft: 10 }}>
+                  <Text style={styles.contactName}>{t.provider.name}</Text>
+                  <Text style={styles.providerTags}>{t.provider.tags}</Text>
+                </View>
+              </View>
+            </View>
+          ))
+        )}
       </ScrollView>
     </ScreenContainer>
   );
+}
+
+/** Status colour follows the same semantics as the rest of the app. */
+function statusStyle(status: string) {
+  if (status === "confirmed" || status === "completed") return { color: colors.success };
+  if (status === "cancelled") return { color: colors.error };
+  return { color: colors.warning };
 }
 
 const styles = StyleSheet.create({
@@ -184,4 +236,5 @@ const styles = StyleSheet.create({
   flightLine: { width: 28, height: 1, backgroundColor: colors.border, marginHorizontal: 4 },
   providerRow: { flexDirection: "row", alignItems: "center" },
   providerTags: { fontSize: 10.5, color: colors.primary, marginTop: 2 },
+  statusPill: { fontSize: 10.5, fontWeight: "700", marginLeft: 8, textTransform: "capitalize" },
 });

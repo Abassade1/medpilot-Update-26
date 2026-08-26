@@ -4,14 +4,18 @@ import { useNavigation } from "@react-navigation/native";
 import ScreenContainer from "../../components/ScreenContainer";
 import AppHeader from "../../components/AppHeader";
 import SearchBar from "../../components/SearchBar";
-import { services, ServiceItem } from "../../data/mock";
+import { useServices } from "../../api/queries";
+import { assetSource } from "../../api/assets";
+import ListStateView from "../../components/ListStateView";
+import type { ServiceDto } from "../../api/types";
 import { colors, radii, spacing } from "../../theme";
 
 export default function ServicesScreen() {
   const navigation = useNavigation();
+  const servicesQuery = useServices();
 
-  const open = (service: ServiceItem) => {
-    switch (service.id) {
+  const open = (service: ServiceDto) => {
+    switch (service.code) {
       case "transport":
         navigation.navigate("MedicalTransport");
         break;
@@ -32,8 +36,10 @@ export default function ServicesScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <Text style={styles.title}>Services</Text>
         <SearchBar style={{ marginTop: 14, marginBottom: 18 }} />
+        {servicesQuery.isPending && <ListStateView kind="loading" message="Loading services…" />}
+        {servicesQuery.isError && <ListStateView kind="error" onRetry={() => void servicesQuery.refetch()} />}
         <View style={styles.grid}>
-          {services.map((service) => (
+          {(servicesQuery.data ?? []).map((service) => (
             <TouchableOpacity
               key={service.id}
               style={[styles.card, { backgroundColor: service.color }]}
@@ -44,7 +50,7 @@ export default function ServicesScreen() {
                 <Text style={styles.cardTitle}>{service.title}</Text>
                 <Text style={styles.cardDesc}>{service.description}</Text>
               </View>
-              <Image source={service.image} style={styles.cardImage} resizeMode="contain" />
+              <Image source={assetSource(service.imageAsset)} style={styles.cardImage} resizeMode="contain" />
             </TouchableOpacity>
           ))}
         </View>

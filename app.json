@@ -72,7 +72,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "MedPilot uses your location to set the pickup point for medical transport."
         }
-      ]
+      ],
+      "expo-secure-store"
     ]
   }
 }

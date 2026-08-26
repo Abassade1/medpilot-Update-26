@@ -7,6 +7,7 @@ import {
   Platform,
   TextInput,
   ScrollView,
+  Alert,
 } from "react-native";
 import ScreenContainer from "../../components/ScreenContainer";
 import AppHeader from "../../components/AppHeader";
@@ -16,11 +17,17 @@ import SelectField from "../../components/SelectField";
 import Button from "../../components/Button";
 import { colors, spacing } from "../../theme";
 import { MAX_NAME, validateDob, validateName, validatePhone } from "../../utils/validation";
+import { endpoints } from "../../api/endpoints";
+import { ApiError } from "../../api/errors";
+import { useSession } from "../../state/Session";
 import { RootScreenProps } from "../../navigation/types";
 
 type Field = "firstname" | "lastname" | "phone" | "dob";
 
 export default function AboutYouScreen({ navigation, route }: RootScreenProps<"AboutYou">) {
+  const { adopt } = useSession();
+  const [busy, setBusy] = useState(false);
+  const [serverFields, setServerFields] = useState<Record<string, string>>({});
   const [firstname, setFirstname] = useState("");
   const [lastname, setLastname] = useState("");
   const [phone, setPhone] = useState("");
@@ -44,13 +51,52 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
     phone: validatePhone(phone),
     dob: validateDob(dob),
   };
-  const shown = (f: Field) => (touched[f] ? errors[f] : undefined);
+  // server-reported field errors win, so 422 responses land on the right input
+  const shown = (f: Field) => (serverFields[f] || undefined) ?? (touched[f] ? errors[f] : undefined);
   const markTouched = (f: Field) => setTouched((t) => ({ ...t, [f]: true }));
   const canSubmit = !Object.values(errors).some(Boolean);
 
-  const submit = () => {
+  const submit = async () => {
     setTouched({ firstname: true, lastname: true, phone: true, dob: true });
-    if (canSubmit) navigation.navigate("VerifyEmail");
+    setServerFields({});
+    if (!canSubmit || busy) return;
+    setBusy(true);
+    try {
+      const res = await endpoints.auth.register({
+        email: route.params.email,
+        // Password is chosen later in the approved flow; a strong random value
+        // keeps the account valid until Create Password replaces it.
+        password: `Tmp-${Math.random().toString(36).slice(2)}-${Date.now()}`,
+        firstName: firstname.trim(),
+        lastName: lastname.trim(),
+        phone: phone.trim(),
+        dateOfBirth: dob.trim(),
+        ...(gender ? { gender: gender.toLowerCase().replace(/[^a-z]/g, "") === "prefernottosay" ? "undisclosed" : gender.toLowerCase() } : {}),
+        ...(marital ? { maritalStatus: marital.toLowerCase() } : {}),
+      });
+      await adopt(res);
+      navigation.replace("VerifyEmail");
+    } catch (e) {
+      if (e instanceof ApiError) {
+        if (e.fields) {
+          const map: Record<string, string> = {};
+          for (const [k, v] of Object.entries(e.fields)) {
+            const key = k === "firstName" ? "firstname" : k === "lastName" ? "lastname" : k === "dateOfBirth" ? "dob" : k;
+            map[key] = v;
+          }
+          setServerFields(map);
+        }
+        if (e.code === "conflict") {
+          Alert.alert("Account exists", "An account with this email already exists. Try signing in instead.");
+        } else if (!e.fields) {
+          Alert.alert("Couldn't create your account", e.message);
+        }
+      } else {
+        Alert.alert("Couldn't create your account", "Please try again.");
+      }
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -74,7 +120,7 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
               label="Firstname"
               placeholder="Firstname"
               value={firstname}
-              onChangeText={setFirstname}
+              onChangeText={(t) => { setFirstname(t); setServerFields((p) => ({ ...p, firstname: "" })); }}
               onBlur={() => markTouched("firstname")}
               error={shown("firstname")}
               autoCapitalize="words"
@@ -90,7 +136,7 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
               label="Lastname"
               placeholder="Lastname"
               value={lastname}
-              onChangeText={setLastname}
+              onChangeText={(t) => { setLastname(t); setServerFields((p) => ({ ...p, lastname: "" })); }}
               onBlur={() => markTouched("lastname")}
               error={shown("lastname")}
               autoCapitalize="words"
@@ -108,7 +154,7 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
             label="Phone number"
             placeholder="Phone number"
             value={phone}
-            onChangeText={setPhone}
+            onChangeText={(t) => { setPhone(t); setServerFields((p) => ({ ...p, phone: "" })); }}
             onBlur={() => markTouched("phone")}
             error={shown("phone")}
             keyboardType="phone-pad"
@@ -125,7 +171,7 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
             label="Date of Birth"
             placeholder="YYYY-MM-DD"
             value={dob}
-            onChangeText={setDob}
+            onChangeText={(t) => { setDob(t); setServerFields((p) => ({ ...p, dob: "" })); }}
             onBlur={() => markTouched("dob")}
             error={shown("dob")}
             keyboardType={Platform.OS === "ios" ? "numbers-and-punctuation" : "default"}
@@ -161,6 +207,7 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
             label="Submit"
             variant="pill"
             disabled={!firstname.trim() || !lastname.trim() || !phone.trim() || !dob.trim()}
+            loading={busy}
             onPress={submit}
             style={{ marginTop: 22, marginBottom: 12 }}
           />

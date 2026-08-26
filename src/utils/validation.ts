@@ -73,3 +73,25 @@ export function validateMaxLength(
   if (value.length > max) return `${label} must be ${max} characters or fewer`;
   return undefined;
 }
+
+/**
+ * Convert a UI date (DD/MM/YYYY) to the ISO calendar date the API expects.
+ * Returns null when the text is not a real date so the caller can show an error.
+ */
+export function toIsoDate(input: string): string | null {
+  const m = input.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  const [, dd, mm, yyyy] = m;
+  const date = new Date(`${yyyy}-${mm}-${dd}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return null;
+  if (date.getUTCDate() !== Number(dd) || date.getUTCMonth() + 1 !== Number(mm)) return null;
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/** Same as toIsoDate but for the MM/DD/YYYY fields used in the travel flow. */
+export function toIsoDateUS(input: string): string | null {
+  const m = input.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  const [, mm, dd, yyyy] = m;
+  return toIsoDate(`${dd}/${mm}/${yyyy}`);
+}

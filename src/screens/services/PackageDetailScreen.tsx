@@ -9,30 +9,34 @@ import InfoRow from "../../components/InfoRow";
 import Button from "../../components/Button";
 import SpecialistCard from "../../components/SpecialistCard";
 import LogoBox from "../../components/LogoBox";
-import {
-  aircrafts,
-  hospitals,
-  medicalPackages,
-  specialists,
-  transportProviders,
-} from "../../data/mock";
+import { usePackage } from "../../api/queries";
+import { assetSource } from "../../api/assets";
+import ListStateView from "../../components/ListStateView";
 import { colors, radii, shadows, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
 
 const TABS = ["Hospital", "Transportation", "Cost summary"] as const;
 
 export default function PackageDetailScreen({ navigation, route }: RootScreenProps<"PackageDetail">) {
-  const pkg = medicalPackages.find((p) => p.id === route.params.packageId) ?? medicalPackages[1];
-  const hospital = hospitals.find((h) => h.id === pkg.hospitalId)!;
-  const provider = transportProviders[2];
+  const query = usePackage(route.params.packageId);
+  const pkg = query.data;
+  const hospital = pkg?.hospital;
+  const provider = pkg?.transportProvider ?? null;
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState(0);
 
   return (
     <ScreenContainer edgesTop={false} barStyle="light-content">
+      {!pkg || !hospital ? (
+        query.isError ? (
+          <ListStateView kind="error" onRetry={() => void query.refetch()} />
+        ) : (
+          <ListStateView kind="loading" message="Loading package…" />
+        )
+      ) : (
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
         <View style={styles.heroWrap}>
-          <Image source={pkg.image} style={styles.hero} />
+          <Image source={assetSource(pkg.heroAsset)} style={styles.hero} />
           <LinearGradient colors={["transparent", "rgba(2,8,20,0.8)"]} style={styles.heroGradient} />
           <TouchableOpacity
             style={[styles.backBtn, { top: insets.top + 8 }]}
@@ -57,7 +61,7 @@ export default function PackageDetailScreen({ navigation, route }: RootScreenPro
         {tab === 0 && (
           <View style={styles.body}>
             <View style={styles.titleRow}>
-              <LogoBox text={hospital.logoText} color={hospital.logoColor} size={48} image={hospital.logo} />
+              <LogoBox text={hospital.name.slice(0, 2).toUpperCase()} color={colors.surfaceAlt} size={48} image={assetSource(hospital.logoAsset)} />
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={styles.name}>{hospital.name}</Text>
                 <Text style={styles.tags}>
@@ -90,14 +94,14 @@ export default function PackageDetailScreen({ navigation, route }: RootScreenPro
                 label="Open Hours"
                 value={hospital.openHours}
                 valueColor={colors.success}
-                subValue={hospital.openHoursNote}
+                subValue={hospital.openHoursNote ?? undefined}
               />
-              <InfoRow label="Helipad:" value={hospital.helipad} />
+              <InfoRow label="Helipad:" value={hospital.helipadCode ?? "—"} />
             </View>
             <Text style={styles.sectionTitle}>Specialists</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
-              {specialists.map((s) => (
-                <SpecialistCard key={s.id} specialist={s} />
+              {hospital.specialists.map((sp) => (
+                <SpecialistCard key={sp.id} specialist={sp} />
               ))}
             </ScrollView>
           </View>
@@ -106,10 +110,10 @@ export default function PackageDetailScreen({ navigation, route }: RootScreenPro
         {tab === 1 && (
           <View style={styles.body}>
             <View style={styles.titleRow}>
-              <LogoBox text={provider.logoText} color={provider.logoColor} size={48} dark={provider.logoDark} image={provider.logo} />
+              <LogoBox text={(provider?.name ?? "").slice(0, 2).toUpperCase()} color={colors.surfaceAlt} size={48} image={assetSource(provider?.logoAsset)} />
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.name}>{provider.name}</Text>
-                <Text style={styles.tags}>{provider.tags}</Text>
+                <Text style={styles.name}>{provider?.name}</Text>
+                <Text style={styles.tags}>{provider?.tags}</Text>
               </View>
             </View>
             <View style={styles.chipRow}>
@@ -129,15 +133,15 @@ export default function PackageDetailScreen({ navigation, route }: RootScreenPro
             </View>
             <Text style={styles.sectionTitle}>About</Text>
             <Text style={styles.about}>
-              {provider.description} <Text style={styles.readMore}>Read More</Text>
+              {provider?.description} <Text style={styles.readMore}>Read More</Text>
             </Text>
             <Text style={styles.sectionTitle}>Route</Text>
             <Text style={styles.routes}>USA | Mexico | UK | India | Italy | South Korea | China</Text>
             <Text style={styles.sectionTitle}>Available Aircrafts</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
-              {aircrafts.map((a) => (
+              {(provider?.aircraft ?? []).map((a) => (
                 <View key={a.id} style={styles.aircraftCard}>
-                  <Image source={a.image} style={styles.aircraftImage} />
+                  <Image source={assetSource(a.heroAsset)} style={styles.aircraftImage} />
                   <View style={{ padding: 10 }}>
                     <Text style={styles.aircraftName}>{a.name}</Text>
                     <Text style={styles.aircraftCapacity}>{a.capacity}</Text>
@@ -152,11 +156,11 @@ export default function PackageDetailScreen({ navigation, route }: RootScreenPro
           <View style={styles.body}>
             <Text style={styles.sectionTitle}>Cost summary</Text>
             <View style={{ marginTop: 8 }}>
-              <InfoRow label="Treatment package" value={pkg.price} />
-              <InfoRow label="Transportation" value="$2,450.00" />
-              <InfoRow label="Accommodation" value="Included" valueColor={colors.success} />
-              <InfoRow label="Feeding" value="Included" valueColor={colors.success} />
-              <InfoRow label="Total (estimate)" value={pkg.price} />
+              <InfoRow label="Treatment package" value={pkg.costSummary.treatmentLabel} />
+              <InfoRow label="Transportation" value={pkg.costSummary.transportationLabel} />
+              <InfoRow label="Accommodation" value={pkg.costSummary.accommodation} valueColor={colors.success} />
+              <InfoRow label="Feeding" value={pkg.costSummary.feeding} valueColor={colors.success} />
+              <InfoRow label="Total (estimate)" value={pkg.costSummary.totalLabel} />
             </View>
           </View>
         )}
@@ -167,6 +171,7 @@ export default function PackageDetailScreen({ navigation, route }: RootScreenPro
           style={styles.cta}
         />
       </ScrollView>
+      )}
     </ScreenContainer>
   );
 }

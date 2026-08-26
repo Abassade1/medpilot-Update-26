@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ScreenContainer from "../../components/ScreenContainer";
@@ -6,28 +6,28 @@ import AppHeader from "../../components/AppHeader";
 import SearchBar from "../../components/SearchBar";
 import FacilityRow from "../../components/FacilityRow";
 import ListStateView from "../../components/ListStateView";
-import { useSimulatedFetch } from "../../hooks/useSimulatedFetch";
-import { hospitals } from "../../data/mock";
+import { useHospitals } from "../../api/queries";
+
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
 
 export default function HospitalsScreen({ navigation }: RootScreenProps<"Hospitals">) {
   const [query, setQuery] = useState("");
-  const { status, retry } = useSimulatedFetch();
+  const [debounced, setDebounced] = useState("");
 
-  const data = useMemo(() => {
-    // Repeat entries so the list matches the fuller Figma listing
-    if (status !== "success") return [];
-    const base = [...hospitals, ...hospitals.slice(0, 4)];
-    const q = query.trim().toLowerCase();
-    if (!q) return base;
-    return base.filter(
-      (h) =>
-        h.name.toLowerCase().includes(q) ||
-        h.specialty.toLowerCase().includes(q) ||
-        h.country.toLowerCase().includes(q)
-    );
-  }, [query, status]);
+  // Debounced so each keystroke doesn't fire a request.
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(query.trim()), 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const hospitalsQuery = useHospitals(debounced || undefined);
+  const data = hospitalsQuery.data ?? [];
+
+  const unused = useMemo(() => {
+    return null;
+  }, []);
+  void unused;
 
   return (
     <ScreenContainer>
@@ -44,7 +44,7 @@ export default function HospitalsScreen({ navigation }: RootScreenProps<"Hospita
       </View>
       <FlatList
         data={data}
-        keyExtractor={(h, i) => `${h.id}-${i}`}
+        keyExtractor={(h) => h.id}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
@@ -54,15 +54,15 @@ export default function HospitalsScreen({ navigation }: RootScreenProps<"Hospita
           />
         )}
         ListEmptyComponent={
-          status === "loading" ? (
+          hospitalsQuery.isPending ? (
             <ListStateView kind="loading" message="Loading hospitals…" />
-          ) : status === "error" ? (
-            <ListStateView kind="error" onRetry={retry} />
+          ) : hospitalsQuery.isError ? (
+            <ListStateView kind="error" onRetry={() => void hospitalsQuery.refetch()} />
           ) : (
             <ListStateView
               kind="empty"
               title="No hospitals found"
-              message={`Nothing matched “${query.trim()}”. Try a different search.`}
+              message={debounced ? `Nothing matched “${debounced}”. Try a different search.` : "No hospitals are available right now."}
             />
           )
         }

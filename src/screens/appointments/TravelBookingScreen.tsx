@@ -21,7 +21,11 @@ import CheckRow from "../../components/CheckRow";
 import RadioRow from "../../components/RadioRow";
 import Button from "../../components/Button";
 import { colors, radii, spacing } from "../../theme";
-import { aircrafts, specialMedicalNeeds, transportPurposes } from "../../data/mock";
+import ListStateView from "../../components/ListStateView";
+import { useCreateTransport, useProvider, useReference } from "../../api/queries";
+import { ApiError } from "../../api/errors";
+import { newIdempotencyKey } from "../../utils/device";
+import { toIsoDateUS } from "../../utils/validation";
 import { ensurePermission } from "../../utils/permissions";
 import { useMultiStepBack } from "../../hooks/useMultiStepBack";
 import { RootScreenProps } from "../../navigation/types";
@@ -29,11 +33,25 @@ import { RootScreenProps } from "../../navigation/types";
 const COUNTRIES = ["Canada", "United States", "United Arab Emirates", "United Kingdom", "South Korea"];
 const PROVINCES = ["Ontario", "Alberta", "Quebec", "British Columbia"];
 
-export default function TravelBookingScreen({ navigation }: RootScreenProps<"TravelBooking">) {
+const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+export default function TravelBookingScreen({
+  navigation,
+  route,
+}: RootScreenProps<"TravelBooking">) {
   const [step, setStep] = useState(1);
+  const reference = useReference();
+  const providerQuery = useProvider(route.params.providerId);
+  const createTransport = useCreateTransport();
+  const [idempotencyKey] = useState(newIdempotencyKey);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const transportPurposes = reference.data?.transportPurposes ?? [];
+  const specialMedicalNeeds = reference.data?.specialNeeds ?? [];
+  const relationships = reference.data?.relationships ?? [];
+  const aircrafts = providerQuery.data?.aircraft ?? [];
 
   // Step 1 — pickup
-  const [pickupDate, setPickupDate] = useState("08/30/2024");
+  const [pickupDate, setPickupDate] = useState("");
   const [pickupTime, setPickupTime] = useState("");
   const [pickupCountry, setPickupCountry] = useState<string | null>(null);
   const [pickupProvince, setPickupProvince] = useState<string | null>(null);
@@ -41,6 +59,7 @@ export default function TravelBookingScreen({ navigation }: RootScreenProps<"Tra
   const [pickupHelipad, setPickupHelipad] = useState("");
   const [useCurrentLocation, setUseCurrentLocation] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   // Step 2 — drop-off
   const [dropCountry, setDropCountry] = useState<string | null>(null);
   const [dropProvince, setDropProvince] = useState<string | null>(null);
@@ -92,6 +111,7 @@ export default function TravelBookingScreen({ navigation }: RootScreenProps<"Tra
       const pos = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
+      setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
       const [place] = await Location.reverseGeocodeAsync(pos.coords);
       if (place?.country) setPickupCountry(place.country);
       if (place?.region) setPickupProvince(place.region);
@@ -99,6 +119,7 @@ export default function TravelBookingScreen({ navigation }: RootScreenProps<"Tra
     } catch {
       Alert.alert("Couldn't get your location", "Please enter your pickup location manually.");
       setUseCurrentLocation(false);
+      setCoords(null);
     } finally {
       setLocating(false);
     }
@@ -129,15 +150,67 @@ export default function TravelBookingScreen({ navigation }: RootScreenProps<"Tra
       case 4:
         return needs.length > 0 || otherNeed.trim().length > 0;
       case 5:
-        return !!aircraft;
+        return !!aircraft || aircrafts.length === 0;
       default:
         return !!(firstname.trim() && lastname.trim() && phone.trim() && relationship);
     }
   })();
 
+  const submit = async () => {
+    setSubmitError(null);
+    const isoDate = toIsoDateUS(pickupDate);
+    if (!isoDate) {
+      setSubmitError("Enter the pickup date as MM/DD/YYYY.");
+      return;
+    }
+    try {
+      const created = await createTransport.mutateAsync({
+        idempotencyKey,
+        body: {
+          providerId: route.params.providerId,
+          aircraftId: aircraft,
+          pickupDate: isoDate,
+          pickupTime: pickupTime.trim() || null,
+          pickupCountry,
+          pickupRegion: pickupProvince,
+          pickupSiteType: takeoff.toLowerCase(),
+          pickupSiteCode: pickupHelipad.trim() || null,
+          pickupLat: coords?.lat ?? null,
+          pickupLng: coords?.lng ?? null,
+          dropoffCountry: dropCountry,
+          dropoffRegion: dropProvince,
+          dropoffSiteType: landing.toLowerCase(),
+          dropoffSiteCode: dropHelipad.trim() || null,
+          returnTrip,
+          purposeIds: purposes,
+          otherPurpose: otherPurpose.trim() || null,
+          needIds: needs,
+          otherNeed: otherNeed.trim() || null,
+          emergencyContact: {
+            firstName: firstname.trim(),
+            lastName: lastname.trim(),
+            phone: phone.trim(),
+            relationship: (relationship ?? "other").toLowerCase(),
+            accompanies: accompany,
+          },
+        },
+      });
+      navigation.replace("BookingSuccess", { reference: created.reference, kind: "transport" });
+    } catch (err) {
+      const e = err as ApiError;
+      setSubmitError(
+        e.isOffline
+          ? "You appear to be offline. Check your connection and try again."
+          : e.isQuota
+          ? "Emergency evacuation is not included in your current plan. Upgrade to continue."
+          : e.message || "We could not submit your request. Please try again."
+      );
+    }
+  };
+
   const next = () => {
     if (step < 6) setStep(step + 1);
-    else navigation.replace("BookingSuccess");
+    else void submit();
   };
 
   const radioPair = (value: "Airport" | "Helipad", set: (v: "Airport" | "Helipad") => void) => (
@@ -288,10 +361,10 @@ export default function TravelBookingScreen({ navigation }: RootScreenProps<"Tra
             <Text style={styles.groupLabel}>Purpose of Transportation</Text>
             {transportPurposes.map((p) => (
               <CheckRow
-                key={p}
-                label={p}
-                checked={purposes.includes(p)}
-                onPress={() => toggle(purposes, setPurposes, p)}
+                key={p.id}
+                label={p.label}
+                checked={purposes.includes(p.id)}
+                onPress={() => toggle(purposes, setPurposes, p.id)}
                 selectedStyle="filled"
               />
             ))}
@@ -312,10 +385,10 @@ export default function TravelBookingScreen({ navigation }: RootScreenProps<"Tra
           <View>
             {specialMedicalNeeds.map((n) => (
               <CheckRow
-                key={n}
-                label={n}
-                checked={needs.includes(n)}
-                onPress={() => toggle(needs, setNeeds, n)}
+                key={n.id}
+                label={n.label}
+                checked={needs.includes(n.id)}
+                onPress={() => toggle(needs, setNeeds, n.id)}
                 selectedStyle="filled"
               />
             ))}
@@ -334,16 +407,28 @@ export default function TravelBookingScreen({ navigation }: RootScreenProps<"Tra
 
         {step === 5 && (
           <View>
-            {aircrafts.map((a) => (
-              <RadioRow
-                key={a.id}
-                label={a.name}
-                sublabel={a.capacity}
-                selected={aircraft === a.id}
-                onPress={() => setAircraft(a.id)}
-                bordered
+            {providerQuery.isPending ? (
+              <ListStateView kind="loading" message="Loading aircraft…" />
+            ) : providerQuery.isError ? (
+              <ListStateView kind="error" onRetry={() => void providerQuery.refetch()} />
+            ) : aircrafts.length === 0 ? (
+              <ListStateView
+                kind="empty"
+                title="No aircraft listed"
+                message="This provider will assign an aircraft after reviewing your request."
               />
-            ))}
+            ) : (
+              aircrafts.map((a) => (
+                <RadioRow
+                  key={a.id}
+                  label={a.name}
+                  sublabel={a.capacity ?? undefined}
+                  selected={aircraft === a.id}
+                  onPress={() => setAircraft(a.id)}
+                  bordered
+                />
+              ))
+            )}
           </View>
         )}
 
@@ -388,7 +473,7 @@ export default function TravelBookingScreen({ navigation }: RootScreenProps<"Tra
             <SelectField
               label="Relationship"
               value={relationship}
-              options={["Partner", "Parent", "Sibling", "Friend", "Other"]}
+              options={relationships.map(titleCase)}
               onSelect={setRelationship}
             />
             <TouchableOpacity style={styles.checkboxRow} onPress={() => setAccompany((v) => !v)}>
@@ -401,10 +486,12 @@ export default function TravelBookingScreen({ navigation }: RootScreenProps<"Tra
         )}
 
         <View style={styles.bottom}>
+          {submitError ? <Text style={styles.error}>{submitError}</Text> : null}
           <Button
             label={step === 6 ? "Submit" : "Next"}
             variant="pill"
-            disabled={!canNext}
+            disabled={!canNext || createTransport.isPending}
+            loading={createTransport.isPending}
             onPress={next}
           />
         </View>
@@ -436,4 +523,5 @@ const styles = StyleSheet.create({
   checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
   checkboxText: { fontSize: 12.5, color: colors.text, marginLeft: 10 },
   bottom: { marginTop: "auto", paddingTop: 30 },
+  error: { fontSize: 12.5, color: colors.error, marginBottom: 12, lineHeight: 18 },
 });

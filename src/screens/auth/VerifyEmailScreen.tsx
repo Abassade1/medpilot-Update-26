@@ -1,12 +1,37 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Image } from "react-native";
 import ScreenContainer from "../../components/ScreenContainer";
 import Button from "../../components/Button";
 import { images } from "../../data/mock";
+import { endpoints } from "../../api/endpoints";
+import { useSession } from "../../state/Session";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
 
 export default function VerifyEmailScreen({ navigation }: RootScreenProps<"VerifyEmail">) {
+  const { refreshSetup } = useSession();
+  const [busy, setBusy] = useState(false);
+
+  // Verification happens out of band (email deep link), so poll while waiting.
+  useEffect(() => {
+    const t = setInterval(async () => {
+      try {
+        const { emailVerified } = await endpoints.auth.verificationStatus();
+        if (emailVerified) { clearInterval(t); await refreshSetup(); }
+      } catch { /* offline: keep polling */ }
+    }, 5000);
+    return () => clearInterval(t);
+  }, [refreshSetup]);
+
+  const proceed = async () => {
+    setBusy(true);
+    // Resend keeps the member unblocked if the first mail never arrived.
+    await endpoints.auth.resendVerification().catch(() => {});
+    await refreshSetup();
+    setBusy(false);
+    navigation.navigate("SetupChecklist");
+  };
+
   return (
     <ScreenContainer>
       <View style={styles.body}>
@@ -19,7 +44,8 @@ export default function VerifyEmailScreen({ navigation }: RootScreenProps<"Verif
         <Button
           label="Go to Inbox"
           variant="pill"
-          onPress={() => navigation.navigate("SetupChecklist")}
+          loading={busy}
+          onPress={proceed}
           style={{ marginTop: 26 }}
         />
       </View>

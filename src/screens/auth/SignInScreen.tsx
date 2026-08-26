@@ -14,20 +14,44 @@ import SocialButton from "../../components/SocialButton";
 import Button from "../../components/Button";
 import { colors, radii, spacing } from "../../theme";
 import { validateEmail } from "../../utils/validation";
+import { endpoints } from "../../api/endpoints";
+import { ApiError } from "../../api/errors";
+import { useSession } from "../../state/Session";
 import { RootScreenProps } from "../../navigation/types";
 
 export default function SignInScreen({ navigation }: RootScreenProps<"SignIn">) {
+  const { adopt } = useSession();
   const [email, setEmail] = useState("");
   const [touched, setTouched] = useState(false);
+  const [serverError, setServerError] = useState<string | undefined>();
+  const [busy, setBusy] = useState(false);
 
-  const error = touched ? validateEmail(email) : undefined;
+  const error = serverError ?? (touched ? validateEmail(email) : undefined);
   const canContinue = !validateEmail(email);
 
-  const submit = () => {
+  const submit = async () => {
     setTouched(true);
-    if (!canContinue) return;
-    navigation.navigate("Password", { email: email.trim() });
+    setServerError(undefined);
+    if (!canContinue || busy) return;
+    setBusy(true);
+    try {
+      // Tells the member early whether this address has an account, instead of
+      // failing only after they have typed a password.
+      const { available } = await endpoints.auth.checkEmail(email.trim());
+      if (available) {
+        setServerError("We couldn't find an account with that email");
+        return;
+      }
+      navigation.navigate("Password", { email: email.trim() });
+    } catch (e) {
+      // A lookup failure must not block sign-in; continue to the password step.
+      if (e instanceof ApiError && e.isOffline) setServerError(e.message);
+      else navigation.navigate("Password", { email: email.trim() });
+    } finally {
+      setBusy(false);
+    }
   };
+  void adopt;
 
   return (
     <ScreenContainer scroll backgroundColor={colors.surface}>
@@ -55,7 +79,7 @@ export default function SignInScreen({ navigation }: RootScreenProps<"SignIn">) 
             placeholder="Enter email address"
             placeholderTextColor={colors.tertiaryText}
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(t) => { setEmail(t); if (serverError) setServerError(undefined); }}
             onBlur={() => setTouched(true)}
             autoCapitalize="none"
             autoCorrect={false}
@@ -76,6 +100,7 @@ export default function SignInScreen({ navigation }: RootScreenProps<"SignIn">) 
             label="Continue"
             variant="pill"
             disabled={email.trim().length === 0}
+            loading={busy}
             onPress={submit}
             style={{ marginTop: 20 }}
           />

@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
+import React, { useCallback, useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
@@ -8,79 +8,58 @@ import StepFlowHeader from "../../components/StepFlowHeader";
 import Button from "../../components/Button";
 import BottomSheet from "../../components/BottomSheet";
 import ToastBanner from "../../components/ToastBanner";
+import ListStateView from "../../components/ListStateView";
 import { ensurePermission } from "../../utils/permissions";
-import { useSetupProgress } from "../../state/SetupProgress";
+import { endpoints } from "../../api/endpoints";
+import { uploadToSignedUrl } from "../../api/client";
+import { ApiError } from "../../api/errors";
+import { useDeleteRecord, useRecords } from "../../api/queries";
+import { useSession } from "../../state/Session";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
 
-const MAX_FILES = 8;
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB per file
 
-interface FileItem {
-  id: string;
-  name: string;
-  size: string;
-  type: "doc" | "pdf" | "image";
-  /** 0..1 — simulated locally until the upload API exists. */
-  progress: number;
-  failed?: boolean;
-}
-
-function kindOf(name: string, mime?: string | null): FileItem["type"] {
-  const n = name.toLowerCase();
-  if (n.endsWith(".pdf") || mime === "application/pdf") return "pdf";
-  if (n.endsWith(".doc") || n.endsWith(".docx")) return "doc";
-  return "image";
-}
-
-const prettySize = (bytes?: number | null) =>
-  bytes == null ? "—" : bytes < 1024 * 1024
-    ? `${Math.max(1, Math.round(bytes / 1024))} kb`
-    : `${(bytes / (1024 * 1024)).toFixed(1)} mb`;
-
 export default function UploadRecordsScreen({ navigation }: RootScreenProps<"UploadRecords">) {
-  const { markHistoryDone } = useSetupProgress();
-  const [files, setFiles] = useState<FileItem[]>([]);
-  const [removeTarget, setRemoveTarget] = useState<FileItem | null>(null);
+  const { refreshSetup } = useSession();
+  const records = useRecords();
+  const deleteRecord = useDeleteRecord();
+  const [removeTarget, setRemoveTarget] = useState<{ id: string; displayName: string } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState<string[]>([]);
 
-  // Simulated upload progress (frontend-only until the API exists).
-  useEffect(() => {
-    if (!files.some((f) => f.progress < 1 && !f.failed)) return;
-    const t = setInterval(() => {
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.progress < 1 && !f.failed ? { ...f, progress: Math.min(1, f.progress + 0.25) } : f
-        )
-      );
-    }, 450);
-    return () => clearInterval(t);
-  }, [files]);
+  const files = records.data ?? [];
+  const allUploaded = files.length > 0 && files.every((f) => f.status === "ready");
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 2200);
   }, []);
 
-  const addFiles = useCallback(
-    (incoming: FileItem[]) => {
-      setFiles((prev) => {
-        const room = MAX_FILES - prev.length;
-        if (room <= 0) {
-          Alert.alert("Limit reached", `You can upload up to ${MAX_FILES} files.`);
-          return prev;
-        }
-        return [...prev, ...incoming.slice(0, room)];
+  /** Two-phase upload: presigned ticket, direct PUT, then attach the record. */
+  const uploadOne = useCallback(async (file: { uri: string; name: string; mimeType: string; size: number; source: "upload" | "camera_scan" }) => {
+    const label = file.name;
+    setUploading((p) => [...p, label]);
+    try {
+      const ticket = await endpoints.me.recordUploadUrl({
+        fileName: file.name, mimeType: file.mimeType, sizeBytes: file.size, source: file.source,
       });
-    },
-    []
-  );
+      const blob = await (await fetch(file.uri)).blob();
+      await uploadToSignedUrl(ticket.uploadUrl, blob, file.mimeType);
+      await endpoints.me.createRecord({ fileId: ticket.fileId, displayName: file.name, source: file.source });
+      await records.refetch();
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : "Upload failed. Please try again.";
+      Alert.alert("Couldn't upload that file", msg);
+    } finally {
+      setUploading((p) => p.filter((x) => x !== label));
+    }
+  }, [records]);
 
-  /** Browse the device for documents. */
+  /** Browse the device for documents and upload each selection. */
   const browse = useCallback(async () => {
-    if (busy) return; // guards rapid double-taps
+    if (busy) return;
     setBusy(true);
     try {
       const res = await DocumentPicker.getDocumentAsync({
@@ -90,29 +69,25 @@ export default function UploadRecordsScreen({ navigation }: RootScreenProps<"Upl
         copyToCacheDirectory: true,
       });
       if (res.canceled) return; // cancelled — silent, per spec
-
-      const tooBig = res.assets.filter((a) => (a.size ?? 0) > MAX_BYTES);
-      if (tooBig.length) {
-        Alert.alert("File too large", `${tooBig[0].name} is over 10 MB and was skipped.`);
+      for (const a of res.assets) {
+        if ((a.size ?? 0) > MAX_BYTES) {
+          Alert.alert("File too large", `${a.name} is over 10 MB and was skipped.`);
+          continue;
+        }
+        await uploadOne({
+          uri: a.uri, name: a.name,
+          mimeType: a.mimeType ?? "application/pdf",
+          size: a.size ?? 0, source: "upload",
+        });
       }
-      const picked = res.assets
-        .filter((a) => (a.size ?? 0) <= MAX_BYTES)
-        .map<FileItem>((a) => ({
-          id: `${a.uri}-${Date.now()}`,
-          name: a.name,
-          size: prettySize(a.size),
-          type: kindOf(a.name, a.mimeType),
-          progress: 0,
-        }));
-      if (picked.length) addFiles(picked);
     } catch {
       Alert.alert("Couldn't open files", "The file picker isn't available right now.");
     } finally {
       setBusy(false);
     }
-  }, [busy, addFiles]);
+  }, [busy, uploadOne]);
 
-  /** Capture a record with the device camera. */
+  /** Capture a record with the device camera and upload it. */
   const scan = useCallback(async () => {
     if (busy) return;
     setBusy(true);
@@ -124,46 +99,41 @@ export default function UploadRecordsScreen({ navigation }: RootScreenProps<"Upl
         request: ImagePicker.requestCameraPermissionsAsync,
       });
       if (!ok) return;
-
       const res = await ImagePicker.launchCameraAsync({ quality: 0.7 });
       if (res.canceled) return;
-
       const a = res.assets[0];
-      addFiles([
-        {
-          id: `${a.uri}-${Date.now()}`,
-          name: a.fileName ?? `record-${Date.now()}.jpg`,
-          size: prettySize(a.fileSize),
-          type: "image",
-          progress: 0,
-        },
-      ]);
+      if (!a) return;
+      await uploadOne({
+        uri: a.uri,
+        name: a.fileName ?? `record-${Date.now()}.jpg`,
+        mimeType: a.mimeType ?? "image/jpeg",
+        size: a.fileSize ?? 0,
+        source: "camera_scan",
+      });
     } catch {
       Alert.alert("Camera unavailable", "The camera isn't available on this device.");
     } finally {
       setBusy(false);
     }
-  }, [busy, addFiles]);
+  }, [busy, uploadOne]);
 
-  const removeFile = useCallback(() => {
+  const removeFile = useCallback(async () => {
     if (!removeTarget) return;
-    setFiles((prev) => prev.filter((f) => f.id !== removeTarget.id));
-    setRemoveTarget(null);
-    showToast("File removed successfully");
-  }, [removeTarget, showToast]);
+    try {
+      await deleteRecord.mutateAsync(removeTarget.id);
+      showToast("File removed successfully");
+    } catch (e) {
+      Alert.alert("Couldn't remove that file", e instanceof ApiError ? e.message : "Please try again.");
+    } finally {
+      setRemoveTarget(null);
+    }
+  }, [removeTarget, deleteRecord, showToast]);
 
-  const allUploaded = files.length > 0 && files.every((f) => f.progress >= 1 && !f.failed);
-
-  const submit = useCallback(() => {
-    if (submitting) return; // prevents multiple submissions
-    setSubmitting(true);
+  const submit = useCallback(async () => {
     showToast("File Uploaded successfully");
-    markHistoryDone();
-    setTimeout(() => {
-      setSubmitting(false);
-      navigation.navigate("SetupChecklist");
-    }, 900);
-  }, [submitting, showToast, markHistoryDone, navigation]);
+    await refreshSetup();
+    setTimeout(() => navigation.navigate("SetupChecklist"), 900);
+  }, [showToast, refreshSetup, navigation]);
 
   return (
     <ScreenContainer>
@@ -192,59 +162,53 @@ export default function UploadRecordsScreen({ navigation }: RootScreenProps<"Upl
           </View>
         </TouchableOpacity>
 
+        {records.isPending && <ListStateView kind="loading" message="Loading your records…" />}
+
         {files.map((file) => {
-          const uploading = file.progress < 1;
+          const busyRow = file.status !== "ready";
           return (
             <View key={file.id} style={styles.fileRow}>
               <View style={styles.fileTop}>
                 <MaterialCommunityIcons
                   name={
-                    file.type === "pdf"
-                      ? "file-pdf-box"
-                      : file.type === "doc"
-                      ? "file-word-box"
-                      : "file-image"
+                    file.kind === "pdf" ? "file-pdf-box"
+                      : file.kind === "doc" ? "file-word-box" : "file-image"
                   }
                   size={22}
-                  color={file.type === "pdf" ? "#E02D2D" : file.type === "doc" ? "#2B579A" : "#3F7D2C"}
+                  color={file.kind === "pdf" ? "#E02D2D" : file.kind === "doc" ? "#2B579A" : "#3F7D2C"}
                 />
-                <Text style={styles.fileName} numberOfLines={1}>
-                  {file.name}
-                </Text>
+                <Text style={styles.fileName} numberOfLines={1}>{file.displayName}</Text>
                 <TouchableOpacity
-                  onPress={() =>
-                    uploading
-                      ? setFiles((p) => p.filter((f) => f.id !== file.id))
-                      : setRemoveTarget(file)
-                  }
+                  onPress={() => setRemoveTarget({ id: file.id, displayName: file.displayName })}
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   accessibilityRole="button"
-                  accessibilityLabel={uploading ? `Cancel upload of ${file.name}` : `Remove ${file.name}`}
+                  accessibilityLabel={`Remove ${file.displayName}`}
                 >
-                  <Ionicons
-                    name={uploading ? "close-circle-outline" : "trash-outline"}
-                    size={uploading ? 19 : 17}
-                    color={uploading ? colors.secondaryText : colors.error}
-                  />
+                  <Ionicons name="trash-outline" size={17} color={colors.error} />
                 </TouchableOpacity>
               </View>
               <Text style={styles.fileMeta}>
-                {file.size}
-                {"   ·   "}
-                {uploading ? "Uploading…" : "Completed"}
+                {Math.max(1, Math.round(file.sizeBytes / 1024))} kb{"   ·   "}
+                {busyRow ? "Uploading…" : "Completed"}
               </Text>
               <View style={styles.progressTrack}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    { width: `${file.progress * 100}%` },
-                    !uploading && { backgroundColor: colors.success },
-                  ]}
-                />
+                <View style={[styles.progressFill, { width: "100%" }, !busyRow && { backgroundColor: colors.success }]} />
               </View>
             </View>
           );
         })}
+
+        {uploading.map((name) => (
+          <View key={name} style={styles.fileRow}>
+            <View style={styles.fileTop}>
+              <MaterialCommunityIcons name="file-upload-outline" size={22} color={colors.secondaryText} />
+              <Text style={styles.fileName} numberOfLines={1}>{name}</Text>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+            <Text style={styles.fileMeta}>Uploading…</Text>
+            <View style={styles.progressTrack}><View style={[styles.progressFill, { width: "60%" }]} /></View>
+          </View>
+        ))}
 
         <TouchableOpacity
           style={styles.scanBox}
@@ -263,15 +227,11 @@ export default function UploadRecordsScreen({ navigation }: RootScreenProps<"Upl
             label="Upload"
             variant="pill"
             disabled={!allUploaded}
-            loading={submitting}
             onPress={submit}
           />
           <TouchableOpacity
             style={styles.skip}
-            onPress={() => {
-              markHistoryDone();
-              navigation.navigate("SetupChecklist");
-            }}
+            onPress={() => navigation.navigate("SetupChecklist")}
             accessibilityRole="button"
             accessibilityLabel="Skip uploading medical records"
           >

@@ -7,7 +7,8 @@ import AppHeader from "../../components/AppHeader";
 import SegmentTabs from "../../components/SegmentTabs";
 import ProviderCard from "../../components/ProviderCard";
 import LogoBox from "../../components/LogoBox";
-import { transportProviders } from "../../data/mock";
+import { useProviders } from "../../api/queries";
+import { assetSource } from "../../api/assets";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
 
@@ -15,6 +16,9 @@ const TABS = ["Private Jet", "Medical Ambulance", "Speed Boat"];
 
 export default function MedicalTransportScreen({ navigation }: RootScreenProps<"MedicalTransport">) {
   const [tab, setTab] = useState(1);
+  // tab order matches TABS: Private Jet | Medical Ambulance | Speed Boat
+  const category = (["jet", "ambulance", "boat"] as const)[tab] ?? "ambulance";
+  const providersQuery = useProviders(category);
 
   return (
     <ScreenContainer>
@@ -34,16 +38,20 @@ export default function MedicalTransportScreen({ navigation }: RootScreenProps<"
       </View>
       <SegmentTabs tabs={TABS} active={tab} onChange={setTab} />
       <FlatList
-        data={transportProviders}
+        data={providersQuery.data ?? []}
         keyExtractor={(p) => p.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.list}
-        ListEmptyComponent={<ListStateView kind="empty" title="Nothing to show" message="No providers are available right now." />}
+        ListEmptyComponent={
+          providersQuery.isPending ? <ListStateView kind="loading" /> :
+          providersQuery.isError ? <ListStateView kind="error" onRetry={() => void providersQuery.refetch()} /> :
+          <ListStateView kind="empty" title="Nothing to show" message="No providers are available in this category." />
+        }
         renderItem={({ item }) => (
           <ProviderCard
-            image={item.image}
-            price={item.price}
-            logo={<LogoBox text={item.logoText} color={item.logoColor} size={38} dark={item.logoDark} image={item.logo} />}
+            image={assetSource(item.heroAsset)!}
+            price={item.priceFromLabel ?? ""}
+            logo={<LogoBox text={item.name.slice(0, 2).toUpperCase()} color={colors.surfaceAlt} size={38} image={assetSource(item.logoAsset)} />}
             name={item.name}
             location={item.location}
             rating={item.rating}

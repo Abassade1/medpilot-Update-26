@@ -17,19 +17,18 @@ import { useNavigation } from "@react-navigation/native";
 import ScreenContainer from "../../components/ScreenContainer";
 import SectionHeader from "../../components/SectionHeader";
 import FacilityRow from "../../components/FacilityRow";
-import {
-  currentUser,
-  heroSlides,
-  hospitals,
-  independentSpecialists,
-  medicalPackages,
-  services,
-  ServiceItem,
-} from "../../data/mock";
+import { images } from "../../data/mock";
+import { assetSource } from "../../api/assets";
+import { useHome, useMe, useNotifications } from "../../api/queries";
+import ListStateView from "../../components/ListStateView";
+import type { ServiceDto } from "../../api/types";
 import { colors, radii, spacing } from "../../theme";
 
 export default function HomeScreen() {
   const navigation = useNavigation();
+  const home = useHome();
+  const me = useMe();
+  const notifications = useNotifications();
   const { width } = useWindowDimensions();
   const heroWidth = width - spacing.lg * 2;
   // Card geometry is kept proportional to the 430pt Figma frame so the
@@ -48,8 +47,8 @@ export default function HomeScreen() {
     if (i !== heroIndex) setHeroIndex(i);
   };
 
-  const goService = (service: ServiceItem) => {
-    switch (service.id) {
+  const goService = (service: ServiceDto) => {
+    switch (service.code) {
       case "transport":
         navigation.navigate("MedicalTransport");
         break;
@@ -68,25 +67,34 @@ export default function HomeScreen() {
     <ScreenContainer scroll backgroundColor={colors.background}>
       {/* Header */}
       <View style={styles.header}>
-        <Image source={currentUser.avatar} style={styles.avatar} />
+        <Image source={assetSource(me.data?.profile?.avatarAsset, images.avatar)} style={styles.avatar} />
         <View style={styles.headerInfo}>
           <Text style={styles.hello}>
-            👋🏽 Hi, {currentUser.fullName}
+            👋🏽 Hi, {me.data?.profile?.fullName ?? "there"}
           </Text>
           <TouchableOpacity style={styles.locationRow} activeOpacity={0.7}>
             <Ionicons name="location-sharp" size={13} color={colors.primary} />
-            <Text style={styles.location}>{currentUser.location}</Text>
+            <Text style={styles.location}>{me.data?.profile?.locationLabel ?? "—"}</Text>
             <Ionicons name="chevron-down" size={13} color={colors.text} style={{ marginLeft: 14 }} />
           </TouchableOpacity>
         </View>
-        <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel={
+            notifications.data?.unreadCount
+              ? `Notifications, ${notifications.data.unreadCount} unread`
+              : "Notifications"
+          }
+        >
           <Ionicons name="notifications" size={22} color={colors.primary} />
+          {!!notifications.data?.unreadCount && <View style={styles.badge} />}
         </TouchableOpacity>
       </View>
 
       {/* Hero carousel */}
       <FlatList
-        data={heroSlides}
+        data={home.data?.heroSlides ?? []}
         horizontal
         pagingEnabled={false}
         snapToInterval={heroWidth + 12}
@@ -102,7 +110,7 @@ export default function HomeScreen() {
             style={[styles.hero, { width: heroWidth, height: heroHeight }]}
             onPress={() => navigation.navigate("MedicalPackages")}
           >
-            <Image source={item.image} style={styles.heroImage} />
+            <Image source={assetSource(item.imageAsset, images.cancer)} style={styles.heroImage} />
             <LinearGradient
               colors={["transparent", "rgba(2,8,20,0.85)"]}
               style={styles.heroGradient}
@@ -112,7 +120,7 @@ export default function HomeScreen() {
                 <Text style={styles.heroTitle} numberOfLines={1}>
                   {item.title}
                 </Text>
-                <Text style={styles.heroPrice}>{item.price}</Text>
+                <Text style={styles.heroPrice}>{item.priceLabel}</Text>
               </View>
               <Text style={styles.heroSubtitle}>{item.subtitle}</Text>
             </View>
@@ -120,7 +128,7 @@ export default function HomeScreen() {
         )}
       />
       <View style={styles.dots}>
-        {heroSlides.map((s, i) => (
+        {(home.data?.heroSlides ?? []).map((s, i) => (
           <View key={s.id} style={[styles.dot, i === heroIndex ? styles.dotActive : styles.dotInactive]} />
         ))}
       </View>
@@ -134,7 +142,7 @@ export default function HomeScreen() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: spacing.lg }}
       >
-        {services.map((service) => (
+        {(home.data?.services ?? []).map((service) => (
           <TouchableOpacity
             key={service.id}
             style={[styles.serviceCard, { backgroundColor: service.color, width: svcWidth, height: svcHeight }]}
@@ -145,7 +153,7 @@ export default function HomeScreen() {
               <Text style={styles.serviceTitle}>{service.title}</Text>
               <Text style={styles.serviceDesc}>{service.description}</Text>
             </View>
-            <Image source={service.image} style={styles.serviceImage} resizeMode="contain" />
+            <Image source={assetSource(service.imageAsset)} style={styles.serviceImage} resizeMode="contain" />
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -159,14 +167,14 @@ export default function HomeScreen() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: spacing.lg }}
       >
-        {medicalPackages.slice(0, 3).map((pkg) => (
+        {(home.data?.packages ?? []).map((pkg) => (
           <TouchableOpacity
             key={pkg.id}
             style={[styles.packageCard, { width: pkgWidth, height: pkgHeight }]}
             activeOpacity={0.9}
             onPress={() => navigation.navigate("PackageDetail", { packageId: pkg.id })}
           >
-            <Image source={pkg.image} style={styles.packageImage} />
+            <Image source={assetSource(pkg.heroAsset, images.cardiacTreatment)} style={styles.packageImage} />
             <LinearGradient colors={["transparent", "rgba(2,8,20,0.85)"]} style={styles.heroGradient} />
             <View style={styles.packageTextWrap}>
               <Text style={styles.packageTitle}>{pkg.title.replace(" specialist", " Treatment")}</Text>
@@ -185,9 +193,9 @@ export default function HomeScreen() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: spacing.lg }}
       >
-        {independentSpecialists.map((cat) => (
+        {(home.data?.independentSpecialists ?? []).map((cat) => (
           <TouchableOpacity key={cat.id} style={[styles.indieCard, { width: indieWidth, height: indieHeight }]} activeOpacity={0.9}>
-            <Image source={cat.image} style={styles.indieImage} />
+            <Image source={assetSource(cat.imageAsset, images.privateNurse)} style={styles.indieImage} />
             <LinearGradient colors={["transparent", "rgba(2,8,20,0.85)"]} style={styles.heroGradient} />
             <View style={styles.indieTextWrap}>
               <Text style={styles.indieTitle}>{cat.title}</Text>
@@ -200,7 +208,9 @@ export default function HomeScreen() {
       {/* Top Facilities */}
       <View style={[styles.section, { marginBottom: 0 }]}>
         <SectionHeader title="Top Facilities" onViewAll={() => navigation.navigate("Hospitals")} />
-        {hospitals.map((h) => (
+        {home.isPending && <ListStateView kind="loading" message="Loading facilities…" />}
+        {home.isError && <ListStateView kind="error" onRetry={() => void home.refetch()} />}
+        {(home.data?.hospitals ?? []).map((h) => (
           <FacilityRow
             key={h.id}
             hospital={h}
@@ -225,6 +235,11 @@ const styles = StyleSheet.create({
   hello: { fontSize: 16.5, fontWeight: "600", color: colors.text },
   locationRow: { flexDirection: "row", alignItems: "center", marginTop: 3 },
   location: { fontSize: 13, fontWeight: "500", color: colors.primary, marginLeft: 3 },
+  badge: {
+    position: "absolute", top: -1, right: -1,
+    width: 9, height: 9, borderRadius: 5,
+    backgroundColor: colors.error, borderWidth: 1.5, borderColor: colors.background,
+  },
   hero: {
     borderRadius: radii.md,
     overflow: "hidden",

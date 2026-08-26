@@ -1,11 +1,13 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import Rating from "./Rating";
-import { Specialist } from "../data/mock";
+import { assetSource } from "../api/assets";
+import { images } from "../data/mock";
+import type { SpecialistCardDto } from "../api/types";
 import { colors, radii, shadows } from "../theme";
 
 interface Props {
-  specialist: Specialist;
+  specialist: SpecialistCardDto;
   onPress?: () => void;
 }
 
@@ -18,7 +20,7 @@ export default function SpecialistCard({ specialist, onPress }: Props) {
       accessibilityRole="button"
       accessibilityLabel={`${specialist.name}, ${specialist.role}, rated ${specialist.rating}`}
     >
-      <Image source={specialist.photo} style={styles.photo} />
+      <Image source={assetSource(specialist.photoAsset, images.doctor1)} style={styles.photo} />
       <View style={styles.body}>
         <View style={styles.nameRow}>
           <Text style={styles.name} numberOfLines={1}>

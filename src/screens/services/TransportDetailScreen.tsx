@@ -8,24 +8,35 @@ import Button from "../../components/Button";
 import BottomSheet from "../../components/BottomSheet";
 import InfoRow from "../../components/InfoRow";
 import LogoBox from "../../components/LogoBox";
-import { aircrafts, Aircraft, images, transportProviders } from "../../data/mock";
+import { useProvider } from "../../api/queries";
+import { assetSource } from "../../api/assets";
+import ListStateView from "../../components/ListStateView";
+import type { AircraftDto } from "../../api/types";
 import { colors, radii, shadows, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
 
 export default function TransportDetailScreen({ navigation, route }: RootScreenProps<"TransportDetail">) {
-  const provider =
-    transportProviders.find((p) => p.id === route.params.providerId) ?? transportProviders[2];
-  const [selectedAircraft, setSelectedAircraft] = useState<Aircraft | null>(null);
+  const query = useProvider(route.params.providerId);
+  const provider = query.data;
+  const [selectedAircraft, setSelectedAircraft] = useState<AircraftDto | null>(null);
 
   return (
     <ScreenContainer backgroundColor={colors.surface}>
       <View style={styles.headerBar}>
         <AppHeader />
       </View>
+      {!provider ? (
+        query.isError ? (
+          <ListStateView kind="error" onRetry={() => void query.refetch()} />
+        ) : (
+          <ListStateView kind="loading" message="Loading provider…" />
+        )
+      ) : (
+      <>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
         <View style={styles.body}>
           <View style={styles.titleRow}>
-            <LogoBox text={provider.logoText} color={provider.logoColor} size={52} dark={provider.logoDark} image={provider.logo} />
+            <LogoBox text={provider.name.slice(0, 2).toUpperCase()} color={colors.surfaceAlt} size={52} image={assetSource(provider.logoAsset)} />
             <View style={{ flex: 1, marginLeft: 14 }}>
               <Text style={styles.name}>{provider.name}</Text>
               <Text style={styles.tags}>{provider.tags}</Text>
@@ -70,14 +81,14 @@ export default function TransportDetailScreen({ navigation, route }: RootScreenP
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: 12 }}
         >
-          {aircrafts.map((a) => (
+          {provider.aircraft.map((a) => (
             <TouchableOpacity
               key={a.id}
               style={styles.aircraftCard}
               activeOpacity={0.85}
               onPress={() => setSelectedAircraft(a)}
             >
-              <Image source={a.image} style={styles.aircraftImage} />
+              <Image source={assetSource(a.heroAsset)} style={styles.aircraftImage} />
               <View style={{ padding: 10 }}>
                 <Text style={styles.aircraftName}>{a.name}</Text>
                 <Text style={styles.aircraftCapacity}>{a.capacity}</Text>
@@ -96,12 +107,14 @@ export default function TransportDetailScreen({ navigation, route }: RootScreenP
           style={styles.cta}
         />
       </View>
+      </>
+      )}
 
       <BottomSheet visible={!!selectedAircraft} onClose={() => setSelectedAircraft(null)} maxHeightRatio={0.8}>
         {selectedAircraft && (
           <View style={{ paddingBottom: 8 }}>
             <View style={styles.sheetHeader}>
-              <Image source={selectedAircraft.image} style={styles.sheetThumb} />
+              <Image source={assetSource(selectedAircraft.heroAsset)} style={styles.sheetThumb} />
               <View style={{ marginLeft: 14 }}>
                 <Text style={styles.sheetName}>{selectedAircraft.name}</Text>
                 <Text style={styles.sheetAvailable}>Available</Text>
@@ -110,31 +123,27 @@ export default function TransportDetailScreen({ navigation, route }: RootScreenP
 
             <View style={styles.pricePill}>
               <Text style={styles.priceFrom}>From </Text>
-              <Text style={styles.priceValue}>{selectedAircraft.price}</Text>
+              <Text style={styles.priceValue}>{selectedAircraft.priceLabel}</Text>
             </View>
 
-            <InfoRow label="Capacity:" value="1 intensive Care Patient" subValue={selectedAircraft.capacityNote} />
+            <InfoRow label="Capacity:" value="1 intensive Care Patient" subValue={selectedAircraft.capacityNote ?? undefined} />
             <InfoRow
               label="Medical Crew:"
-              value={selectedAircraft.medicalCrew}
-              subLabel={selectedAircraft.paramedic}
-              subValue={selectedAircraft.medicalCrewNote}
+              value={selectedAircraft.medicalCrew ?? "—"}
+              subLabel={selectedAircraft.paramedic ?? undefined}
+              subValue={selectedAircraft.medicalCrewNote ?? undefined}
             />
             <InfoRow
               label="Max Cruising Altitude:"
-              value={selectedAircraft.maxAltitude}
-              subValue={selectedAircraft.maxAltitudeFt}
+              value={selectedAircraft.maxAltitude ?? "—"}
+              subValue={selectedAircraft.maxAltitudeFt ?? undefined}
             />
 
             <Text style={styles.facilitiesTitle}>Facilities</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
-              {[
-                { id: "icu", label: "ICU-care equipments", image: images.facilityIcu },
-                { id: "stretcher", label: "Airline Stretcher", image: images.facilityStretcher },
-                { id: "flight", label: "In Flight Care", image: images.facilityGas },
-              ].map((f) => (
-                <View key={f.id} style={styles.facilityCard}>
-                  <Image source={f.image} style={styles.facilityImage} />
+              {selectedAircraft.facilities.map((f) => (
+                <View key={f.label} style={styles.facilityCard}>
+                  <Image source={assetSource(f.imageAsset)} style={styles.facilityImage} />
                   <Text style={styles.facilityLabel}>{f.label}</Text>
                 </View>
               ))}

@@ -1,0 +1,177 @@
+/** Response shapes returned by the MedPilot API (mirrors backend serializers). */
+
+export interface SetupStatus { passwordSet: boolean; historyComplete: boolean; emailVerified: boolean }
+export interface TokenPairDto { accessToken: string; refreshToken: string; expiresIn: number }
+
+export interface AuthResponse {
+  user: { id: string; email: string; emailVerified: boolean };
+  profile: { firstName: string; lastName: string; fullName: string };
+  tokens: TokenPairDto;
+  setup: SetupStatus;
+}
+
+export interface MeResponse {
+  id: string;
+  email: string;
+  emailVerified: boolean;
+  plan: "basic" | "pro";
+  profile?: {
+    firstName: string; lastName: string; fullName: string;
+    phone: string; dateOfBirth: string;
+    gender: string | null; maritalStatus: string | null;
+    locationLabel: string | null; avatarAsset: string;
+  };
+}
+
+export interface HospitalCard {
+  id: string; slug: string; name: string; specialty: string;
+  country: string; specialistCount: number; logoAsset: string | null; rating: number;
+}
+export interface SpecialistCardDto {
+  id: string; name: string; cardName: string; role: string;
+  rating: number; photoAsset: string | null; available: boolean;
+}
+export interface SpecialistDetail extends SpecialistCardDto {
+  certified: boolean; specialization: string | null; experience: string | null;
+  operationCountry: string | null; operationCountryNote: string | null;
+  languages: string | null; expertise: string[];
+}
+export interface HospitalDetail extends HospitalCard {
+  about: string; careSystem: string; openHours: string; openHoursNote: string | null;
+  helipadCode: string | null; accredited: boolean; bookable: boolean;
+  latitude: number | null; longitude: number | null;
+  specialists: SpecialistCardDto[];
+}
+
+export interface PackageCard {
+  id: string; slug: string; title: string; priceLabel: string;
+  location: string; rating: number; description: string;
+  heroAsset: string | null; packageInclude: string[]; hospital: HospitalCard;
+}
+export interface PackageDetail extends PackageCard {
+  hospital: HospitalDetail & HospitalCard;
+  transportProvider: ProviderDetail | null;
+  costSummary: {
+    treatmentLabel: string; transportationLabel: string;
+    accommodation: string; feeding: string; totalLabel: string;
+  };
+}
+
+export interface ProviderCardDto {
+  id: string; name: string; category: "jet" | "ambulance" | "boat";
+  location: string; rating: number; verified: boolean;
+  priceFromLabel: string | null; description: string; routes: string; tags: string;
+  heroAsset: string | null; logoAsset: string | null;
+}
+export interface AircraftDto {
+  id: string; name: string; capacity: string; capacityNote: string | null;
+  medicalCrew: string | null; medicalCrewNote: string | null; paramedic: string | null;
+  maxAltitude: string | null; maxAltitudeFt: string | null; priceLabel: string | null;
+  heroAsset: string | null; facilities: { label: string; imageAsset: string | null }[];
+}
+export interface ProviderDetail extends ProviderCardDto { aircraft: AircraftDto[] }
+
+export interface PetClinicDto {
+  id: string; name: string; category: "vet" | "pedicure" | "sitters";
+  location: string; rating: number; verified: boolean; priceFromLabel: string | null;
+  description: string; openTo: string; logoEmoji: string | null; heroAsset: string | null;
+}
+export interface ServiceDto {
+  id: string; code: string; title: string; description: string;
+  color: string; imageAsset: string | null;
+}
+export interface HomeResponse {
+  heroSlides: { id: string; title: string; subtitle: string; priceLabel: string | null; packageId: string | null; imageAsset: string | null }[];
+  services: ServiceDto[];
+  packages: PackageCard[];
+  independentSpecialists: { id: string; title: string; count: string; imageAsset: string | null }[];
+  hospitals: HospitalCard[];
+}
+
+export interface ReferenceData {
+  appointmentTypes: { code: string; label: string }[];
+  transportPurposes: { id: string; code: string; label: string }[];
+  specialNeeds: { id: string; code: string; label: string }[];
+  triageSymptoms: { id: string; code: string; label: string; emoji: string | null }[];
+  triageConditions: { id: string; code: string; label: string; emoji: string | null }[];
+  conditions: { id: string; code: string; label: string }[];
+  relationships: string[];
+}
+
+export interface ConditionDto { id: string; code: string; label: string }
+export interface EmergencyContactDto {
+  id: string; firstName: string; lastName: string; phone: string; relationship: string;
+}
+export interface MedicalRecordDto {
+  id: string; displayName: string; kind: "pdf" | "doc" | "image";
+  source: string; status: "uploading" | "ready" | "failed";
+  sizeBytes: number; downloadUrl: string | null; createdAt: string;
+}
+
+export type AppointmentStatus = "pending" | "confirmed" | "cancelled" | "completed";
+export interface AppointmentDto {
+  id: string; reference: string; status: AppointmentStatus;
+  appointmentType: string; appointmentTypeLabel: string;
+  requestedDate: string; scheduledAt: string | null;
+  hospital: { id: string; name: string; logoAsset: string | null; location: string };
+  contactPerson: { name: string; role: string; photoAsset: string } | null;
+  createdAt: string;
+}
+export interface TransportDto {
+  id: string; reference: string; status: string;
+  pickup: { country: string; region: string | null; date: string; time: string | null; siteType: string; siteCode: string | null };
+  dropoff: { country: string; region: string | null; siteType: string; siteCode: string | null };
+  returnTrip: boolean; flightNumber: string | null;
+  departAt: string | null; arriveAt: string | null;
+  provider: { id: string; name: string; logoAsset: string | null; tags: string };
+  createdAt: string;
+}
+
+export type ActivityTypeDto = "appointment" | "transport" | "diagnosis" | "meal" | "record" | "plan";
+export interface ActivityDto {
+  id: string; type: ActivityTypeDto; title: string; subtitle: string | null;
+  status: "completed" | "booked" | "cancelled" | "pending" | null;
+  targetType: string | null; targetId: string | null;
+  occurredAt: string; day: string; time: string;
+}
+export interface ActivityPage { items: ActivityDto[]; nextCursor: string | null }
+
+export interface TriageStart {
+  sessionId: string; step: "conditions";
+  prompt: { title: string; subtitle: string };
+  conditions: { code: string; label: string; emoji: string | null }[];
+}
+export interface TriageResultDto {
+  sessionId: string; title: string; summary: string;
+  possibleCauses: string; recommendedTreatment: string;
+  severity: "routine" | "urgent" | "emergency"; disclaimer: string; createdAt: string;
+}
+export type TriageStep = TriageStart | { sessionId: string; step: "result"; result: TriageResultDto };
+
+export interface MealAnalysisDto {
+  id: string; status: "queued" | "processing" | "complete" | "failed";
+  caloriesEstimate?: number | null; baselineDeltaPct?: number | null;
+  segments?: { label: string; percentage: number; colorHex: string }[];
+  details?: { code: string; label: string; body: string | null }[];
+  disclaimer?: string; failureReason?: string | null; pollAfterMs?: number;
+}
+
+export interface PlanDto { id: string; code: "basic" | "pro"; name: string; priceLabel: string; features: string[] }
+export interface SubscriptionDto {
+  planCode: "basic" | "pro"; status: string; currentPeriodEnd: string | null;
+  cancelAtPeriodEnd?: boolean;
+  usage: {
+    mealAnalysis: { used: number; limit: number | null };
+    clinicAccess: { used: number; limit: number | null };
+    evacuation: { used: number; limit: number | null };
+  };
+}
+
+export interface NotificationsDto {
+  unreadCount: number;
+  items: { id: string; type: string; title: string; body: string; data: { url?: string } | null; read: boolean; createdAt: string }[];
+}
+
+export interface UploadTicket {
+  fileId: string; uploadUrl: string; method: "PUT"; headers: Record<string, string>;
+}

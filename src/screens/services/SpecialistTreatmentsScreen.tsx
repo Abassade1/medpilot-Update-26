@@ -8,20 +8,26 @@ import AppHeader from "../../components/AppHeader";
 import SearchBar from "../../components/SearchBar";
 import Rating from "../../components/Rating";
 import LogoBox from "../../components/LogoBox";
-import { hospitals, medicalPackages } from "../../data/mock";
+import { usePackages } from "../../api/queries";
+import { assetSource } from "../../api/assets";
 import { colors, radii, shadows, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
 
 export default function SpecialistTreatmentsScreen({ navigation }: RootScreenProps<"SpecialistTreatments">) {
+  const packagesQuery = usePackages();
   return (
     <ScreenContainer>
       <AppHeader />
       <FlatList
-        data={medicalPackages.slice(0, 4)}
+        data={packagesQuery.data ?? []}
         keyExtractor={(p) => p.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.list}
-        ListEmptyComponent={<ListStateView kind="empty" title="Nothing to show" message="No treatments are available right now." />}
+        ListEmptyComponent={
+          packagesQuery.isPending ? <ListStateView kind="loading" /> :
+          packagesQuery.isError ? <ListStateView kind="error" onRetry={() => void packagesQuery.refetch()} /> :
+          <ListStateView kind="empty" title="Nothing to show" message="No treatments are available right now." />
+        }
         ListHeaderComponent={
           <View>
             <Text style={styles.title}>Specialist Treatments</Text>
@@ -29,7 +35,7 @@ export default function SpecialistTreatmentsScreen({ navigation }: RootScreenPro
           </View>
         }
         renderItem={({ item }) => {
-          const hospital = hospitals.find((h) => h.id === item.hospitalId)!;
+          const hospital = item.hospital;
           return (
             <TouchableOpacity
               style={styles.card}
@@ -37,16 +43,16 @@ export default function SpecialistTreatmentsScreen({ navigation }: RootScreenPro
               onPress={() => navigation.navigate("PackageDetail", { packageId: item.id })}
             >
               <View style={styles.imageWrap}>
-                <Image source={item.image} style={styles.image} />
+                <Image source={assetSource(item.heroAsset)} style={styles.image} />
                 <LinearGradient colors={["transparent", "rgba(2,8,20,0.75)"]} style={styles.scrim} />
                 <View style={styles.overlayRow}>
                   <Text style={styles.overlayTitle}>{item.title}</Text>
-                  <Text style={styles.overlayPrice}>{item.price.toUpperCase()}</Text>
+                  <Text style={styles.overlayPrice}>{item.priceLabel.toUpperCase()}</Text>
                 </View>
               </View>
               <View style={styles.body}>
                 <View style={styles.hospitalRow}>
-                  <LogoBox text={hospital.logoText} color={hospital.logoColor} size={30} image={hospital.logo} />
+                  <LogoBox text={hospital.name.slice(0, 2).toUpperCase()} color={colors.surfaceAlt} size={30} image={assetSource(hospital.logoAsset)} />
                   <Text style={styles.hospitalName} numberOfLines={1}>
                     {hospital.name}
                   </Text>

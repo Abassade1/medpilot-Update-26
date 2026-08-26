@@ -18,16 +18,29 @@ import PhonePrefix from "../../components/PhonePrefix";
 import SelectField from "../../components/SelectField";
 import Button from "../../components/Button";
 import { colors, radii, spacing } from "../../theme";
-import { appointmentTypes } from "../../data/mock";
+import { useCreateAppointment, useReference } from "../../api/queries";
+import { ApiError } from "../../api/errors";
+import { newIdempotencyKey } from "../../utils/device";
 import { useMultiStepBack } from "../../hooks/useMultiStepBack";
+import { toIsoDate } from "../../utils/validation";
 import { RootScreenProps } from "../../navigation/types";
 
-export default function BookAppointmentScreen({ navigation }: RootScreenProps<"BookAppointment">) {
+export default function BookAppointmentScreen({
+  navigation,
+  route,
+}: RootScreenProps<"BookAppointment">) {
   const [step, setStep] = useState(1);
+  const reference = useReference();
+  const createAppointment = useCreateAppointment();
+  // One key per attempt: a retry after a network blip must not double-book.
+  const [idempotencyKey] = useState(newIdempotencyKey);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const appointmentTypes = reference.data?.appointmentTypes ?? [];
+  const relationships = reference.data?.relationships ?? [];
 
   // Step 1
   const [type, setType] = useState<string | null>(null);
-  const [date, setDate] = useState("23/05/2024");
+  const [date, setDate] = useState("");
   // Step 2
   const [underTreatment, setUnderTreatment] = useState<boolean | null>(null);
   const [condition, setCondition] = useState("");
@@ -53,9 +66,48 @@ export default function BookAppointmentScreen({ navigation }: RootScreenProps<"B
       ? underTreatment === false || (underTreatment === true && condition.trim().length > 0)
       : firstname.trim() && lastname.trim() && phone.trim() && relationship;
 
+  const submit = async () => {
+    setSubmitError(null);
+    const isoDate = toIsoDate(date);
+    if (!isoDate) {
+      setSubmitError("Enter the appointment date as DD/MM/YYYY.");
+      return;
+    }
+    try {
+      const created = await createAppointment.mutateAsync({
+        idempotencyKey,
+        body: {
+          hospitalId: route.params.hospitalId,
+          packageId: route.params.packageId ?? null,
+          appointmentType: type,
+          requestedDate: isoDate,
+          underTreatment: underTreatment === true,
+          conditionNote: condition.trim() || undefined,
+          emergencyContact: {
+            firstName: firstname.trim(),
+            lastName: lastname.trim(),
+            phone: phone.trim(),
+            relationship: (relationship ?? "other").toLowerCase(),
+            accompanies: accompany,
+          },
+        },
+      });
+      navigation.replace("BookingSuccess", { reference: created.reference, kind: "appointment" });
+    } catch (err) {
+      const e = err as ApiError;
+      setSubmitError(
+        e.isOffline
+          ? "You appear to be offline. Check your connection and try again."
+          : e.isQuota
+          ? "You have used all the bookings on your current plan. Upgrade to continue."
+          : e.message || "We could not submit your booking. Please try again."
+      );
+    }
+  };
+
   const next = () => {
     if (step < 3) setStep(step + 1);
-    else navigation.replace("BookingSuccess");
+    else void submit();
   };
 
   return (
@@ -81,10 +133,10 @@ export default function BookAppointmentScreen({ navigation }: RootScreenProps<"B
             <Text style={styles.fieldLabel}>Select type of Appointment</Text>
             {appointmentTypes.map((t) => (
               <CheckRow
-                key={t}
-                label={t}
-                checked={type === t}
-                onPress={() => setType(t)}
+                key={t.code}
+                label={t.label}
+                checked={type === t.code}
+                onPress={() => setType(t.code)}
                 selectedStyle="filled"
               />
             ))}
@@ -170,7 +222,7 @@ export default function BookAppointmentScreen({ navigation }: RootScreenProps<"B
             <SelectField
               label="Relationship"
               value={relationship}
-              options={["Partner", "Parent", "Sibling", "Friend", "Other"]}
+              options={relationships.map(titleCase)}
               onSelect={setRelationship}
             />
             <TouchableOpacity style={styles.accompanyRow} onPress={() => setAccompany((a) => !a)}>
@@ -183,10 +235,12 @@ export default function BookAppointmentScreen({ navigation }: RootScreenProps<"B
         )}
 
         <View style={styles.bottom}>
+          {submitError ? <Text style={styles.error}>{submitError}</Text> : null}
           <Button
             label={step === 3 ? "Submit" : step === 2 ? "Proceed" : "Next"}
             variant="pill"
-            disabled={!canNext}
+            disabled={!canNext || createAppointment.isPending}
+            loading={createAppointment.isPending}
             onPress={next}
           />
         </View>
@@ -195,6 +249,9 @@ export default function BookAppointmentScreen({ navigation }: RootScreenProps<"B
     </ScreenContainer>
   );
 }
+
+/** Reference data is lowercase codes; the form shows them the way the design does. */
+const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, flexGrow: 1, paddingBottom: 30 },
@@ -218,4 +275,5 @@ const styles = StyleSheet.create({
   checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
   accompanyText: { fontSize: 12.5, color: colors.text, marginLeft: 10 },
   bottom: { marginTop: "auto", paddingTop: 30 },
+  error: { fontSize: 12.5, color: colors.error, marginBottom: 12, lineHeight: 18 },
 });

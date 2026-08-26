@@ -8,31 +8,67 @@ import LogoMark from "../../components/LogoMark";
 import Button from "../../components/Button";
 import BottomSheet from "../../components/BottomSheet";
 import { colors, radii, shadows, spacing } from "../../theme";
-import { mealReport } from "../../data/mock";
+import ListStateView from "../../components/ListStateView";
+import { endpoints } from "../../api/endpoints";
+import { useQuery } from "@tanstack/react-query";
+import { useSubscription } from "../../api/queries";
 import { RootScreenProps } from "../../navigation/types";
+
+/** Emoji are presentation, so they stay client-side rather than in the payload. */
+const DETAIL_EMOJI: Record<string, string> = {
+  nutrition: "🥗",
+  ingredient: "🍚",
+  health: "❤️",
+  warning: "⚠️",
+};
 
 const SIZE = 210;
 const STROKE = 26;
 const R = (SIZE - STROKE) / 2;
 const CIRC = 2 * Math.PI * R;
 
-export default function MealReportScreen({ navigation }: RootScreenProps<"MealReport">) {
+export default function MealReportScreen({ navigation, route }: RootScreenProps<"MealReport">) {
   const [showUpsell, setShowUpsell] = useState(false);
+  const [openDetail, setOpenDetail] = useState<string | null>(null);
+  const mealQuery = useQuery({
+    queryKey: ["meal", route.params.mealId],
+    queryFn: () => endpoints.aux.meal(route.params.mealId),
+  });
+  const subscription = useSubscription();
+  const meal = mealQuery.data;
+  const segments = meal?.segments ?? [];
+  const detailRows = meal?.details ?? [];
+  const onFreePlan = subscription.data?.planCode !== "pro";
 
+  // Only nudge members who would actually gain something from upgrading.
   useEffect(() => {
+    if (!meal || !onFreePlan) return;
     const t = setTimeout(() => setShowUpsell(true), 1800);
     return () => clearTimeout(t);
-  }, []);
+  }, [meal, onFreePlan]);
 
   // Normalize segment percentages into donut arc shares
-  const total = mealReport.segments.reduce((sum, s) => sum + s.pct, 0);
+  const total = segments.reduce((sum, s) => sum + s.percentage, 0) || 1;
   let acc = 0;
-  const arcs = mealReport.segments.map((s) => {
-    const share = s.pct / total;
+  const arcs = segments.map((s) => {
+    const share = s.percentage / total;
     const arc = { ...s, start: acc, share };
     acc += share;
     return arc;
   });
+
+  if (!meal) {
+    return (
+      <ScreenContainer>
+        <AppHeader title="Meal Analysis Report" right={<LogoMark size={26} />} />
+        {mealQuery.isError ? (
+          <ListStateView kind="error" onRetry={() => void mealQuery.refetch()} />
+        ) : (
+          <ListStateView kind="loading" message="Loading your report…" />
+        )}
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer>
@@ -46,7 +82,7 @@ export default function MealReportScreen({ navigation }: RootScreenProps<"MealRe
                 cx={SIZE / 2}
                 cy={SIZE / 2}
                 r={R}
-                stroke={a.color}
+                stroke={a.colorHex}
                 strokeWidth={STROKE}
                 fill="none"
                 strokeDasharray={`${a.share * CIRC - 3} ${CIRC - (a.share * CIRC - 3)}`}
@@ -55,35 +91,60 @@ export default function MealReportScreen({ navigation }: RootScreenProps<"MealRe
             ))}
           </Svg>
           <View style={styles.chartCenter}>
-            <Text style={styles.calories}>{mealReport.calories}</Text>
+            <Text style={styles.calories}>{meal.caloriesEstimate ?? "—"}</Text>
             <Text style={styles.caloriesLabel}>Estimated Calories</Text>
-            <Text style={styles.delta}>{mealReport.deltaLabel}</Text>
+            <Text style={styles.delta}>
+              {meal.baselineDeltaPct == null
+                ? ""
+                : `${meal.baselineDeltaPct > 0 ? "+" : ""}${meal.baselineDeltaPct}% vs your baseline`}
+            </Text>
           </View>
         </View>
 
         <View style={styles.legendRow}>
-          {mealReport.segments.map((s, i) => (
+          {segments.map((s, i) => (
             <View key={s.label} style={[styles.legendItem, i > 0 && styles.legendDivider]}>
-              <Text style={[styles.legendPct, { color: s.color }]}>{s.pct}%</Text>
-              <Text style={[styles.legendLabel, { color: s.color }]}>{s.label}</Text>
+              <Text style={[styles.legendPct, { color: s.colorHex }]}>{s.percentage}%</Text>
+              <Text style={[styles.legendLabel, { color: s.colorHex }]}>{s.label}</Text>
             </View>
           ))}
         </View>
 
         <View style={styles.detailCard}>
           <Text style={styles.detailTitle}>Detailed Analysis</Text>
-          {mealReport.detailRows.map((row) => (
-            <TouchableOpacity key={row.id} style={styles.detailRow} activeOpacity={0.7}>
-              <View style={[styles.detailIcon, row.id === "warning" && { backgroundColor: colors.errorBg }]}>
-                <Text style={{ fontSize: 15 }}>{row.emoji}</Text>
+          {detailRows.map((row) => (
+            <TouchableOpacity
+              key={row.code}
+              style={styles.detailRow}
+              activeOpacity={0.7}
+              onPress={() => setOpenDetail(openDetail === row.code ? null : row.code)}
+            >
+              <View
+                style={[
+                  styles.detailIcon,
+                  row.code === "warning" && { backgroundColor: colors.errorBg },
+                ]}
+              >
+                <Text style={{ fontSize: 15 }}>{DETAIL_EMOJI[row.code] ?? "🍽️"}</Text>
               </View>
-              <Text style={[styles.detailLabel, row.id === "warning" && { color: colors.error }]}>
-                {row.label}
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.tertiaryText} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[styles.detailLabel, row.code === "warning" && { color: colors.error }]}>
+                  {row.label}
+                </Text>
+                {openDetail === row.code && row.body ? (
+                  <Text style={styles.detailBody}>{row.body}</Text>
+                ) : null}
+              </View>
+              <Ionicons
+                name={openDetail === row.code ? "chevron-down" : "chevron-forward"}
+                size={16}
+                color={colors.tertiaryText}
+              />
             </TouchableOpacity>
           ))}
         </View>
+
+        {meal.disclaimer ? <Text style={styles.disclaimer}>{meal.disclaimer}</Text> : null}
 
         <Button
           label="Rescan"
@@ -153,7 +214,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  detailLabel: { flex: 1, fontSize: 13.5, fontWeight: "500", color: colors.text, marginLeft: 12 },
+  detailLabel: { fontSize: 13.5, fontWeight: "500", color: colors.text },
+  detailBody: { fontSize: 12, color: colors.secondaryText, lineHeight: 18, marginTop: 4 },
+  disclaimer: {
+    fontSize: 11,
+    color: colors.tertiaryText,
+    lineHeight: 16,
+    marginTop: 18,
+    textAlign: "center",
+  },
   upsellTitle: { fontSize: 21, fontWeight: "700", color: colors.text, textAlign: "center", marginTop: 8 },
   upsellBody: {
     fontSize: 13.5,

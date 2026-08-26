@@ -1,68 +1,129 @@
-import React from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  Platform,
+  Alert,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ScreenContainer from "../../components/ScreenContainer";
 import AppHeader from "../../components/AppHeader";
 import LogoMark from "../../components/LogoMark";
 import { colors, radii, shadows, spacing } from "../../theme";
+import ListStateView from "../../components/ListStateView";
 import { images } from "../../data/mock";
+import { usePlans, useSubscription, qk } from "../../api/queries";
+import { endpoints } from "../../api/endpoints";
+import { ApiError } from "../../api/errors";
+import { useQueryClient } from "@tanstack/react-query";
 import { RootScreenProps } from "../../navigation/types";
 
-const basicFeatures = [
-  "1 meal Analysis",
-  "10  access to local medical clinic",
-  "2 access to medical evacuation services",
-  "Upgrade Anytime",
-];
-
-const proFeatures = [
-  "Unlimited meal Analysis",
-  "Unlimited Access to medical clinic",
-  "Unlimited access to medical evacuation services",
-  "Cancel Anytime",
-];
+const PLAN_IMAGE = { basic: images.woman1, pro: images.woman2 } as const;
 
 export default function UpgradeScreen({ navigation }: RootScreenProps<"Upgrade">) {
+  const plansQuery = usePlans();
+  const subscription = useSubscription();
+  const qc = useQueryClient();
+  const [purchasing, setPurchasing] = useState(false);
+  const currentPlan = subscription.data?.planCode ?? "basic";
+
+  /**
+   * Hands the store receipt to the server, which is the only side that decides
+   * whether the plan actually changed. There is no client-side entitlement.
+   * The StoreKit / Play Billing purchase itself lands in the native build; in
+   * development the server's mock driver accepts a sandbox receipt.
+   */
+  const upgrade = async (productId: string) => {
+    if (purchasing) return;
+    setPurchasing(true);
+    try {
+      await endpoints.billing.verifyReceipt({
+        platform: Platform.OS === "android" ? "google" : "apple",
+        receipt: `sandbox-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        productId,
+      });
+      await qc.invalidateQueries({ queryKey: qk.subscription });
+      await qc.invalidateQueries({ queryKey: ["activities"] });
+      navigation.goBack();
+    } catch (err) {
+      const e = err as ApiError;
+      Alert.alert(
+        "Upgrade unavailable",
+        e.isOffline
+          ? "You appear to be offline. Check your connection and try again."
+          : e.message || "We couldn't complete that purchase. Please try again."
+      );
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  const plans = plansQuery.data ?? [];
+
+  if (plans.length === 0) {
+    return (
+      <ScreenContainer>
+        <AppHeader title="Upgrade" right={<LogoMark size={26} />} />
+        {plansQuery.isError ? (
+          <ListStateView kind="error" onRetry={() => void plansQuery.refetch()} />
+        ) : (
+          <ListStateView kind="loading" message="Loading plans…" />
+        )}
+      </ScreenContainer>
+    );
+  }
+
   return (
     <ScreenContainer>
       <AppHeader title="Upgrade" right={<LogoMark size={26} />} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <View style={styles.card}>
-          <Image source={images.woman1} style={styles.cardImage} />
-          <View style={styles.cardBody}>
-            <Text style={styles.cardTitle}>
-              MedPilot Basic <Text style={styles.cardPrice}>(Free)</Text>
-            </Text>
-            {basicFeatures.map((f) => (
-              <View key={f} style={styles.bulletRow}>
-                <Text style={styles.bullet}>•</Text>
-                <Text style={styles.bulletText}>{f}</Text>
+        {plans.map((plan) => {
+          const isCurrent = plan.code === currentPlan;
+          return (
+            <View key={plan.id} style={styles.card}>
+              <Image source={PLAN_IMAGE[plan.code]} style={styles.cardImage} />
+              <View style={styles.cardBody}>
+                <Text style={styles.cardTitle}>
+                  {plan.name} <Text style={styles.cardPrice}>({plan.priceLabel})</Text>
+                </Text>
+                {plan.features.map((f) => (
+                  <View key={f} style={styles.bulletRow}>
+                    <Text style={styles.bullet}>•</Text>
+                    <Text style={styles.bulletText}>{f}</Text>
+                  </View>
+                ))}
+                {isCurrent ? (
+                  <View style={styles.cardFooter}>
+                    <Text style={styles.footerLink}>Your current plan</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.cardFooter}
+                    disabled={purchasing}
+                    onPress={() => void upgrade(plan.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Upgrade to ${plan.name}`}
+                    accessibilityState={{ disabled: purchasing }}
+                  >
+                    {purchasing ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <Ionicons name="shield-checkmark-outline" size={14} color={colors.primary} />
+                    )}
+                    <Text style={[styles.footerLink, { marginLeft: 5 }]}>
+                      {purchasing ? "Confirming…" : "Upgrade Now"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
-            ))}
-            <View style={styles.cardFooter}>
-              <Text style={styles.footerLink}>Your current plan</Text>
             </View>
-          </View>
-        </View>
-
-        <View style={styles.card}>
-          <Image source={images.woman2} style={styles.cardImage} />
-          <View style={styles.cardBody}>
-            <Text style={styles.cardTitle}>
-              Get MedPilot Pro <Text style={styles.cardPrice}>($10/monthly)</Text>
-            </Text>
-            {proFeatures.map((f) => (
-              <View key={f} style={styles.bulletRow}>
-                <Text style={styles.bullet}>•</Text>
-                <Text style={styles.bulletText}>{f}</Text>
-              </View>
-            ))}
-            <TouchableOpacity style={styles.cardFooter} onPress={() => navigation.goBack()}>
-              <Ionicons name="shield-checkmark-outline" size={14} color={colors.primary} />
-              <Text style={[styles.footerLink, { marginLeft: 5 }]}>Upgrade Now</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+          );
+        })}
       </ScrollView>
     </ScreenContainer>
   );

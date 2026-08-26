@@ -58,15 +58,20 @@ export default function MealCameraScreen({ navigation }: RootScreenProps<"MealCa
       quality: 0.7,
     });
     if (result.canceled) return; // user cancelled — stay put, no error
-    navigation.replace("MealAnalyzing");
+    const asset = result.assets[0];
+    navigation.replace("MealAnalyzing", {
+      imageUri: asset.uri,
+      mimeType: asset.mimeType ?? "image/jpeg",
+    });
   }, [navigation]);
 
   const capture = useCallback(async () => {
     if (capturing || !ready) return; // guards double-taps on the shutter
     setCapturing(true);
     try {
-      await cameraRef.current?.takePictureAsync({ quality: 0.7, skipProcessing: true });
-      navigation.replace("MealAnalyzing");
+      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.7, skipProcessing: true });
+      if (!photo?.uri) throw new Error("no photo");
+      navigation.replace("MealAnalyzing", { imageUri: photo.uri, mimeType: "image/jpeg" });
     } catch {
       Alert.alert("Couldn't take the photo", "Something went wrong. Please try again.");
     } finally {

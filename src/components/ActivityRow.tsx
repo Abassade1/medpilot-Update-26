@@ -1,18 +1,18 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { ActivityItem, ActivityStatus, ActivityType } from "../data/mock";
+import type { ActivityDto, ActivityTypeDto } from "../api/types";
 import { colors, radii } from "../theme";
 
 interface Props {
-  activity: ActivityItem;
+  activity: ActivityDto;
   onPress?: () => void;
 }
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>["name"];
 
 /** Icon + tile colour per activity type, drawn from the service card palette. */
-const typeStyle: Record<ActivityType, { icon: IconName; tint: string; bg: string }> = {
+const typeStyle: Record<ActivityTypeDto, { icon: IconName; tint: string; bg: string }> = {
   appointment: { icon: "calendar-check", tint: "#2C5E9E", bg: colors.serviceBlue },
   transport: { icon: "airplane", tint: "#D33A2C", bg: colors.servicePink },
   diagnosis: { icon: "stethoscope", tint: "#3F7D2C", bg: colors.serviceGreen },
@@ -21,11 +21,13 @@ const typeStyle: Record<ActivityType, { icon: IconName; tint: string; bg: string
   plan: { icon: "shield-star-outline", tint: colors.primary, bg: colors.primaryLight },
 };
 
-const statusStyle: Record<ActivityStatus, { color: string; bg: string }> = {
-  Completed: { color: "#1B7A46", bg: colors.successBg },
-  Booked: { color: colors.primary, bg: colors.primaryLight },
-  Cancelled: { color: colors.error, bg: colors.errorBg },
-  Pending: { color: colors.secondaryText, bg: colors.surfaceAlt },
+type StatusCode = NonNullable<ActivityDto["status"]>;
+
+const statusStyle: Record<StatusCode, { label: string; color: string; bg: string }> = {
+  completed: { label: "Completed", color: "#1B7A46", bg: colors.successBg },
+  booked: { label: "Booked", color: colors.primary, bg: colors.primaryLight },
+  cancelled: { label: "Cancelled", color: colors.error, bg: colors.errorBg },
+  pending: { label: "Pending", color: colors.secondaryText, bg: colors.surfaceAlt },
 };
 
 export default function ActivityRow({ activity, onPress }: Props) {
@@ -40,7 +42,7 @@ export default function ActivityRow({ activity, onPress }: Props) {
       disabled={!onPress}
       accessibilityRole="button"
       accessibilityLabel={`${activity.title}. ${activity.subtitle}. ${activity.time}${
-        activity.status ? `. ${activity.status}` : ""
+        s ? `. ${s.label}` : ""
       }`}
     >
       <View style={[styles.tile, { backgroundColor: t.bg }]}>
@@ -60,7 +62,7 @@ export default function ActivityRow({ activity, onPress }: Props) {
         <Text style={styles.time}>{activity.time}</Text>
         {s && (
           <View style={[styles.pill, { backgroundColor: s.bg }]}>
-            <Text style={[styles.pillLabel, { color: s.color }]}>{activity.status}</Text>
+            <Text style={[styles.pillLabel, { color: s.color }]}>{s.label}</Text>
           </View>
         )}
       </View>

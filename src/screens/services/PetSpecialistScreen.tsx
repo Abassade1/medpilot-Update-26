@@ -6,7 +6,8 @@ import ScreenContainer from "../../components/ScreenContainer";
 import AppHeader from "../../components/AppHeader";
 import SegmentTabs from "../../components/SegmentTabs";
 import ProviderCard from "../../components/ProviderCard";
-import { petClinics } from "../../data/mock";
+import { usePetClinics } from "../../api/queries";
+import { assetSource } from "../../api/assets";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
 
@@ -14,6 +15,8 @@ const TABS = ["Vet Doctors", "Pet Pedicure", "Pet Sitters"];
 
 export default function PetSpecialistScreen({ navigation }: RootScreenProps<"PetSpecialist">) {
   const [tab, setTab] = useState(1);
+  const category = (["vet", "pedicure", "sitters"] as const)[tab] ?? "pedicure";
+  const clinicsQuery = usePetClinics(category);
 
   return (
     <ScreenContainer>
@@ -33,15 +36,19 @@ export default function PetSpecialistScreen({ navigation }: RootScreenProps<"Pet
       </View>
       <SegmentTabs tabs={TABS} active={tab} onChange={setTab} />
       <FlatList
-        data={petClinics}
+        data={clinicsQuery.data ?? []}
         keyExtractor={(p) => p.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.list}
-        ListEmptyComponent={<ListStateView kind="empty" title="Nothing to show" message="No pet services are available right now." />}
+        ListEmptyComponent={
+          clinicsQuery.isPending ? <ListStateView kind="loading" /> :
+          clinicsQuery.isError ? <ListStateView kind="error" onRetry={() => void clinicsQuery.refetch()} /> :
+          <ListStateView kind="empty" title="Nothing to show" message="No pet services are available in this category." />
+        }
         renderItem={({ item }) => (
           <ProviderCard
-            image={item.image}
-            price={item.price}
+            image={assetSource(item.heroAsset)!}
+            price={item.priceFromLabel ?? ""}
             logo={<Text style={styles.logoEmoji}>{item.logoEmoji}</Text>}
             name={item.name}
             location={item.location}

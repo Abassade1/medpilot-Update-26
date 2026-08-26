@@ -7,7 +7,12 @@ import { images } from "../../data/mock";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
 
-export default function BookingSuccessScreen({ navigation }: RootScreenProps<"BookingSuccess">) {
+export default function BookingSuccessScreen({
+  navigation,
+  route,
+}: RootScreenProps<"BookingSuccess">) {
+  const reference = route.params?.reference;
+  const kind = route.params?.kind ?? "appointment";
   return (
     <ScreenContainer>
       <View style={styles.body}>
@@ -17,10 +22,13 @@ export default function BookingSuccessScreen({ navigation }: RootScreenProps<"Bo
             <Ionicons name="checkmark" size={26} color="#fff" />
           </View>
         </View>
-        <Text style={styles.title}>Appointment Booked</Text>
+        <Text style={styles.title}>
+          {kind === "transport" ? "Transport Requested" : "Appointment Booked"}
+        </Text>
         <Text style={styles.subtitle}>
           Your booking has been successful.{"\n"}A representative will be in contact shortly
         </Text>
+        {reference ? <Text style={styles.reference}>Booking ID {reference}</Text> : null}
         <Button
           label="Done"
           variant="pill"
@@ -55,6 +63,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   title: { fontSize: 20, fontWeight: "700", color: colors.text, marginTop: 30 },
+  reference: { fontSize: 12.5, fontWeight: "600", color: colors.primary, marginTop: 10 },
   subtitle: {
     fontSize: 13,
     color: colors.secondaryText,

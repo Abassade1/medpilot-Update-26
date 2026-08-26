@@ -1,4 +1,7 @@
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type {
+  NativeStackNavigationProp,
+  NativeStackScreenProps,
+} from "@react-navigation/native-stack";
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -22,13 +25,13 @@ export type RootStackParamList = {
   PetSpecialist: undefined;
   MedicalPackages: undefined;
   PackageDetail: { packageId: string };
-  BookAppointment: { hospitalId?: string };
-  TravelBooking: { providerId?: string };
-  BookingSuccess: undefined;
-  DiagnosisResult: undefined;
+  BookAppointment: { hospitalId: string; packageId?: string };
+  TravelBooking: { providerId: string };
+  BookingSuccess: { reference?: string; kind?: "appointment" | "transport" } | undefined;
+  DiagnosisResult: { sessionId: string };
   MealCamera: undefined;
-  MealAnalyzing: undefined;
-  MealReport: undefined;
+  MealAnalyzing: { imageUri: string; mimeType: string };
+  MealReport: { mealId: string };
   Upgrade: undefined;
 };
 
@@ -42,3 +45,6 @@ declare global {
     interface RootParamList extends RootStackParamList {}
   }
 }
+
+/** For screens reached via useNavigation() rather than as a typed stack screen. */
+export type RootNavigation = NativeStackNavigationProp<RootStackParamList>;

@@ -5,20 +5,36 @@ import AppHeader from "../../components/AppHeader";
 import TextField from "../../components/TextField";
 import Button from "../../components/Button";
 import { colors, spacing } from "../../theme";
+import { endpoints } from "../../api/endpoints";
+import { ApiError } from "../../api/errors";
+import { useSession } from "../../state/Session";
 import { RootScreenProps } from "../../navigation/types";
 
 export default function PasswordScreen({ navigation, route }: RootScreenProps<"Password">) {
+  const { adopt } = useSession();
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | undefined>();
+  const [busy, setBusy] = useState(false);
 
-  const submit = () => {
-    // Frontend-only: any password of 8+ chars signs in; shorter shows the
-    // Figma "Incorrect password" error state.
-    if (password.length < 8) {
-      setError("Incorrect password");
-      return;
+  const submit = async () => {
+    if (busy || password.length === 0) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      const res = await endpoints.auth.login(route.params.email, password);
+      await adopt(res);
+      const incomplete = !res.setup.passwordSet || !res.setup.historyComplete;
+      navigation.replace(incomplete ? "SetupChecklist" : "MainTabs");
+    } catch (e) {
+      if (e instanceof ApiError) {
+        // 401 renders in the same inline slot the design specified
+        setError(e.code === "unauthenticated" ? "Incorrect password" : e.message);
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
+    } finally {
+      setBusy(false);
     }
-    navigation.replace("MainTabs");
   };
 
   return (
@@ -51,7 +67,7 @@ export default function PasswordScreen({ navigation, route }: RootScreenProps<"P
         </TouchableOpacity>
 
         <View style={styles.bottom}>
-          <Button label="Sign in" variant="pill" disabled={password.length === 0} onPress={submit} />
+          <Button label="Sign in" variant="pill" disabled={password.length === 0} loading={busy} onPress={submit} />
           <TouchableOpacity style={styles.footer} onPress={() => navigation.navigate("SignUpEmail")}>
             <Text style={styles.footerText}>Dont have an account? Sign up</Text>
           </TouchableOpacity>

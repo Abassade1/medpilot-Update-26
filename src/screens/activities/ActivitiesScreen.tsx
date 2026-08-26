@@ -1,21 +1,37 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, StyleSheet, SectionList, ScrollView, Image, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  SectionList,
+  ScrollView,
+  Image,
+  TouchableOpacity,
+  RefreshControl,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import ScreenContainer from "../../components/ScreenContainer";
 import AppHeader from "../../components/AppHeader";
 import Chip from "../../components/Chip";
 import ActivityRow from "../../components/ActivityRow";
-import {
-  ActivityItem,
-  ActivityType,
-  activities,
-  activityFilters,
-  images,
-} from "../../data/mock";
+import ListStateView from "../../components/ListStateView";
+import { images } from "../../data/mock";
+import { useActivities } from "../../api/queries";
+import type { ActivityDto, ActivityTypeDto } from "../../api/types";
+import { RootNavigation } from "../../navigation/types";
 import { colors, spacing } from "../../theme";
 
-type Filter = ActivityType | "all";
+type Filter = ActivityTypeDto | "all";
+
+const activityFilters: { id: Filter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "appointment", label: "Appointments" },
+  { id: "transport", label: "Transport" },
+  { id: "diagnosis", label: "Diagnosis" },
+  { id: "meal", label: "Meal Analysis" },
+  { id: "record", label: "Records" },
+];
 
 /**
  * Activities tab — a chronological record of everything the user has done
@@ -23,38 +39,37 @@ type Filter = ActivityType | "all";
  * opens the screen that owns that activity.
  */
 export default function ActivitiesScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<RootNavigation>();
   const [filter, setFilter] = useState<Filter>("all");
 
-  const sections = useMemo(() => {
-    const visible =
-      filter === "all" ? activities : activities.filter((a) => a.type === filter);
+  const query = useActivities(filter);
+  const items = query.data?.items ?? [];
 
-    // Preserve the order days first appear in the source data.
-    const byDay = new Map<string, ActivityItem[]>();
-    visible.forEach((a) => {
+  const sections = useMemo(() => {
+    // Preserve the order days first appear in the server's ordering.
+    const byDay = new Map<string, ActivityDto[]>();
+    items.forEach((a) => {
       const list = byDay.get(a.day);
       if (list) list.push(a);
       else byDay.set(a.day, [a]);
     });
     return [...byDay.entries()].map(([title, data]) => ({ title, data }));
-  }, [filter]);
+  }, [items]);
 
-  const open = (activity: ActivityItem) => {
+  const open = (activity: ActivityDto) => {
     switch (activity.type) {
+      // targetId here is the booking's own id, not a catalog id, so both of
+      // these open the Appointments tab rather than a catalog detail screen.
       case "appointment":
-        if (activity.targetId)
-          navigation.navigate("HospitalDetail", { hospitalId: activity.targetId });
-        break;
       case "transport":
-        if (activity.targetId)
-          navigation.navigate("TransportDetail", { providerId: activity.targetId });
+        navigation.navigate("MainTabs", { screen: "AppointmentsTab" } as never);
         break;
       case "diagnosis":
-        navigation.navigate("DiagnosisResult");
+        if (activity.targetId)
+          navigation.navigate("DiagnosisResult", { sessionId: activity.targetId });
         break;
       case "meal":
-        navigation.navigate("MealReport");
+        if (activity.targetId) navigation.navigate("MealReport", { mealId: activity.targetId });
         break;
       case "record":
         navigation.navigate("UploadRecords");
@@ -105,7 +120,15 @@ export default function ActivitiesScreen() {
           <Text style={styles.dayHeader}>{section.title}</Text>
         )}
         renderItem={({ item }) => <ActivityRow activity={item} onPress={() => open(item)} />}
+        refreshControl={
+          <RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} />
+        }
         ListEmptyComponent={
+          query.isPending ? (
+            <ListStateView kind="loading" message="Loading your activity…" />
+          ) : query.isError ? (
+            <ListStateView kind="error" onRetry={() => void query.refetch()} />
+          ) : (
           <View style={styles.empty}>
             <Image source={images.tabActivities} style={styles.emptyIcon} resizeMode="contain" />
             <Text style={styles.emptyTitle}>Nothing here yet</Text>
@@ -113,6 +136,7 @@ export default function ActivitiesScreen() {
               Activities of this type will show up here once you start using MedPilot services.
             </Text>
           </View>
+          )
         }
       />
     </ScreenContainer>

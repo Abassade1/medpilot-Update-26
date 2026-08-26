@@ -1,16 +1,21 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, StyleSheet, Image, TouchableOpacity, Alert } from "react-native";
+import { View, Text, StyleSheet, Image, TouchableOpacity, Alert, Platform } from "react-native";
 import * as LocalAuthentication from "expo-local-authentication";
 import ScreenContainer from "../../components/ScreenContainer";
 import TextField from "../../components/TextField";
 import Button from "../../components/Button";
 import { images } from "../../data/mock";
-import { useSetupProgress } from "../../state/SetupProgress";
+import { endpoints } from "../../api/endpoints";
+import { ApiError } from "../../api/errors";
+import { saveTokens } from "../../api/tokens";
+import { useSession } from "../../state/Session";
+import { getInstallId } from "../../utils/device";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
 
 export default function CreatePasswordScreen({ navigation }: RootScreenProps<"CreatePassword">) {
-  const { markPasswordDone } = useSetupProgress();
+  const { refreshSetup } = useSession();
+  const [saving, setSaving] = useState(false);
   const [password, setPassword] = useState("");
   const [touched, setTouched] = useState(false);
   const [biometry, setBiometry] = useState<{ available: boolean; enrolled: boolean }>({
@@ -38,6 +43,24 @@ export default function CreatePasswordScreen({ navigation }: RootScreenProps<"Cr
     };
   }, []);
 
+  const savePassword = useCallback(async (): Promise<boolean> => {
+    if (saving || !valid) return false;
+    setSaving(true);
+    try {
+      // Setting the password revokes other sessions; the API returns a fresh
+      // pair so this device stays signed in.
+      const { tokens } = await endpoints.me.setPassword(password);
+      await saveTokens(tokens);
+      await refreshSetup();
+      return true;
+    } catch (e) {
+      Alert.alert("Couldn't set your password", e instanceof ApiError ? e.message : "Please try again.");
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }, [saving, valid, password, refreshSetup]);
+
   const authenticate = useCallback(
     async (label: string) => {
       if (authenticating) return; // guards repeated taps
@@ -60,7 +83,13 @@ export default function CreatePasswordScreen({ navigation }: RootScreenProps<"Cr
           cancelLabel: "Cancel",
         });
         if (res.success) {
-          markPasswordDone();
+          // Biometrics unlock a locally stored session; the password is still
+          // what authenticates against the server.
+          const ok = await savePassword();
+          if (!ok) return;
+          const installId = await getInstallId();
+          await endpoints.me.registerDevice({ platform: Platform.OS === "android" ? "android" : "ios", installId }).catch(() => {});
+          await endpoints.me.setBiometric({ installId, enabled: true }).catch(() => {});
           navigation.navigate("SetupChecklist");
         } else if (res.error !== "user_cancel" && res.error !== "system_cancel") {
           Alert.alert("Authentication failed", "We couldn't verify you. Please try again.");
@@ -72,7 +101,7 @@ export default function CreatePasswordScreen({ navigation }: RootScreenProps<"Cr
         setAuthenticating(false);
       }
     },
-    [authenticating, biometry, markPasswordDone, navigation]
+    [authenticating, biometry, savePassword, navigation]
   );
 
   return (
@@ -101,9 +130,9 @@ export default function CreatePasswordScreen({ navigation }: RootScreenProps<"Cr
           label="Set Password"
           variant="pill"
           disabled={!valid}
-          onPress={() => {
-            markPasswordDone();
-            navigation.navigate("SetupChecklist");
+          loading={saving}
+          onPress={async () => {
+            if (await savePassword()) navigation.navigate("SetupChecklist");
           }}
           style={{ marginTop: 8 }}
         />

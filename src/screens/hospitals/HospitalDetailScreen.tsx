@@ -10,14 +10,21 @@ import Button from "../../components/Button";
 import BottomSheet from "../../components/BottomSheet";
 import LogoBox from "../../components/LogoBox";
 import Rating from "../../components/Rating";
-import { hospitals, specialists, Specialist } from "../../data/mock";
+import { useHospital, useSpecialist } from "../../api/queries";
+import { assetSource } from "../../api/assets";
+import ListStateView from "../../components/ListStateView";
+import type { SpecialistCardDto } from "../../api/types";
+import { images } from "../../data/mock";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
 
 export default function HospitalDetailScreen({ navigation, route }: RootScreenProps<"HospitalDetail">) {
-  const hospital = hospitals.find((h) => h.id === route.params.hospitalId) ?? hospitals[4];
+  const query = useHospital(route.params.hospitalId);
+  const hospital = query.data;
   const [expanded, setExpanded] = useState(false);
-  const [selectedSpecialist, setSelectedSpecialist] = useState<Specialist | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const specialistQuery = useSpecialist(selectedId);
+  const selectedSpecialist = specialistQuery.data;
 
   return (
     <ScreenContainer>
@@ -29,10 +36,17 @@ export default function HospitalDetailScreen({ navigation, route }: RootScreenPr
           </TouchableOpacity>
         }
       />
+      {!hospital ? (
+        query.isError ? (
+          <ListStateView kind="error" onRetry={() => void query.refetch()} />
+        ) : (
+          <ListStateView kind="loading" message="Loading hospital…" />
+        )
+      ) : (
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
         <View style={styles.body}>
           <View style={styles.titleRow}>
-            <LogoBox text={hospital.logoText} color={hospital.logoColor} size={52} image={hospital.logo} />
+            <LogoBox text={hospital.name.slice(0, 2).toUpperCase()} color={colors.surfaceAlt} size={52} image={assetSource(hospital.logoAsset)} />
             <View style={{ flex: 1, marginLeft: 14 }}>
               <Text style={styles.name}>{hospital.name}</Text>
               <Text style={styles.tags}>
@@ -75,9 +89,9 @@ export default function HospitalDetailScreen({ navigation, route }: RootScreenPr
               label="Open Hours"
               value={hospital.openHours}
               valueColor={colors.success}
-              subValue={hospital.openHoursNote}
+              subValue={hospital.openHoursNote ?? undefined}
             />
-            <InfoRow label="Helipad:" value={hospital.helipad} />
+            <InfoRow label="Helipad:" value={hospital.helipadCode ?? "—"} />
           </View>
 
           <Text style={[styles.sectionTitle, { marginTop: 18 }]}>Specialists</Text>
@@ -88,23 +102,25 @@ export default function HospitalDetailScreen({ navigation, route }: RootScreenPr
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: 12 }}
         >
-          {specialists.map((s) => (
-            <SpecialistCard key={s.id} specialist={s} onPress={() => setSelectedSpecialist(s)} />
+          {hospital.specialists.map((sp) => (
+            <SpecialistCard key={sp.id} specialist={sp} onPress={() => setSelectedId(sp.id)} />
           ))}
         </ScrollView>
 
         <Button
           label="Book Appointment"
+          disabled={!hospital.bookable}
           onPress={() => navigation.navigate("BookAppointment", { hospitalId: hospital.id })}
           style={styles.cta}
         />
       </ScrollView>
+      )}
 
-      <BottomSheet visible={!!selectedSpecialist} onClose={() => setSelectedSpecialist(null)}>
+      <BottomSheet visible={!!selectedId} onClose={() => setSelectedId(null)}>
         {selectedSpecialist && (
           <View style={{ paddingBottom: 10 }}>
             <View style={styles.specHeader}>
-              <Image source={selectedSpecialist.photo} style={styles.specPhoto} />
+              <Image source={assetSource(selectedSpecialist.photoAsset, images.doctor1)} style={styles.specPhoto} />
               <View style={{ marginLeft: 14 }}>
                 <Text style={styles.specName}>{selectedSpecialist.name}</Text>
                 <Text style={styles.specAvailable}>
@@ -128,15 +144,15 @@ export default function HospitalDetailScreen({ navigation, route }: RootScreenPr
             <View style={{ marginTop: 8 }}>
               <InfoRow
                 label="Specialization:"
-                value={selectedSpecialist.specialization}
-                subValue={selectedSpecialist.experience}
+                value={selectedSpecialist.specialization ?? "—"}
+                subValue={selectedSpecialist.experience ?? undefined}
               />
               <InfoRow
                 label="Operation Country:"
-                value={selectedSpecialist.operationCountry}
-                subValue={selectedSpecialist.operationCountryNote}
+                value={selectedSpecialist.operationCountry ?? "—"}
+                subValue={selectedSpecialist.operationCountryNote ?? undefined}
               />
-              <InfoRow label="Language Spoken:" value={selectedSpecialist.languages} />
+              <InfoRow label="Language Spoken:" value={selectedSpecialist.languages ?? "—"} />
             </View>
             <Text style={styles.expertiseTitle}>Key Areas of Expertise:</Text>
             {selectedSpecialist.expertise.map((e) => (

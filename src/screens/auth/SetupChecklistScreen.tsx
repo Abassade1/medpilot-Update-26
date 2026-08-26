@@ -1,12 +1,13 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ScreenContainer from "../../components/ScreenContainer";
 import Button from "../../components/Button";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
-import { currentUser, images } from "../../data/mock";
-import { useSetupProgress } from "../../state/SetupProgress";
+import { images } from "../../data/mock";
+import { useSession } from "../../state/Session";
+import { useMe } from "../../api/queries";
 
 interface ChecklistItem {
   index: number;
@@ -17,10 +18,16 @@ interface ChecklistItem {
 }
 
 export default function SetupChecklistScreen({ navigation }: RootScreenProps<"SetupChecklist">) {
-  const { passwordDone, historyDone } = useSetupProgress();
+  const { setup, refreshSetup } = useSession();
+  const { data: me } = useMe();
+  const passwordDone = setup?.passwordSet ?? false;
+  const historyDone = setup?.historyComplete ?? false;
+
+  // The checklist reflects persisted state, so it survives a reinstall.
+  useEffect(() => { void refreshSetup(); }, [refreshSetup]);
 
   const items: ChecklistItem[] = [
-    { index: 1, title: "Account created and verified", done: true },
+    { index: 1, title: "Account created and verified", done: setup?.emailVerified ?? true },
     {
       index: 2,
       title: passwordDone ? "Set Password" : "Create Password",
@@ -49,7 +56,7 @@ export default function SetupChecklistScreen({ navigation }: RootScreenProps<"Se
     <ScreenContainer>
       <View style={styles.body}>
         <Image source={images.illusRecords} style={styles.illustration} resizeMode="contain" />
-        <Text style={styles.hello}>Hey, {currentUser.firstName} 👋🏽</Text>
+        <Text style={styles.hello}>Hey, {me?.profile?.firstName ?? "there"} 👋🏽</Text>
         <Text style={styles.subtitle}>Let's finish setting up your account!</Text>
 
         <View style={styles.list}>

@@ -6,18 +6,38 @@ import TextField from "../../components/TextField";
 import Button from "../../components/Button";
 import { colors, spacing } from "../../theme";
 import { validateEmail } from "../../utils/validation";
+import { endpoints } from "../../api/endpoints";
+import { ApiError } from "../../api/errors";
 import { RootScreenProps } from "../../navigation/types";
 
 export default function SignUpEmailScreen({ navigation }: RootScreenProps<"SignUpEmail">) {
   const [email, setEmail] = useState("");
   const [touched, setTouched] = useState(false);
+  const [serverError, setServerError] = useState<string | undefined>();
+  const [busy, setBusy] = useState(false);
 
-  const error = touched ? validateEmail(email) : undefined;
+  const error = serverError ?? (touched ? validateEmail(email) : undefined);
   const valid = !validateEmail(email);
 
-  const submit = () => {
+  const submit = async () => {
     setTouched(true);
-    if (valid) navigation.navigate("AboutYou", { email: email.trim() });
+    setServerError(undefined);
+    if (!valid || busy) return;
+    setBusy(true);
+    try {
+      // Catches a taken address before the member fills in the whole profile.
+      const { available } = await endpoints.auth.checkEmail(email.trim());
+      if (!available) {
+        setServerError("An account with this email already exists");
+        return;
+      }
+      navigation.navigate("AboutYou", { email: email.trim() });
+    } catch (e) {
+      if (e instanceof ApiError && e.isOffline) setServerError(e.message);
+      else navigation.navigate("AboutYou", { email: email.trim() });
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -30,7 +50,7 @@ export default function SignUpEmailScreen({ navigation }: RootScreenProps<"SignU
           label="Email address"
           placeholder="Enter email address"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(t) => { setEmail(t); if (serverError) setServerError(undefined); }}
           onBlur={() => setTouched(true)}
           error={error}
           autoCapitalize="none"
@@ -48,6 +68,7 @@ export default function SignUpEmailScreen({ navigation }: RootScreenProps<"SignU
             label="Next"
             variant="pill"
             disabled={!email.trim()}
+            loading={busy}
             onPress={submit}
           />
           <TouchableOpacity style={styles.footer} onPress={() => navigation.navigate("SignIn")}>
