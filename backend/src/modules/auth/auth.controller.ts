@@ -54,7 +54,12 @@ export class AuthController {
     await this.auth.logoutAll(req.userId!);
   }
 
+  // The two-step sign-in design requires telling the client whether to ask for
+  // a password or start signup, so this necessarily discloses existence. Rate
+  // limiting keeps that a per-address answer rather than a way to enumerate the
+  // whole user base.
   @Public()
+  @Throttle({ default: { limit: 20, ttl: 900_000 } })
   @HttpCode(200)
   @Post("check-email")
   async checkEmail(@Body() body: unknown) {
@@ -73,6 +78,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 3_600_000 } })
   @HttpCode(204)
   @Post("password/reset")
   async reset(@Body() body: unknown) {
@@ -89,6 +95,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 3_600_000 } })
   @HttpCode(204)
   @Post("verification/confirm")
   async confirm(@Body() body: unknown) {

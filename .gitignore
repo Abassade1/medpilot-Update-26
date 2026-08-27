@@ -39,3 +39,9 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Local Expo environment files (the .example variants are committed)
+.env
+.env.development
+.env.staging
+.env.production

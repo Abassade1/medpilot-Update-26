@@ -5,7 +5,7 @@ import ScreenContainer from "../../components/ScreenContainer";
 import Button from "../../components/Button";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
-import { images } from "../../data/mock";
+import { images } from "../../data/assets";
 import { useSession } from "../../state/Session";
 import { useMe } from "../../api/queries";
 

@@ -9,9 +9,36 @@ const REDACT_KEYS = new Set([
   "summary", "possiblecauses", "recommendedtreatment", "content", "body",
 ]);
 
+/**
+ * Value-level scrubbing, independent of the key. The signed-upload-ticket leak
+ * reached the log as a URL *path*, where no key-based rule could catch it — so
+ * credential-shaped values are stripped wherever they appear.
+ */
+const VALUE_PATTERNS: [RegExp, string][] = [
+  // Signed upload/download tickets and JWTs: base64url JSON followed by a MAC.
+  [/eyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}(?:\.[A-Za-z0-9_-]+)?/g, "[token]"],
+  // Authorization headers in any casing.
+  [/\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi, "Bearer [token]"],
+  // One-time verification and password-reset tokens.
+  [/\b(?:vt|pr)_[A-Za-z0-9_-]{16,}/g, "[token]"],
+  // Any token/signature carried as a query parameter.
+  [/([?&](?:token|signature|sig|x-amz-signature|access_token)=)[^&\s"']+/gi, "$1[redacted]"],
+  // AWS access key ids.
+  [/\bAKIA[0-9A-Z]{16}\b/g, "[redacted]"],
+];
+
+export function scrubValue(s: string): string {
+  let out = s;
+  for (const [re, replacement] of VALUE_PATTERNS) out = out.replace(re, replacement);
+  return out;
+}
+
 function scrub(value: unknown, depth = 0): unknown {
   if (depth > 4) return "[deep]";
-  if (typeof value === "string") return value.length > 500 ? value.slice(0, 500) + "…" : value;
+  if (typeof value === "string") {
+    const v = scrubValue(value);
+    return v.length > 500 ? v.slice(0, 500) + "…" : v;
+  }
   if (Array.isArray(value)) return value.slice(0, 20).map((v) => scrub(v, depth + 1));
   if (value && typeof value === "object") {
     const out: Record<string, unknown> = {};

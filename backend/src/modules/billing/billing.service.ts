@@ -7,6 +7,7 @@ import { AppError } from "../../common/errors";
 import { loadEnv } from "../../config/env";
 import { AuditService } from "../auth/audit.service";
 import { QuotaService } from "./quota.service";
+import { LiveStoreVerifier, MockStoreVerifier, type StoreVerifier } from "./store-verifier";
 
 /**
  * Subscriptions are granted only from a server-verified store receipt — never
@@ -20,7 +21,14 @@ export class BillingService {
     @Inject("DB") private readonly db: Db,
     private readonly audit: AuditService,
     private readonly quota: QuotaService,
-  ) {}
+  ) {
+    this.verifier =
+      this.env.BILLING_DRIVER === "store"
+        ? new LiveStoreVerifier(this.env)
+        : new MockStoreVerifier();
+  }
+
+  private readonly verifier: StoreVerifier;
 
   async listPlans() {
     const rows = await this.db.select().from(s.plans).where(eq(s.plans.active, true)).orderBy(asc(s.plans.priceAmount));
@@ -58,40 +66,83 @@ export class BillingService {
     };
   }
 
-  async verifyReceipt(userId: string, input: { platform: "apple" | "google"; receipt: string; productId: string }) {
-    if (this.env.BILLING_DRIVER !== "mock") {
-      throw new AppError("upstream_unavailable", "Store verification isn't configured");
+  /**
+   * The only way a subscription is ever granted. The client hands over what the
+   * store gave it; everything that decides entitlement — product, expiry,
+   * active state — comes back from the store, never from the request.
+   */
+  async verifyReceipt(
+    userId: string,
+    input: { platform: "apple" | "google"; receipt: string; productId: string },
+  ) {
+    const verified =
+      input.platform === "apple"
+        ? await this.verifier.verifyApple(input.receipt)
+        : await this.verifier.verifyGoogle(input.receipt, input.productId);
+
+    if (!verified.active) {
+      // Cancelled, lapsed or refunded: record nothing, grant nothing.
+      throw new AppError("validation_failed", "That subscription isn't active", {
+        fields: { receipt: "The store reports this purchase is not active" },
+      });
     }
-    // Mock verification: a sandbox receipt is any non-empty opaque string; the
-    // real driver calls Apple/Google here and reads the signed transaction.
-    if (input.receipt.length < 8) {
-      throw new AppError("validation_failed", "That purchase couldn't be verified", { fields: { receipt: "Invalid receipt" } });
-    }
+
     const [plan] = await this.db.select().from(s.plans).where(eq(s.plans.code, "pro")).limit(1);
     if (!plan) throw AppError.notFound("Plan");
 
-    const originalTransactionId = `${input.platform}:${input.receipt.slice(0, 40)}`;
-    const [existing] = await this.db.select().from(s.subscriptions).where(eq(s.subscriptions.userId, userId)).limit(1);
-    const periodEnd = new Date(Date.now() + 30 * 86400_000);
+    // One store subscription belongs to exactly one account. If this identifier
+    // is already bound elsewhere, someone is replaying another person's receipt.
+    const [claimed] = await this.db.select().from(s.subscriptions)
+      .where(eq(s.subscriptions.originalTransactionId, verified.originalTransactionId)).limit(1);
+    if (claimed && claimed.userId !== userId) {
+      await this.audit.write({
+        actorUserId: userId, action: "billing.receipt_reuse_rejected",
+        resourceType: "subscription", resourceId: claimed.id,
+      });
+      throw new AppError("validation_failed", "That purchase is already linked to another account", {
+        fields: { receipt: "Already redeemed" },
+      });
+    }
+
+    const [existing] = await this.db.select().from(s.subscriptions)
+      .where(eq(s.subscriptions.userId, userId)).limit(1);
+    const periodEnd = verified.expiresAt ?? new Date(Date.now() + 30 * 86400_000);
+
+    // Re-submitting the same receipt is a no-op refresh rather than a second grant.
+    const alreadyCurrent =
+      existing?.originalTransactionId === verified.originalTransactionId &&
+      existing?.status === "active";
 
     if (existing) {
       await this.db.update(s.subscriptions).set({
         planId: plan.id, status: "active", source: input.platform,
-        originalTransactionId, currentPeriodEnd: periodEnd,
-        cancelAtPeriodEnd: false, updatedAt: new Date(),
+        originalTransactionId: verified.originalTransactionId,
+        currentPeriodEnd: periodEnd,
+        cancelAtPeriodEnd: !verified.autoRenewing,
+        updatedAt: new Date(),
       }).where(eq(s.subscriptions.id, existing.id));
     } else {
       await this.db.insert(s.subscriptions).values({
         id: uuidv7(), userId, planId: plan.id, status: "active",
-        source: input.platform, originalTransactionId, currentPeriodEnd: periodEnd,
+        source: input.platform,
+        originalTransactionId: verified.originalTransactionId,
+        currentPeriodEnd: periodEnd,
+        cancelAtPeriodEnd: !verified.autoRenewing,
       });
     }
-    await this.db.insert(s.activities).values({
-      id: uuidv7(), userId, type: "plan",
-      title: "MedPilot Pro", subtitle: "Subscription active — unlimited analysis",
-      status: "completed", targetType: "subscription",
+
+    if (!alreadyCurrent) {
+      await this.db.insert(s.activities).values({
+        id: uuidv7(), userId, type: "plan",
+        title: "MedPilot Pro", subtitle: "Subscription active — unlimited analysis",
+        status: "completed", targetType: "subscription",
+      });
+    }
+
+    await this.audit.write({
+      actorUserId: userId, action: "billing.subscription_activated",
+      resourceType: "subscription", resourceId: userId,
     });
-    await this.audit.write({ actorUserId: userId, action: "billing.subscription_activated", resourceType: "subscription", resourceId: userId });
     return this.mySubscription(userId);
   }
 }

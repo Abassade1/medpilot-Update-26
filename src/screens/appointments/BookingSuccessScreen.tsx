@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ScreenContainer from "../../components/ScreenContainer";
 import Button from "../../components/Button";
-import { images } from "../../data/mock";
+import { images } from "../../data/assets";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
 

@@ -17,7 +17,7 @@ import { useNavigation } from "@react-navigation/native";
 import ScreenContainer from "../../components/ScreenContainer";
 import SectionHeader from "../../components/SectionHeader";
 import FacilityRow from "../../components/FacilityRow";
-import { images } from "../../data/mock";
+import { images } from "../../data/assets";
 import { assetSource } from "../../api/assets";
 import { useHome, useMe, useNotifications } from "../../api/queries";
 import ListStateView from "../../components/ListStateView";

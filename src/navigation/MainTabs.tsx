@@ -5,7 +5,7 @@ import HomeScreen from "../screens/home/HomeScreen";
 import ActivitiesScreen from "../screens/activities/ActivitiesScreen";
 import AuxChatScreen from "../screens/aux/AuxChatScreen";
 import AppointmentsScreen from "../screens/appointments/AppointmentsScreen";
-import { images } from "../data/mock";
+import { images } from "../data/assets";
 import { colors } from "../theme";
 
 function TabIcon({ source, color }: { source: ImageSourcePropType; color: string }) {

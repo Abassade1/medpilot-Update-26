@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import Rating from "./Rating";
 import { assetSource } from "../api/assets";
-import { images } from "../data/mock";
+import { images } from "../data/assets";
 import type { SpecialistCardDto } from "../api/types";
 import { colors, radii, shadows } from "../theme";
 

@@ -14,7 +14,7 @@ import { useHospital, useSpecialist } from "../../api/queries";
 import { assetSource } from "../../api/assets";
 import ListStateView from "../../components/ListStateView";
 import type { SpecialistCardDto } from "../../api/types";
-import { images } from "../../data/mock";
+import { images } from "../../data/assets";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
 

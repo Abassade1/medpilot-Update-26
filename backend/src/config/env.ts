@@ -3,6 +3,23 @@ import { generateKeyPairSync } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+/**
+ * z.coerce.boolean() is Boolean(string), so "false" becomes true — which would
+ * silently turn safety flags on. Parse the actual words instead.
+ */
+const boolFromEnv = (dflt: boolean) =>
+  z
+    .union([z.boolean(), z.string()])
+    .default(dflt)
+    .transform((v, ctx) => {
+      if (typeof v === "boolean") return v;
+      const t = v.trim().toLowerCase();
+      if (["1", "true", "yes", "on"].includes(t)) return true;
+      if (["0", "false", "no", "off", ""].includes(t)) return false;
+      ctx.addIssue({ code: "custom", message: `expected a boolean, got "${v}"` });
+      return z.NEVER;
+    });
+
 const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "staging", "production", "test"]).default("development"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
@@ -15,11 +32,39 @@ const EnvSchema = z.object({
   APP_SECRET: z.string().min(32, "APP_SECRET must be at least 32 characters"),
   STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
   STORAGE_LOCAL_DIR: z.string().default("./var/storage"),
-  EMAIL_DRIVER: z.enum(["outbox", "smtp-provider"]).default("outbox"),
+  S3_REGION: z.string().default(""),
+  S3_ENDPOINT: z.string().default(""),          // set for S3-compatible providers
+  S3_FORCE_PATH_STYLE: boolFromEnv(false),
+  S3_BUCKET_PHI: z.string().default(""),
+  S3_BUCKET_MEDIA: z.string().default(""),
+  S3_BUCKET_PUBLIC: z.string().default(""),
+  S3_ACCESS_KEY_ID: z.string().default(""),
+  S3_SECRET_ACCESS_KEY: z.string().default(""),
+  S3_SSE: z.enum(["", "AES256", "aws:kms"]).default("AES256"),
+  S3_SSE_KMS_KEY_ID: z.string().default(""),
+
+  EMAIL_DRIVER: z.enum(["outbox", "smtp"]).default("outbox"),
   EMAIL_FROM: z.string().default("no-reply@medpilot.app"),
+  EMAIL_FROM_NAME: z.string().default("MedPilot"),
+  EMAIL_REPLY_TO: z.string().default(""),
+  SMTP_HOST: z.string().default(""),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+  SMTP_SECURE: boolFromEnv(false),   // true = implicit TLS (465)
+  SMTP_REQUIRE_TLS: boolFromEnv(true), // STARTTLS mandatory on 587
+  SMTP_USER: z.string().default(""),
+  SMTP_PASSWORD: z.string().default(""),
+  SMTP_ALLOW_INSECURE: boolFromEnv(false), // local test servers only
+  WEB_PUBLIC_URL: z.string().default(""),            // base for verify/reset links
   AUX_DRIVER: z.enum(["deterministic", "llm"]).default("deterministic"),
   BILLING_DRIVER: z.enum(["mock", "store"]).default("mock"),
+  APPLE_BUNDLE_ID: z.string().default(""),
+  APPLE_ENVIRONMENT: z.enum(["Sandbox", "Production"]).default("Sandbox"),
+  APPLE_ROOT_CA_PATH: z.string().default(""),        // Apple Root CA G3 (PEM/DER)
+  GOOGLE_PACKAGE_NAME: z.string().default(""),
+  GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().default(""),
+  GOOGLE_SERVICE_ACCOUNT_KEY: z.string().default(""), // PEM, \n-escaped
   PUSH_DRIVER: z.enum(["console", "expo"]).default("console"),
+  EXPO_ACCESS_TOKEN: z.string().default(""),
   QUOTA_MEAL_ANALYSIS: z.coerce.number().int().min(0).default(1),
   QUOTA_CLINIC_ACCESS: z.coerce.number().int().min(0).default(10),
   QUOTA_EVACUATION: z.coerce.number().int().min(0).default(2),
@@ -73,6 +118,60 @@ function resolveKeys(env: z.infer<typeof EnvSchema>): { priv: string; pub: strin
   return { priv: readFileSync(privPath, "utf8"), pub: readFileSync(pubPath, "utf8") };
 }
 
+/**
+ * Development drivers keep no durable state and reach no real recipient. If a
+ * staging or production deployment starts on one, the failure surfaces later as
+ * "nobody received the email" or "the files vanished on redeploy" — so refuse
+ * to boot instead, naming every offending variable at once.
+ */
+function assertDeployableDrivers(env: z.infer<typeof EnvSchema>): void {
+  if (env.NODE_ENV !== "staging" && env.NODE_ENV !== "production") return;
+  const problems: string[] = [];
+
+  if (env.EMAIL_DRIVER !== "smtp") {
+    problems.push("EMAIL_DRIVER must be 'smtp' outside development (the outbox driver reaches nobody)");
+  } else {
+    if (!env.SMTP_HOST) problems.push("SMTP_HOST is required when EMAIL_DRIVER=smtp");
+    if (!env.SMTP_USER) problems.push("SMTP_USER is required when EMAIL_DRIVER=smtp");
+    if (!env.SMTP_PASSWORD) problems.push("SMTP_PASSWORD is required when EMAIL_DRIVER=smtp");
+    if (env.SMTP_ALLOW_INSECURE) problems.push("SMTP_ALLOW_INSECURE must be false outside development");
+  }
+
+  if (env.STORAGE_DRIVER !== "s3") {
+    problems.push("STORAGE_DRIVER must be 's3' outside development (local disk does not survive redeploys)");
+  } else {
+    if (!env.S3_REGION) problems.push("S3_REGION is required when STORAGE_DRIVER=s3");
+    if (!env.S3_BUCKET_PHI) problems.push("S3_BUCKET_PHI is required when STORAGE_DRIVER=s3");
+    if (!env.S3_BUCKET_MEDIA) problems.push("S3_BUCKET_MEDIA is required when STORAGE_DRIVER=s3");
+    if (!env.S3_ACCESS_KEY_ID) problems.push("S3_ACCESS_KEY_ID is required when STORAGE_DRIVER=s3");
+    if (!env.S3_SECRET_ACCESS_KEY) problems.push("S3_SECRET_ACCESS_KEY is required when STORAGE_DRIVER=s3");
+    if (!env.S3_SSE) problems.push("S3_SSE must not be empty: sensitive objects require encryption at rest");
+  }
+
+  if (env.BILLING_DRIVER !== "store") {
+    problems.push("BILLING_DRIVER must be 'store' outside development (the mock driver accepts any receipt)");
+  } else {
+    if (!env.APPLE_BUNDLE_ID) problems.push("APPLE_BUNDLE_ID is required when BILLING_DRIVER=store");
+    if (!env.GOOGLE_PACKAGE_NAME) problems.push("GOOGLE_PACKAGE_NAME is required when BILLING_DRIVER=store");
+    if (!env.GOOGLE_SERVICE_ACCOUNT_EMAIL) problems.push("GOOGLE_SERVICE_ACCOUNT_EMAIL is required when BILLING_DRIVER=store");
+    if (!env.GOOGLE_SERVICE_ACCOUNT_KEY) problems.push("GOOGLE_SERVICE_ACCOUNT_KEY is required when BILLING_DRIVER=store");
+  }
+
+  if (env.PUSH_DRIVER !== "expo") {
+    problems.push("PUSH_DRIVER must be 'expo' outside development (the console driver delivers nothing)");
+  }
+
+  if (!env.WEB_PUBLIC_URL) problems.push("WEB_PUBLIC_URL is required: verification and reset links are built from it");
+  if (!/^https:/.test(env.API_PUBLIC_URL)) problems.push("API_PUBLIC_URL must be https outside development");
+  if (env.WEB_PUBLIC_URL && !/^https:/.test(env.WEB_PUBLIC_URL)) problems.push("WEB_PUBLIC_URL must be https outside development");
+
+  if (problems.length) {
+    throw new Error(
+      `Refusing to start in ${env.NODE_ENV} with development configuration:\n  - ${problems.join("\n  - ")}`,
+    );
+  }
+}
+
 let cached: Env | null = null;
 export function loadEnv(): Env {
   if (cached) return cached;
@@ -82,6 +181,7 @@ export function loadEnv(): Env {
     console.error("Invalid environment:", parsed.error.flatten().fieldErrors);
     process.exit(1);
   }
+  assertDeployableDrivers(parsed.data);
   const keys = resolveKeys(parsed.data);
   cached = {
     ...parsed.data,

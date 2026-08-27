@@ -1,5 +1,5 @@
 import type { ImageSourcePropType } from "react-native";
-import { images } from "../data/mock";
+import { images } from "../data/assets";
 
 /**
  * v1 asset bridge.

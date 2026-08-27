@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Image } from "react-native";
 import ScreenContainer from "../../components/ScreenContainer";
 import Button from "../../components/Button";
-import { images } from "../../data/mock";
+import { images } from "../../data/assets";
 import { endpoints } from "../../api/endpoints";
 import { useSession } from "../../state/Session";
 import { colors, spacing } from "../../theme";

@@ -16,7 +16,7 @@ import AppHeader from "../../components/AppHeader";
 import Chip from "../../components/Chip";
 import ActivityRow from "../../components/ActivityRow";
 import ListStateView from "../../components/ListStateView";
-import { images } from "../../data/mock";
+import { images } from "../../data/assets";
 import { useActivities } from "../../api/queries";
 import type { ActivityDto, ActivityTypeDto } from "../../api/types";
 import { RootNavigation } from "../../navigation/types";

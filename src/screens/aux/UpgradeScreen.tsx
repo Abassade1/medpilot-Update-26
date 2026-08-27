@@ -16,14 +16,26 @@ import AppHeader from "../../components/AppHeader";
 import LogoMark from "../../components/LogoMark";
 import { colors, radii, shadows, spacing } from "../../theme";
 import ListStateView from "../../components/ListStateView";
-import { images } from "../../data/mock";
+import { images } from "../../data/assets";
 import { usePlans, useSubscription, qk } from "../../api/queries";
 import { endpoints } from "../../api/endpoints";
 import { ApiError } from "../../api/errors";
+import {
+  PurchaseCancelledError,
+  finishPurchase,
+  purchaseSubscription,
+  restorePurchases,
+} from "../../api/purchases";
 import { useQueryClient } from "@tanstack/react-query";
 import { RootScreenProps } from "../../navigation/types";
 
 const PLAN_IMAGE = { basic: images.woman1, pro: images.woman2 } as const;
+
+const describe = (err: unknown): string => {
+  const e = err as ApiError & { message?: string };
+  if (e?.isOffline) return "You appear to be offline. Check your connection and try again.";
+  return e?.message || "We couldn't complete that purchase. Please try again.";
+};
 
 export default function UpgradeScreen({ navigation }: RootScreenProps<"Upgrade">) {
   const plansQuery = usePlans();
@@ -33,31 +45,46 @@ export default function UpgradeScreen({ navigation }: RootScreenProps<"Upgrade">
   const currentPlan = subscription.data?.planCode ?? "basic";
 
   /**
-   * Hands the store receipt to the server, which is the only side that decides
-   * whether the plan actually changed. There is no client-side entitlement.
-   * The StoreKit / Play Billing purchase itself lands in the native build; in
-   * development the server's mock driver accepts a sandbox receipt.
+   * Runs a real store transaction, then hands the resulting receipt to the
+   * server. The server re-verifies it against Apple or Google and decides the
+   * entitlement — this screen never grants anything on its own, and a failed
+   * or cancelled purchase changes nothing.
    */
   const upgrade = async (productId: string) => {
     if (purchasing) return;
     setPurchasing(true);
     try {
-      await endpoints.billing.verifyReceipt({
-        platform: Platform.OS === "android" ? "google" : "apple",
-        receipt: `sandbox-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        productId,
-      });
+      const evidence = await purchaseSubscription(productId);
+      await endpoints.billing.verifyReceipt(evidence);
+      await finishPurchase(evidence);
       await qc.invalidateQueries({ queryKey: qk.subscription });
       await qc.invalidateQueries({ queryKey: ["activities"] });
       navigation.goBack();
     } catch (err) {
-      const e = err as ApiError;
-      Alert.alert(
-        "Upgrade unavailable",
-        e.isOffline
-          ? "You appear to be offline. Check your connection and try again."
-          : e.message || "We couldn't complete that purchase. Please try again."
-      );
+      if (err instanceof PurchaseCancelledError) return; // silent: the user chose to stop
+      Alert.alert("Upgrade unavailable", describe(err));
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  /** Restores an entitlement the account already owns on another device. */
+  const restore = async () => {
+    if (purchasing) return;
+    setPurchasing(true);
+    try {
+      const owned = await restorePurchases();
+      if (owned.length === 0) {
+        Alert.alert("Nothing to restore", "We couldn't find an active subscription on this account.");
+        return;
+      }
+      for (const evidence of owned) {
+        await endpoints.billing.verifyReceipt(evidence).catch(() => {});
+      }
+      await qc.invalidateQueries({ queryKey: qk.subscription });
+      Alert.alert("Purchases restored", "Your subscription has been restored.");
+    } catch (err) {
+      Alert.alert("Couldn't restore", describe(err));
     } finally {
       setPurchasing(false);
     }
@@ -124,6 +151,17 @@ export default function UpgradeScreen({ navigation }: RootScreenProps<"Upgrade">
             </View>
           );
         })}
+
+        <TouchableOpacity
+          style={styles.restoreRow}
+          onPress={() => void restore()}
+          disabled={purchasing}
+          accessibilityRole="button"
+          accessibilityLabel="Restore purchases"
+          accessibilityState={{ disabled: purchasing }}
+        >
+          <Text style={styles.restoreText}>Restore purchases</Text>
+        </TouchableOpacity>
       </ScrollView>
     </ScreenContainer>
   );
@@ -156,4 +194,6 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   footerLink: { fontSize: 13, fontWeight: "600", color: colors.primary },
+  restoreRow: { alignItems: "center", paddingVertical: 10 },
+  restoreText: { fontSize: 13, fontWeight: "600", color: colors.secondaryText, textDecorationLine: "underline" },
 });

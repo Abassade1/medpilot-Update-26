@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, Image, StyleSheet, StyleProp, ViewStyle } from "react-native";
 import { colors } from "../theme";
-import { images } from "../data/mock";
+import { images } from "../data/assets";
 
 interface Props {
   size?: number;

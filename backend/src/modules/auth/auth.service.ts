@@ -94,6 +94,18 @@ export class AuthService {
   async logout(rawToken: string): Promise<void> { await this.tokens.revoke(rawToken); }
   async logoutAll(userId: string): Promise<void> { await this.tokens.revokeAllForUser(userId); }
 
+  /**
+   * Mail clients cannot open a custom scheme, so deployed links are https on
+   * WEB_PUBLIC_URL (a universal/app link that hands off to the app, with a web
+   * fallback). Development has no web host, so it keeps the direct deep link.
+   */
+  private linkFor(path: "verify" | "reset", token: string): string {
+    const base = this.env.WEB_PUBLIC_URL;
+    return base
+      ? `${base.replace(/\/$/, "")}/${path}?token=${encodeURIComponent(token)}`
+      : `medpilot://${path}?token=${encodeURIComponent(token)}`;
+  }
+
   // ---- email verification ----------------------------------------------
   private async queueVerificationEmail(userId: string, to: string) {
     const raw = "vt_" + randomBytes(24).toString("base64url");
@@ -104,8 +116,9 @@ export class AuthService {
     });
     await this.email.send({
       to, subject: "Verify your MedPilot email",
-      text: "Tap the link in this email to verify your address.",
-      actionUrl: `medpilot://verify?token=${raw}`,
+      text: "Tap the button below to verify your email address. This link expires in 24 hours and can be used once.",
+      actionUrl: this.linkFor("verify", raw),
+      actionLabel: "Verify my email",
     });
   }
 
@@ -147,8 +160,9 @@ export class AuthService {
     });
     await this.email.send({
       to: user.email, subject: "Reset your MedPilot password",
-      text: "Use the link below to choose a new password. It expires in one hour.",
-      actionUrl: `medpilot://reset?token=${raw}`,
+      text: "Use the button below to choose a new password. This link expires in one hour and can be used once.",
+      actionUrl: this.linkFor("reset", raw),
+      actionLabel: "Choose a new password",
     });
   }
 

@@ -4,7 +4,7 @@ import * as LocalAuthentication from "expo-local-authentication";
 import ScreenContainer from "../../components/ScreenContainer";
 import TextField from "../../components/TextField";
 import Button from "../../components/Button";
-import { images } from "../../data/mock";
+import { images } from "../../data/assets";
 import { endpoints } from "../../api/endpoints";
 import { ApiError } from "../../api/errors";
 import { saveTokens } from "../../api/tokens";

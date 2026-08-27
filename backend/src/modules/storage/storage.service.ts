@@ -1,14 +1,18 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import { mkdirSync, existsSync, statSync, readFileSync, writeFileSync, rmSync } from "node:fs";
-import { dirname, join } from "node:path";
+
 import { eq } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 import type { Db } from "../../db/client";
 import { schema as s } from "../../db/client";
 import { AppError } from "../../common/errors";
 import { loadEnv } from "../../config/env";
+import { LocalObjectStore, S3ObjectStore, type ObjectStore } from "./object-store";
 
+/**
+ * Logical bucket names. On the s3 driver these resolve to the configured real
+ * buckets, so staging and production can never share a bucket by accident.
+ */
 export const BUCKETS = { phi: "medpilot-phi", media: "medpilot-media", public: "medpilot-public" } as const;
 
 const EXT: Record<string, string> = {
@@ -48,10 +52,27 @@ interface Ticket { f: string; b: string; k: string; m: string; z: number; exp: n
 @Injectable()
 export class StorageService {
   private readonly env = loadEnv();
+  private readonly store: ObjectStore;
+
   constructor(@Inject("DB") private readonly db: Db) {
-    if (this.env.STORAGE_DRIVER === "s3") {
-      throw new Error("S3 driver requires credentials; configure or use STORAGE_DRIVER=local");
-    }
+    this.store =
+      this.env.STORAGE_DRIVER === "s3"
+        ? new S3ObjectStore(this.env)
+        : new LocalObjectStore(this.env.STORAGE_LOCAL_DIR);
+  }
+
+  /** Maps a logical bucket onto the configured physical bucket for this driver. */
+  private physical(bucket: string): string {
+    if (this.env.STORAGE_DRIVER !== "s3") return bucket;
+    if (bucket === BUCKETS.phi) return this.env.S3_BUCKET_PHI;
+    if (bucket === BUCKETS.media) return this.env.S3_BUCKET_MEDIA;
+    if (bucket === BUCKETS.public) return this.env.S3_BUCKET_PUBLIC || this.env.S3_BUCKET_MEDIA;
+    return bucket;
+  }
+
+  /** Reachability probe used by the readiness endpoint. */
+  async health(): Promise<void> {
+    await this.store.health();
   }
 
   private sign(t: Ticket): string {
@@ -110,9 +131,7 @@ export class StorageService {
       await this.markFailed(t.f);
       throw new AppError("unsupported_type", "That file doesn't match its declared type");
     }
-    const path = join(this.env.STORAGE_LOCAL_DIR, t.b, t.k);
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, body);
+    await this.store.put(this.physical(t.b), t.k, body, t.m);
     await this.db.update(s.files).set({
       checksumSha256: createHash("sha256").update(body).digest("hex"),
       // dev scanner: magic-verified content is marked clean; production wires a real scanner here
@@ -125,8 +144,8 @@ export class StorageService {
   async assertStored(fileId: string, ownerUserId: string) {
     const [f] = await this.db.select().from(s.files).where(eq(s.files.id, fileId)).limit(1);
     if (!f || f.ownerUserId !== ownerUserId) throw AppError.notFound("File");
-    const path = join(this.env.STORAGE_LOCAL_DIR, f.bucket, f.objectKey);
-    if (!existsSync(path) || statSync(path).size !== f.sizeBytes) {
+    const stored = await this.store.size(this.physical(f.bucket), f.objectKey);
+    if (stored === null || stored !== f.sizeBytes) {
       throw new AppError("bad_request", "The upload hasn't completed yet");
     }
     if (f.scanStatus !== "clean") throw new AppError("bad_request", "This file failed the safety scan");
@@ -138,19 +157,18 @@ export class StorageService {
     return `${this.env.API_PUBLIC_URL}/v1/files/${token}`;
   }
 
-  readObject(token: string): { buf: Buffer; mime: string } {
+  async readObject(token: string): Promise<{ buf: Buffer; mime: string }> {
     const t = this.verify(token, "get");
-    const path = join(this.env.STORAGE_LOCAL_DIR, t.b, t.k);
-    if (!existsSync(path)) throw AppError.notFound("File");
-    return { buf: readFileSync(path), mime: t.m };
+    const buf = await this.store.get(this.physical(t.b), t.k);
+    if (!buf) throw AppError.notFound("File");
+    return { buf, mime: t.m };
   }
 
   /** Two-phase delete: caller soft-deletes the row; object removal here. */
   async deleteObject(fileId: string) {
     const [f] = await this.db.select().from(s.files).where(eq(s.files.id, fileId)).limit(1);
     if (!f) return;
-    const path = join(this.env.STORAGE_LOCAL_DIR, f.bucket, f.objectKey);
-    rmSync(path, { force: true });
+    await this.store.remove(this.physical(f.bucket), f.objectKey);
     await this.db.update(s.files).set({ deletedAt: new Date() }).where(eq(s.files.id, fileId));
   }
 

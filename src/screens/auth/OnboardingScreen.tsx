@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity, StatusBar } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { images } from "../../data/mock";
+import { images } from "../../data/assets";
 import { colors, radii } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
 

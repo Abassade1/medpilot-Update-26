@@ -25,10 +25,14 @@ export class StorageController {
 
   @Public()
   @Get("files/:token")
-  download(@Param("token") token: string, @Res() res: Response) {
-    const { buf, mime } = this.storage.readObject(token);
+  async download(@Param("token") token: string, @Res() res: Response) {
+    const { buf, mime } = await this.storage.readObject(token);
     res.setHeader("Content-Type", mime);
-    res.setHeader("Cache-Control", "private, max-age=60");
+    // Sensitive content: never store in a shared cache, and do not let the
+    // filename or type be reinterpreted by the browser.
+    res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Content-Disposition", "attachment");
     res.send(buf);
   }
 }

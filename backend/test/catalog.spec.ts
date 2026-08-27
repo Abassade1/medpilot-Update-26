@@ -80,9 +80,20 @@ describe("catalog", () => {
 
 describe("operational endpoints", () => {
   it("reports health including the database", async () => {
-    const res = await (await http()).get("/healthz").expect(200);
-    expect(res.body.status).toBe("ok");
-    expect(res.body.database).toBe("ok");
+    // Liveness answers only "the process is up" — it must not touch a
+    // dependency, so a database blip cannot trigger a restart loop.
+    const live = await (await http()).get("/healthz").expect(200);
+    expect(live.body.status).toBe("ok");
+    expect(live.body.database).toBeUndefined();
+
+    // Readiness is where dependencies are actually checked.
+    const ready = await (await http()).get("/readyz");
+    expect([200, 503]).toContain(ready.status);
+    expect(ready.body.dependencies.database).toBe("ok");
+    expect(ready.body.environment).toBe("test");
+    // Never leaks where a dependency lives.
+    const asText = JSON.stringify(ready.body);
+    expect(asText).not.toMatch(/postgres:\/\/|amazonaws|smtp\.|password/i);
   });
 
   it("publishes an OpenAPI document matching the implementation", async () => {
