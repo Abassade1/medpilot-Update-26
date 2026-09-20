@@ -25,11 +25,12 @@ export function useVoiceInput(onCaptured?: (uri: string) => void) {
   useEffect(() => {
     mounted.current = true;
     return () => {
+      // useAudioRecorder disposes the native recorder on unmount, so touching
+      // it here (even to stop a dangling capture) reaches a freed shared object
+      // and throws. Only the mounted flag is ours to clean up.
       mounted.current = false;
-      // Stop a dangling recording if the screen unmounts mid-capture.
-      if (recorder.isRecording) recorder.stop().catch(() => {});
     };
-  }, [recorder]);
+  }, []);
 
   const start = useCallback(async () => {
     const ok = await ensurePermission({

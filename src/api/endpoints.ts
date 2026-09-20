@@ -12,7 +12,7 @@ import type {
 export const endpoints = {
   auth: {
     register: (body: {
-      email: string; password: string; firstName: string; lastName: string;
+      email: string; password?: string; firstName: string; lastName: string;
       phone: string; dateOfBirth: string; gender?: string; maritalStatus?: string;
     }) => api.post<AuthResponse>("/v1/auth/register", body, { anonymous: true }),
 

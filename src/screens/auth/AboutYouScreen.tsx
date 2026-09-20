@@ -64,9 +64,8 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
     try {
       const res = await endpoints.auth.register({
         email: route.params.email,
-        // Password is chosen later in the approved flow; a strong random value
-        // keeps the account valid until Create Password replaces it.
-        password: `Tmp-${Math.random().toString(36).slice(2)}-${Date.now()}`,
+        // No password here: it is chosen on the Create Password step, and the
+        // server records "not set" until then.
         firstName: firstname.trim(),
         lastName: lastname.trim(),
         phone: phone.trim(),

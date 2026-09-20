@@ -43,7 +43,9 @@ export class AuthService {
       });
     }
     const userId = uuidv7();
-    const passwordHash = await argon2.hash(input.password, ARGON);
+    // No password supplied = deferred: store nothing rather than a placeholder,
+    // so setupStatus.passwordSet stays false until the member actually picks one.
+    const passwordHash = input.password ? await argon2.hash(input.password, ARGON) : null;
 
     await this.db.transaction(async (tx) => {
       await tx.insert(s.users).values({ id: userId, email: input.email, passwordHash });

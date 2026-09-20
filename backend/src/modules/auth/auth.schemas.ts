@@ -40,7 +40,10 @@ export const dateOfBirth = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use the form
 
 export const RegisterBody = z.object({
   email,
-  password,
+  // Optional: the app collects the password on a later onboarding step. An
+  // account created without one has no password hash at all, so it reports
+  // "password not set" honestly and cannot be signed into until one is chosen.
+  password: password.optional(),
   firstName: personName("Firstname"),
   lastName: personName("Lastname"),
   phone,

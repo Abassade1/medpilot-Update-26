@@ -3,8 +3,12 @@ import { personName, phone } from "../auth/auth.schemas";
 
 const futureDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use the format YYYY-MM-DD")
   .superRefine((v, ctx) => {
-    const d = new Date(v + "T00:00:00Z");
-    if (Number.isNaN(d.getTime())) return ctx.addIssue({ code: "custom", message: "That date doesn't exist" });
+    // Date.parse rolls 31 Feb into 3 Mar instead of failing, so a real calendar
+    // date is one that survives a round trip through its own components.
+    const [y, m, day] = v.split("-").map(Number) as [number, number, number];
+    const d = new Date(Date.UTC(y, m - 1, day));
+    const real = d.getUTCFullYear() === y && d.getUTCMonth() === m - 1 && d.getUTCDate() === day;
+    if (!real) return ctx.addIssue({ code: "custom", message: "That date doesn't exist" });
     const today = new Date(); today.setUTCHours(0, 0, 0, 0);
     if (d.getTime() <= today.getTime()) return ctx.addIssue({ code: "custom", message: "Choose a date in the future" });
     if (d.getTime() > today.getTime() + 365 * 86400_000) ctx.addIssue({ code: "custom", message: "Choose a date within the next year" });

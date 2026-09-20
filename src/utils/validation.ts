@@ -95,3 +95,48 @@ export function toIsoDateUS(input: string): string | null {
   const [, mm, dd, yyyy] = m;
   return toIsoDate(`${dd}/${mm}/${yyyy}`);
 }
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/** Booking window the API enforces: strictly after today, within a year. */
+export const BOOKING_WINDOW_DAYS = 365;
+
+/**
+ * Validates a typed booking date and says what is actually wrong with it.
+ *
+ * "today" is the UTC calendar day, matching the server's rule, so the app never
+ * accepts a date the API would then refuse (or the reverse) near midnight.
+ * An empty value returns undefined — required-ness is the form's job.
+ */
+export function validateBookingDate(
+  input: string,
+  order: "dmy" | "mdy",
+  now: Date = new Date(),
+): string | undefined {
+  const value = input.trim();
+  if (!value) return undefined;
+
+  const shape = order === "dmy" ? "DD/MM/YYYY" : "MM/DD/YYYY";
+  const m = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return `Use the format ${shape}`;
+
+  const day = Number(order === "dmy" ? m[1] : m[2]);
+  const month = Number(order === "dmy" ? m[2] : m[1]);
+  const year = Number(m[3]);
+
+  if (month < 1 || month > 12) return "Month must be between 01 and 12";
+  const check = new Date(Date.UTC(year, month - 1, day));
+  const real =
+    check.getUTCFullYear() === year && check.getUTCMonth() === month - 1 && check.getUTCDate() === day;
+  if (!real) return `${MONTH_NAMES[month - 1]} ${year} doesn't have a day ${day}`;
+
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  if (check.getTime() <= today) return "Choose a date after today";
+  if (check.getTime() > today + BOOKING_WINDOW_DAYS * 86_400_000) {
+    return "Choose a date within the next year";
+  }
+  return undefined;
+}

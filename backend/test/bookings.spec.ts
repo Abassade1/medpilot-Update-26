@@ -172,3 +172,47 @@ describe("activity feed", () => {
     await (await http()).get("/v1/activities?limit=500").set("Authorization", s.auth).expect(422);
   });
 });
+
+/**
+ * Date.parse rolls impossible dates forward (31 Feb -> 3 Mar) instead of
+ * failing, which once let "2027-02-31" through validation and crashed the insert
+ * with a 500. These must be clean 422s that name the problem.
+ */
+describe("impossible calendar dates", () => {
+  const body = (hospitalId: string, requestedDate: string) => ({
+    hospitalId, appointmentType: "general_checkup", requestedDate,
+    underTreatment: false, emergencyContact: contact,
+  });
+
+  it.each(["2027-02-31", "2027-02-29", "2027-04-31", "2027-06-31", "2027-09-31"])(
+    "rejects %s with a 422, not a 500",
+    async (date) => {
+      const s = await registerUser();
+      const res = await (await http()).post("/v1/appointments").set("Authorization", s.auth)
+        .set("Idempotency-Key", `bad-${date}-${Math.random()}`)
+        .send(body(await firstHospitalId(s), date));
+      expect(res.status).toBe(422);
+      expect(res.body.error.fields.requestedDate).toMatch(/doesn't exist/i);
+    },
+  );
+
+  it("rejects today, since a booking must be in the future", async () => {
+    const s = await registerUser();
+    const res = await (await http()).post("/v1/appointments").set("Authorization", s.auth)
+      .set("Idempotency-Key", `today-${Math.random()}`)
+      .send(body(await firstHospitalId(s), nearFuture(0)));
+    expect(res.status).toBe(422);
+  });
+
+  it("tells a real leap day from a fake one, independent of today's date", async () => {
+    const { CreateAppointmentBody } = await import("../src/modules/bookings/bookings.schemas");
+    const doesntExist = (date: string) => {
+      const r = CreateAppointmentBody.safeParse(body("00000000-0000-4000-8000-000000000000", date));
+      return !r.success && r.error.issues.some((i) => /doesn't exist/i.test(i.message));
+    };
+    expect(doesntExist("2028-02-29")).toBe(false); // 2028 is a leap year
+    expect(doesntExist("2027-02-29")).toBe(true);  // 2027 is not
+    expect(doesntExist("2100-02-29")).toBe(true);  // divisible by 100, not by 400
+    expect(doesntExist("2400-02-29")).toBe(false); // divisible by 400
+  });
+});

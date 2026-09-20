@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -22,7 +22,7 @@ import { useCreateAppointment, useReference } from "../../api/queries";
 import { ApiError } from "../../api/errors";
 import { newIdempotencyKey } from "../../utils/device";
 import { useMultiStepBack } from "../../hooks/useMultiStepBack";
-import { toIsoDate } from "../../utils/validation";
+import { toIsoDate, validateBookingDate } from "../../utils/validation";
 import { RootScreenProps } from "../../navigation/types";
 
 export default function BookAppointmentScreen({
@@ -41,6 +41,10 @@ export default function BookAppointmentScreen({
   // Step 1
   const [type, setType] = useState<string | null>(null);
   const [date, setDate] = useState("");
+  const [dateTouched, setDateTouched] = useState(false);
+  // Set when the server rejects a date the client let through (e.g. the window
+  // moved); shown on the field itself rather than on a later step.
+  const [serverDateError, setServerDateError] = useState<string | null>(null);
   // Step 2
   const [underTreatment, setUnderTreatment] = useState<boolean | null>(null);
   const [condition, setCondition] = useState("");
@@ -58,10 +62,19 @@ export default function BookAppointmentScreen({
   // Android hardware back / iOS swipe should walk the steps, not exit the flow.
   useMultiStepBack(step, useCallback(() => setStep((s) => s - 1), []));
 
+  // A submit failure belongs to the step it was raised on; carrying it onto
+  // another step shows the member an error about a field that isn't there.
+  useEffect(() => { setSubmitError(null); }, [step]);
+
+  const localDateError = validateBookingDate(date, "dmy");
+  const dateError = localDateError ?? serverDateError ?? undefined;
+  // Show as soon as the date is fully typed, or once the member leaves the field.
+  const showDateError = !!dateError && (dateTouched || date.length >= 10 || !!serverDateError);
+
   const titles = ["Appointment Details", "Medical History", "Emergency Contact"];
   const canNext =
     step === 1
-      ? !!type && !!date
+      ? !!type && !!date && !dateError
       : step === 2
       ? underTreatment === false || (underTreatment === true && condition.trim().length > 0)
       : firstname.trim() && lastname.trim() && phone.trim() && relationship;
@@ -69,8 +82,11 @@ export default function BookAppointmentScreen({
   const submit = async () => {
     setSubmitError(null);
     const isoDate = toIsoDate(date);
-    if (!isoDate) {
-      setSubmitError("Enter the appointment date as DD/MM/YYYY.");
+    if (!isoDate || localDateError) {
+      // Unreachable in normal use — Next is gated on the same check — but if it
+      // ever happens, send the member to the field, not a message on step 3.
+      setStep(1);
+      setDateTouched(true);
       return;
     }
     try {
@@ -95,6 +111,11 @@ export default function BookAppointmentScreen({
       navigation.replace("BookingSuccess", { reference: created.reference, kind: "appointment" });
     } catch (err) {
       const e = err as ApiError;
+      if (e.fields?.requestedDate) {
+        setServerDateError(e.fields.requestedDate);
+        setStep(1);
+        return;
+      }
       setSubmitError(
         e.isOffline
           ? "You appear to be offline. Check your connection and try again."
@@ -144,7 +165,12 @@ export default function BookAppointmentScreen({
             <TextField
               placeholder="DD/MM/YYYY"
               value={date}
-              onChangeText={setDate}
+              onChangeText={(v) => { setDate(v); setServerDateError(null); }}
+              onBlur={() => setDateTouched(true)}
+              error={showDateError ? dateError : undefined}
+              keyboardType="numbers-and-punctuation"
+              maxLength={10}
+              accessibilityLabel="Appointment date, day month year"
               right={<Ionicons name="calendar-outline" size={17} color={colors.secondaryText} />}
             />
           </View>

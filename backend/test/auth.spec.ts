@@ -93,3 +93,48 @@ describe("password reset", () => {
     expect(res.body.error.code).toBe("bad_request");
   });
 });
+
+/**
+ * Onboarding collects the password on a later step. An account created without
+ * one must report that truthfully, and must be able to set one without being
+ * asked for a "current password" it never had.
+ */
+describe("deferred password", () => {
+  const profile = { firstName: "Ada", lastName: "Lovelace", phone: "4038903333", dateOfBirth: "1990-04-11" };
+
+  it("reports passwordSet=false when no password was supplied", async () => {
+    const res = await (await http()).post("/v1/auth/register")
+      .send({ email: uniqueEmail(), ...profile }).expect(201);
+    expect(res.body.setup.passwordSet).toBe(false);
+  });
+
+  it("cannot be signed into until a password is chosen", async () => {
+    const email = uniqueEmail();
+    await (await http()).post("/v1/auth/register").send({ email, ...profile }).expect(201);
+    const res = await (await http()).post("/v1/auth/login").send({ email, password: "anything-at-all" });
+    expect(res.status).toBe(401);
+    expect(res.body.error.message).toBe("Incorrect email or password"); // same generic error, no leak
+  });
+
+  it("lets the member choose a password without a current one, then sign in with it", async () => {
+    const email = uniqueEmail();
+    const reg = await (await http()).post("/v1/auth/register").send({ email, ...profile }).expect(201);
+    const auth = `Bearer ${reg.body.tokens.accessToken}`;
+
+    await (await http()).post("/v1/me/password").set("authorization", auth)
+      .send({ password: "Chosen-passw0rd!" }).expect(200);
+
+    const login = await (await http()).post("/v1/auth/login")
+      .send({ email, password: "Chosen-passw0rd!" }).expect(200);
+    expect(login.body.setup.passwordSet).toBe(true);
+  });
+
+  it("still demands the current password once one has been chosen", async () => {
+    const reg = await (await http()).post("/v1/auth/register")
+      .send({ email: uniqueEmail(), password: "password123", ...profile }).expect(201);
+    const res = await (await http()).post("/v1/me/password")
+      .set("authorization", `Bearer ${reg.body.tokens.accessToken}`)
+      .send({ password: "Another-passw0rd!" });
+    expect(res.status).toBe(422); // a stolen session cannot silently replace a real password
+  });
+});

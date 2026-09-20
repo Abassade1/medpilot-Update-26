@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -25,7 +25,7 @@ import ListStateView from "../../components/ListStateView";
 import { useCreateTransport, useProvider, useReference } from "../../api/queries";
 import { ApiError } from "../../api/errors";
 import { newIdempotencyKey } from "../../utils/device";
-import { toIsoDateUS } from "../../utils/validation";
+import { toIsoDateUS, validateBookingDate } from "../../utils/validation";
 import { ensurePermission } from "../../utils/permissions";
 import { useMultiStepBack } from "../../hooks/useMultiStepBack";
 import { RootScreenProps } from "../../navigation/types";
@@ -52,6 +52,10 @@ export default function TravelBookingScreen({
 
   // Step 1 — pickup
   const [pickupDate, setPickupDate] = useState("");
+  const [dateTouched, setDateTouched] = useState(false);
+  const [timeTouched, setTimeTouched] = useState(false);
+  // Errors the server raised on step 1 fields, shown on the fields themselves.
+  const [serverErrors, setServerErrors] = useState<{ pickupDate?: string; pickupTime?: string }>({});
   const [pickupTime, setPickupTime] = useState("");
   const [pickupCountry, setPickupCountry] = useState<string | null>(null);
   const [pickupProvince, setPickupProvince] = useState<string | null>(null);
@@ -139,10 +143,22 @@ export default function TravelBookingScreen({
   const toggle = (list: string[], setList: (v: string[]) => void, value: string) =>
     setList(list.includes(value) ? list.filter((x) => x !== value) : [...list, value]);
 
+  // A submit failure belongs to the step it was raised on.
+  useEffect(() => { setSubmitError(null); }, [step]);
+
+  const dateError = validateBookingDate(pickupDate, "mdy") ?? serverErrors.pickupDate;
+  const showDateError = !!dateError && (dateTouched || pickupDate.length >= 10 || !!serverErrors.pickupDate);
+  // The API takes HH:MM (24-hour); free text like "9:30 AM" would only fail at the very end.
+  const timeError =
+    pickupTime.trim() && !/^([01]\d|2[0-3]):[0-5]\d$/.test(pickupTime.trim())
+      ? "Use 24-hour time, like 09:30"
+      : serverErrors.pickupTime;
+  const showTimeError = !!timeError && (timeTouched || pickupTime.length >= 5 || !!serverErrors.pickupTime);
+
   const canNext = (() => {
     switch (step) {
       case 1:
-        return !!pickupDate && !!pickupCountry;
+        return !!pickupDate && !dateError && !timeError && !!pickupCountry;
       case 2:
         return !!dropCountry;
       case 3:
@@ -159,8 +175,12 @@ export default function TravelBookingScreen({
   const submit = async () => {
     setSubmitError(null);
     const isoDate = toIsoDateUS(pickupDate);
-    if (!isoDate) {
-      setSubmitError("Enter the pickup date as MM/DD/YYYY.");
+    if (!isoDate || dateError || timeError) {
+      // Unreachable in normal use (Next is gated on the same checks); if it ever
+      // happens, send the member to the field rather than a message on step 6.
+      setStep(1);
+      setDateTouched(true);
+      setTimeTouched(true);
       return;
     }
     try {
@@ -198,6 +218,11 @@ export default function TravelBookingScreen({
       navigation.replace("BookingSuccess", { reference: created.reference, kind: "transport" });
     } catch (err) {
       const e = err as ApiError;
+      if (e.fields?.pickupDate || e.fields?.pickupTime) {
+        setServerErrors({ pickupDate: e.fields.pickupDate, pickupTime: e.fields.pickupTime });
+        setStep(1);
+        return;
+      }
       setSubmitError(
         e.isOffline
           ? "You appear to be offline. Check your connection and try again."
@@ -254,7 +279,9 @@ export default function TravelBookingScreen({
                 label="Pickup Date"
                 placeholder="MM/DD/YYYY"
                 value={pickupDate}
-                onChangeText={setPickupDate}
+                onChangeText={(v) => { setPickupDate(v); setServerErrors((e) => ({ ...e, pickupDate: undefined })); }}
+                onBlur={() => setDateTouched(true)}
+                error={showDateError ? dateError : undefined}
                 keyboardType="numbers-and-punctuation"
                 maxLength={10}
                 returnKeyType="next"
@@ -263,9 +290,11 @@ export default function TravelBookingScreen({
               />
               <TextField
                 label="Pickup Time"
-                placeholder="Time"
+                placeholder="HH:MM"
                 value={pickupTime}
-                onChangeText={setPickupTime}
+                onChangeText={(v) => { setPickupTime(v); setServerErrors((e) => ({ ...e, pickupTime: undefined })); }}
+                onBlur={() => setTimeTouched(true)}
+                error={showTimeError ? timeError : undefined}
                 keyboardType="numbers-and-punctuation"
                 maxLength={8}
                 returnKeyType="done"
