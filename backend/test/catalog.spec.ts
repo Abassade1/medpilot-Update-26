@@ -110,3 +110,19 @@ describe("operational endpoints", () => {
     expect(res.body.error).not.toHaveProperty("stack");
   });
 });
+
+describe("search treats punctuation literally", () => {
+  it.each(["%", "_", "%%", "\\"])("a search for %j matches nothing rather than everything", async (q) => {
+    const s = await registerUser();
+    const hospitals = (await (await http()).get("/v1/hospitals").set("Authorization", s.auth).query({ q }).expect(200)).body;
+    expect(hospitals).toEqual([]);
+    const packages = (await (await http()).get("/v1/packages").set("Authorization", s.auth).query({ q }).expect(200)).body;
+    expect(packages).toEqual([]);
+  });
+
+  it("still finds real matches, ignoring case", async () => {
+    const s = await registerUser();
+    const res = (await (await http()).get("/v1/hospitals").set("Authorization", s.auth).query({ q: "BURJEEL" }).expect(200)).body;
+    expect(res.length).toBeGreaterThan(0);
+  });
+});

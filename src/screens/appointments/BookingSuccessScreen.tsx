@@ -13,6 +13,20 @@ export default function BookingSuccessScreen({
 }: RootScreenProps<"BookingSuccess">) {
   const reference = route.params?.reference;
   const kind = route.params?.kind ?? "appointment";
+  const detail = route.params?.detail;
+  const headline =
+    route.params?.headline ??
+    (kind === "transport" ? "Transport Requested"
+      : kind === "pet" ? "Request Sent"
+      : kind === "specialist" ? "Request Sent"
+      : "Appointment Booked");
+  const message =
+    route.params?.message ?? "Your booking has been successful.\nA representative will be in contact shortly";
+  const openDetail = () => {
+    if (!detail) return navigation.navigate("MainTabs", { screen: "AppointmentsTab" } as never);
+    if (detail.route === "AppointmentDetail") navigation.navigate("AppointmentDetail", { appointmentId: detail.appointmentId });
+    else navigation.navigate("ServiceRequestDetail", { requestId: detail.requestId });
+  };
   return (
     <ScreenContainer>
       <View style={styles.body}>
@@ -22,12 +36,8 @@ export default function BookingSuccessScreen({
             <Ionicons name="checkmark" size={26} color="#fff" />
           </View>
         </View>
-        <Text style={styles.title}>
-          {kind === "transport" ? "Transport Requested" : "Appointment Booked"}
-        </Text>
-        <Text style={styles.subtitle}>
-          Your booking has been successful.{"\n"}A representative will be in contact shortly
-        </Text>
+        <Text style={styles.title}>{headline}</Text>
+        <Text style={styles.subtitle}>{message}</Text>
         {reference ? <Text style={styles.reference}>Booking ID {reference}</Text> : null}
         <Button
           label="Done"
@@ -37,11 +47,10 @@ export default function BookingSuccessScreen({
         />
         <TouchableOpacity
           style={styles.link}
-          onPress={() =>
-            navigation.navigate("MainTabs", { screen: "AppointmentsTab" } as never)
-          }
+          onPress={openDetail}
+          accessibilityRole="button"
         >
-          <Text style={styles.linkText}>View appointments</Text>
+          <Text style={styles.linkText}>{detail ? "View details" : "View appointments"}</Text>
         </TouchableOpacity>
       </View>
     </ScreenContainer>

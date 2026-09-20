@@ -21,6 +21,7 @@ import { images } from "../../data/assets";
 import { assetSource } from "../../api/assets";
 import { useHome, useMe, useNotifications } from "../../api/queries";
 import ListStateView from "../../components/ListStateView";
+import { openService } from "../../utils/serviceRoutes";
 import type { ServiceDto } from "../../api/types";
 import { colors, radii, spacing } from "../../theme";
 
@@ -47,32 +48,30 @@ export default function HomeScreen() {
     if (i !== heroIndex) setHeroIndex(i);
   };
 
-  const goService = (service: ServiceDto) => {
-    switch (service.code) {
-      case "transport":
-        navigation.navigate("MedicalTransport");
-        break;
-      case "specialist":
-        navigation.navigate("SpecialistTreatments");
-        break;
-      case "pet":
-        navigation.navigate("PetSpecialist");
-        break;
-      default:
-        navigation.navigate("Services");
-    }
-  };
+  const goService = (service: ServiceDto) => openService(navigation, service);
 
   return (
     <ScreenContainer scroll backgroundColor={colors.background}>
       {/* Header */}
       <View style={styles.header}>
-        <Image source={assetSource(me.data?.profile?.avatarAsset, images.avatar)} style={styles.avatar} />
+        <TouchableOpacity
+          onPress={() => navigation.navigate("Profile")}
+          accessibilityRole="button"
+          accessibilityLabel="Open your profile"
+        >
+          <Image source={assetSource(me.data?.profile?.avatarAsset, images.avatar)} style={styles.avatar} />
+        </TouchableOpacity>
         <View style={styles.headerInfo}>
           <Text style={styles.hello}>
             👋🏽 Hi, {me.data?.profile?.fullName ?? "there"}
           </Text>
-          <TouchableOpacity style={styles.locationRow} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.locationRow}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate("EditProfile")}
+            accessibilityRole="button"
+            accessibilityLabel="Change your location"
+          >
             <Ionicons name="location-sharp" size={13} color={colors.primary} />
             <Text style={styles.location}>{me.data?.profile?.locationLabel ?? "—"}</Text>
             <Ionicons name="chevron-down" size={13} color={colors.text} style={{ marginLeft: 14 }} />
@@ -80,6 +79,7 @@ export default function HomeScreen() {
         </View>
         <TouchableOpacity
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          onPress={() => navigation.navigate("Notifications")}
           accessibilityRole="button"
           accessibilityLabel={
             notifications.data?.unreadCount
@@ -108,7 +108,11 @@ export default function HomeScreen() {
           <TouchableOpacity
             activeOpacity={0.9}
             style={[styles.hero, { width: heroWidth, height: heroHeight }]}
-            onPress={() => navigation.navigate("MedicalPackages")}
+            onPress={() =>
+              item.packageId
+                ? navigation.navigate("PackageDetail", { packageId: item.packageId })
+                : navigation.navigate("MedicalPackages")
+            }
           >
             <Image source={assetSource(item.imageAsset, images.cancer)} style={styles.heroImage} />
             <LinearGradient
@@ -178,7 +182,7 @@ export default function HomeScreen() {
             <LinearGradient colors={["transparent", "rgba(2,8,20,0.85)"]} style={styles.heroGradient} />
             <View style={styles.packageTextWrap}>
               <Text style={styles.packageTitle}>{pkg.title.replace(" specialist", " Treatment")}</Text>
-              <Text style={styles.packageSubtitle}>32  Professionals across five countries</Text>
+              <Text style={styles.packageSubtitle}>{pkg.hospital?.name ?? "View package"}</Text>
             </View>
           </TouchableOpacity>
         ))}
@@ -186,7 +190,7 @@ export default function HomeScreen() {
 
       {/* Independent Specialist */}
       <View style={styles.section}>
-        <SectionHeader title="Independent Specialist" onViewAll={() => {}} />
+        <SectionHeader title="Independent Specialist" onViewAll={() => navigation.navigate("Specialists")} />
       </View>
       <ScrollView
         horizontal
@@ -194,7 +198,14 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingHorizontal: spacing.lg }}
       >
         {(home.data?.independentSpecialists ?? []).map((cat) => (
-          <TouchableOpacity key={cat.id} style={[styles.indieCard, { width: indieWidth, height: indieHeight }]} activeOpacity={0.9}>
+          <TouchableOpacity
+            key={cat.id}
+            style={[styles.indieCard, { width: indieWidth, height: indieHeight }]}
+            activeOpacity={0.9}
+            onPress={() => navigation.navigate("Specialists", { categoryId: cat.id, title: cat.title })}
+            accessibilityRole="button"
+            accessibilityLabel={`${cat.title}, ${cat.count}`}
+          >
             <Image source={assetSource(cat.imageAsset, images.privateNurse)} style={styles.indieImage} />
             <LinearGradient colors={["transparent", "rgba(2,8,20,0.85)"]} style={styles.heroGradient} />
             <View style={styles.indieTextWrap}>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import ScreenContainer from "../../components/ScreenContainer";
 import AppHeader from "../../components/AppHeader";
 import TextField from "../../components/TextField";
@@ -15,6 +15,14 @@ export default function PasswordScreen({ navigation, route }: RootScreenProps<"P
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+
+  const forgot = () => {
+    // The API answers the same way whether or not the address has an account, so this can't be used to probe for one.
+    endpoints.auth
+      .forgotPassword(route.params.email)
+      .then(() => Alert.alert("Check your email", `If ${route.params.email} has an account, we've sent a link to reset the password.`))
+      .catch((e) => Alert.alert("Couldn't send the email", e instanceof ApiError && e.isOffline ? e.message : "Please try again in a moment."));
+  };
 
   const submit = async () => {
     if (busy || password.length === 0) return;
@@ -62,7 +70,7 @@ export default function PasswordScreen({ navigation, route }: RootScreenProps<"P
           onSubmitEditing={submit}
           containerStyle={{ marginTop: 18 }}
         />
-        <TouchableOpacity style={styles.forgot} accessibilityRole="link" accessibilityLabel="Forgot your password?">
+        <TouchableOpacity style={styles.forgot} onPress={forgot} accessibilityRole="link" accessibilityLabel="Forgot your password?">
           <Text style={styles.forgotText}>Forgot your password?</Text>
         </TouchableOpacity>
 

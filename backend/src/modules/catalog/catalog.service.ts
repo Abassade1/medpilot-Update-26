@@ -1,4 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
+import { containsPattern } from "../../common/like";
 import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import type { Db } from "../../db/client";
 import { schema as s } from "../../db/client";
@@ -16,9 +17,9 @@ export class CatalogService {
     const base = this.db.select().from(s.hospitals).where(
       q
         ? and(published(s.hospitals), or(
-            ilike(s.hospitals.name, `%${q}%`),
-            ilike(s.hospitals.specialty, `%${q}%`),
-            ilike(s.hospitals.countryLabel, `%${q}%`),
+            ilike(s.hospitals.name, containsPattern(q)),
+            ilike(s.hospitals.specialty, containsPattern(q)),
+            ilike(s.hospitals.countryLabel, containsPattern(q)),
           ))
         : published(s.hospitals),
     ).orderBy(asc(s.hospitals.name)).limit(50);
@@ -78,7 +79,7 @@ export class CatalogService {
       .from(s.medicalPackages)
       .innerJoin(s.hospitals, eq(s.hospitals.id, s.medicalPackages.hospitalId))
       .where(q
-        ? and(published(s.medicalPackages), ilike(s.medicalPackages.title, `%${q}%`))
+        ? and(published(s.medicalPackages), ilike(s.medicalPackages.title, containsPattern(q)))
         : published(s.medicalPackages))
       .orderBy(asc(s.medicalPackages.createdAt)).limit(50);
     const inclusions = await this.db.select().from(s.packageInclusions).orderBy(asc(s.packageInclusions.sortOrder));

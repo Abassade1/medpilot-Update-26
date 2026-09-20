@@ -19,6 +19,7 @@ const typeStyle: Record<ActivityTypeDto, { icon: IconName; tint: string; bg: str
   meal: { icon: "food-apple-outline", tint: "#B07C1C", bg: colors.serviceYellow },
   record: { icon: "file-document-outline", tint: "#5B4BB7", bg: colors.servicePurple },
   plan: { icon: "shield-star-outline", tint: colors.primary, bg: colors.primaryLight },
+  service: { icon: "paw", tint: "#0E7C86", bg: "#D2EEF0" },
 };
 
 type StatusCode = NonNullable<ActivityDto["status"]>;

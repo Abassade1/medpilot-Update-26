@@ -27,12 +27,35 @@ export type RootStackParamList = {
   PackageDetail: { packageId: string };
   BookAppointment: { hospitalId: string; packageId?: string };
   TravelBooking: { providerId: string };
-  BookingSuccess: { reference?: string; kind?: "appointment" | "transport" } | undefined;
+  BookingSuccess:
+    | {
+        reference?: string;
+        kind?: "appointment" | "transport" | "pet" | "specialist";
+        /** Where "View details" goes, so the member is never left at a dead end. */
+        detail?: { route: "AppointmentDetail"; appointmentId: string } | { route: "ServiceRequestDetail"; requestId: string };
+        headline?: string;
+        message?: string;
+      }
+    | undefined;
   DiagnosisResult: { sessionId: string };
   MealCamera: undefined;
   MealAnalyzing: { imageUri: string; mimeType: string };
   MealReport: { mealId: string };
   Upgrade: undefined;
+  AppointmentDetail: { appointmentId: string; notice?: string };
+  RescheduleAppointment: { appointmentId: string };
+  Profile: undefined;
+  EditProfile: undefined;
+  EmergencyContact: undefined;
+  ChangePassword: undefined;
+  Notifications: undefined;
+  ComingSoon: { title: string; description: string };
+  PetClinicDetail: { clinicId: string };
+  PetRequest: { clinicId: string; kind: "appointment" | "sitting"; serviceId?: string };
+  Specialists: { categoryId?: string; title?: string } | undefined;
+  SpecialistProfile: { specialistId: string };
+  SpecialistRequest: { specialistId: string; kind: "booking" | "connect"; serviceId?: string };
+  ServiceRequestDetail: { requestId: string; notice?: string };
 };
 
 export type RootScreenProps<T extends keyof RootStackParamList> = NativeStackScreenProps<

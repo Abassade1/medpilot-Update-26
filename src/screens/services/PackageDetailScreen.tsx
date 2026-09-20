@@ -4,7 +4,8 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ScreenContainer from "../../components/ScreenContainer";
-import Chip from "../../components/Chip";
+import PlaceBadges from "../../components/PlaceBadges";
+import ExpandableText from "../../components/ExpandableText";
 import InfoRow from "../../components/InfoRow";
 import Button from "../../components/Button";
 import SpecialistCard from "../../components/SpecialistCard";
@@ -69,25 +70,9 @@ export default function PackageDetailScreen({ navigation, route }: RootScreenPro
                 </Text>
               </View>
             </View>
-            <View style={styles.chipRow}>
-              <Chip label="Direction" elevated icon={<MaterialCommunityIcons name="compass" size={16} color="#8C2B1E" />} />
-              <Chip
-                label="Membership"
-                elevated
-                style={{ marginLeft: 10 }}
-                icon={<MaterialCommunityIcons name="shield-check" size={16} color={colors.success} />}
-              />
-              <Chip
-                label={String(hospital.rating)}
-                elevated
-                style={{ marginLeft: 10 }}
-                icon={<Ionicons name="star" size={14} color={colors.warning} />}
-              />
-            </View>
+            <PlaceBadges name={hospital.name} location={hospital.country} rating={hospital.rating} />
             <Text style={styles.sectionTitle}>About us</Text>
-            <Text style={styles.about}>
-              {hospital.about} <Text style={styles.readMore}>Read More</Text>
-            </Text>
+            <ExpandableText text={hospital.about} style={styles.about} />
             <View style={{ marginTop: 12 }}>
               <InfoRow label="Care system" value={hospital.careSystem} />
               <InfoRow
@@ -116,27 +101,11 @@ export default function PackageDetailScreen({ navigation, route }: RootScreenPro
                 <Text style={styles.tags}>{provider?.tags}</Text>
               </View>
             </View>
-            <View style={styles.chipRow}>
-              <Chip label="Direction" elevated icon={<MaterialCommunityIcons name="compass" size={16} color="#8C2B1E" />} />
-              <Chip
-                label="Membership"
-                elevated
-                style={{ marginLeft: 10 }}
-                icon={<MaterialCommunityIcons name="shield-check" size={16} color={colors.success} />}
-              />
-              <Chip
-                label="4.6"
-                elevated
-                style={{ marginLeft: 10 }}
-                icon={<Ionicons name="star" size={14} color={colors.warning} />}
-              />
-            </View>
+            {provider ? <PlaceBadges name={provider.name} location={provider.location} rating={provider.rating} verified={provider.verified} /> : null}
             <Text style={styles.sectionTitle}>About</Text>
-            <Text style={styles.about}>
-              {provider?.description} <Text style={styles.readMore}>Read More</Text>
-            </Text>
+            <ExpandableText text={provider?.description ?? ""} style={styles.about} />
             <Text style={styles.sectionTitle}>Route</Text>
-            <Text style={styles.routes}>USA | Mexico | UK | India | Italy | South Korea | China</Text>
+            <Text style={styles.routes}>{provider?.routes}</Text>
             <Text style={styles.sectionTitle}>Available Aircrafts</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
               {(provider?.aircraft ?? []).map((a) => (

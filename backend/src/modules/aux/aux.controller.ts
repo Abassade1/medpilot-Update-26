@@ -16,6 +16,10 @@ const MealUrlBody = z.object({
   mimeType: z.enum(["image/jpeg", "image/png"]),
   sizeBytes: z.number().int().positive(),
 });
+const ChatBody = z.object({
+  sessionId: z.string().uuid().optional(),
+  message: z.string().trim().min(1, "Type a message").max(1000, "Keep messages under 1,000 characters"),
+});
 const MealBody = z.object({ fileId: z.string().uuid() });
 const TranslateBody = z.object({ locale: z.string().min(2).max(5) });
 const EscalateBody = z.object({ kind: z.enum(["doctor", "hospital", "evacuation"]) });
@@ -29,6 +33,21 @@ export class AuxController {
   @Post("triage")
   triage(@Req() req: Request, @Body() body: unknown) {
     return this.aux.triageStep(req.userId!, validate(TriageBody, body));
+  }
+
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @HttpCode(200)
+  @Post("chat")
+  chat(@Req() req: Request, @Body() body: unknown) {
+    return this.aux.chat(req.userId!, validate(ChatBody, body));
+  }
+
+  @Get("chat")
+  latestChat(@Req() req: Request) { return this.aux.latestChat(req.userId!); }
+
+  @Get("chat/:id")
+  chatHistory(@Req() req: Request, @Param("id") id: string) {
+    return this.aux.chatHistory(req.userId!, validate(Uuid, id));
   }
 
   @Get("sessions/:id")
@@ -76,3 +95,6 @@ apiRoute({ method: "post", path: "/v1/aux/sessions/{id}/escalate", tag: "aux", s
 apiRoute({ method: "post", path: "/v1/aux/meals/upload-url", tag: "aux", summary: "Phase 1: meal photo upload (quota-gated)", auth: true, body: MealUrlBody });
 apiRoute({ method: "post", path: "/v1/aux/meals", tag: "aux", summary: "Phase 2: queue analysis", auth: true, body: MealBody, status: 202 });
 apiRoute({ method: "get", path: "/v1/aux/meals/{id}", tag: "aux", summary: "Poll analysis result", auth: true });
+apiRoute({ method: "post", path: "/v1/aux/chat", tag: "aux", summary: "Send a message to the (rule-based) assistant", auth: true, body: ChatBody, status: 200 });
+apiRoute({ method: "get", path: "/v1/aux/chat", tag: "aux", summary: "Resume the member's most recent conversation", auth: true });
+apiRoute({ method: "get", path: "/v1/aux/chat/{id}", tag: "aux", summary: "A conversation's messages", auth: true });

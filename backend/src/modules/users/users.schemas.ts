@@ -56,3 +56,10 @@ export const BiometricBody = z.object({
   enabled: z.boolean(),
   publicKey: z.string().max(2000).nullish(),
 });
+
+export const PatchPreferencesBody = z.object({
+  pushEnabled: z.boolean().optional(),
+  emailUpdates: z.boolean().optional(),
+  appointmentReminders: z.boolean().optional(),
+  language: z.enum(["en", "fr"]).optional(),
+}).refine((o) => Object.keys(o).length > 0, "Nothing to update");

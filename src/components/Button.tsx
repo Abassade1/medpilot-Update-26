@@ -12,9 +12,12 @@ interface Props {
   style?: ViewStyle;
   loading?: boolean;
   icon?: React.ReactNode;
+  /** "danger" for destructive actions such as cancelling; recolours the outline and label. */
+  tone?: "default" | "danger";
 }
 
-export default function Button({ label, onPress, disabled, variant = "primary", style, loading, icon }: Props) {
+export default function Button({ label, onPress, disabled, variant = "primary", style, loading, icon, tone = "default" }: Props) {
+  const accent = tone === "danger" ? colors.error : colors.primary;
   const isOutline = variant === "outline" || variant === "outlinePill";
   const isPill = variant === "pill" || variant === "outlinePill";
   const lastPress = useRef(0);
@@ -39,13 +42,13 @@ export default function Button({ label, onPress, disabled, variant = "primary", 
         styles.base,
         isPill ? styles.pill : styles.block,
         isOutline
-          ? styles.outline
-          : { backgroundColor: disabled ? colors.disabled : colors.primary },
+          ? [styles.outline, { borderColor: accent }]
+          : { backgroundColor: disabled ? colors.disabled : accent },
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={isOutline ? colors.primary : "#fff"} />
+        <ActivityIndicator color={isOutline ? accent : "#fff"} />
       ) : (
         <>
           {icon}
@@ -53,7 +56,7 @@ export default function Button({ label, onPress, disabled, variant = "primary", 
             style={[
               styles.label,
               isOutline
-                ? { color: colors.primary }
+                ? { color: accent }
                 : { color: disabled ? "#F3F4F6" : "#FFFFFF" },
               icon ? { marginLeft: 6 } : null,
             ]}

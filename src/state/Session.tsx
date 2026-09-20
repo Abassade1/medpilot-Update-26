@@ -1,6 +1,7 @@
 import React, {
   createContext, useCallback, useContext, useEffect, useMemo, useState,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { endpoints } from "../api/endpoints";
 import { clearTokens, getRefreshToken, saveTokens } from "../api/tokens";
 import { setSessionExpiredHandler } from "../api/client";
@@ -29,22 +30,26 @@ const Ctx = createContext<SessionValue | undefined>(undefined);
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<Status>("restoring");
   const [setup, setSetup] = useState<SetupStatus | null>(null);
+  const queryClient = useQueryClient();
 
   const signOut = useCallback(async () => {
     const refreshToken = await getRefreshToken().catch(() => null);
     if (refreshToken) await endpoints.auth.logout(refreshToken).catch(() => {});
     await clearTokens();
+    // The next person to sign in on this device must never see this member's cached data.
+    queryClient.clear();
     setSetup(null);
     setStatus("anonymous");
-  }, []);
+  }, [queryClient]);
 
   // The API client calls this when a refresh finally fails.
   useEffect(() => {
     setSessionExpiredHandler(() => {
+      queryClient.clear();
       setSetup(null);
       setStatus("anonymous");
     });
-  }, []);
+  }, [queryClient]);
 
   const refreshSetup = useCallback(async () => {
     try { setSetup(await endpoints.me.setupStatus()); } catch { /* keep last known */ }

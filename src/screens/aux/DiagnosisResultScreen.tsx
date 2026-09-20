@@ -111,7 +111,7 @@ export default function DiagnosisResultScreen({
         <Text style={styles.disclaimer}>{result.disclaimer}</Text>
       </ScrollView>
 
-      <AssistantInputBar tone="outline" />
+      <AssistantInputBar tone="outline" onSend={(ask) => navigation.navigate("MainTabs", { screen: "AuxTab", params: { ask } } as never)} />
     </ScreenContainer>
   );
 }

@@ -11,6 +11,9 @@ interface Props {
   title?: string;
   message?: string;
   onRetry?: () => void;
+  /** A way forward from an empty state, so it is never a dead end. */
+  actionLabel?: string;
+  onAction?: () => void;
 }
 
 const defaults: Record<Kind, { icon: React.ComponentProps<typeof Ionicons>["name"]; title: string; message: string }> = {
@@ -24,7 +27,7 @@ const defaults: Record<Kind, { icon: React.ComponentProps<typeof Ionicons>["name
 };
 
 /** Shared loading / empty / error presentation for list screens. */
-export default function ListStateView({ kind, title, message, onRetry }: Props) {
+export default function ListStateView({ kind, title, message, onRetry, actionLabel, onAction }: Props) {
   const d = defaults[kind];
 
   if (kind === "loading") {
@@ -41,6 +44,9 @@ export default function ListStateView({ kind, title, message, onRetry }: Props) 
       <Ionicons name={d.icon} size={40} color={colors.disabled} />
       <Text style={styles.title}>{title ?? d.title}</Text>
       <Text style={styles.message}>{message ?? d.message}</Text>
+      {kind === "empty" && actionLabel && onAction && (
+        <Button label={actionLabel} variant="pill" onPress={onAction} style={{ marginTop: 18 }} />
+      )}
       {kind === "error" && onRetry && (
         <Button label="Try again" variant="outlinePill" onPress={onRetry} style={{ marginTop: 18 }} />
       )}

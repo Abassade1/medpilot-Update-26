@@ -30,6 +30,10 @@ import { AuxService } from "./modules/aux/aux.service";
 import { BillingController } from "./modules/billing/billing.controller";
 import { BillingService } from "./modules/billing/billing.service";
 import { QuotaService } from "./modules/billing/quota.service";
+import { LocationsController } from "./modules/locations/locations.controller";
+import { LocationsService } from "./modules/locations/locations.service";
+import { ServicesController } from "./modules/services/services.controller";
+import { ServicesService } from "./modules/services/services.service";
 import { NotificationsService } from "./modules/notifications/notifications.service";
 
 const env = loadEnv();
@@ -41,7 +45,7 @@ const pool = createPool(env.DATABASE_URL);
   ],
   controllers: [
     HealthController, AuthController, UsersController, StorageController,
-    CatalogController, BookingsController, AuxController, BillingController,
+    CatalogController, BookingsController, AuxController, BillingController, LocationsController, ServicesController,
   ],
   providers: [
     { provide: Pool, useValue: pool },
@@ -49,7 +53,7 @@ const pool = createPool(env.DATABASE_URL);
     AuthService, TokenService, AuditService, EmailService,
     UsersService, StorageService, CatalogService,
     BookingsService, ActivitiesService, IdempotencyService,
-    AuxService, BillingService, QuotaService, NotificationsService,
+    AuxService, BillingService, QuotaService, NotificationsService, LocationsService, ServicesService,
     { provide: APP_GUARD, useClass: AppThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: EnvelopeExceptionFilter },

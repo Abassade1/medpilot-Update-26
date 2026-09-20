@@ -12,7 +12,7 @@ import { TokenService } from "../auth/token.service";
 import { AuditService } from "../auth/audit.service";
 import { StorageService, BUCKETS } from "../storage/storage.service";
 import type {
-  BiometricBody, CreateRecordBody, PatchProfileBody, PutConditionsBody,
+  BiometricBody, CreateRecordBody, PatchPreferencesBody, PatchProfileBody, PutConditionsBody,
   RecordUploadUrlBody, RegisterDeviceBody, SetPasswordBody, UpsertContactBody,
 } from "./users.schemas";
 
@@ -31,6 +31,26 @@ export class UsersService {
   ) {}
 
   // ---- profile -----------------------------------------------------------
+  /** Defaults apply until the member changes something, so a new account has no row. */
+  async preferences(userId: string) {
+    const [p] = await this.db.select().from(s.userPreferences).where(eq(s.userPreferences.userId, userId)).limit(1);
+    return {
+      pushEnabled: p?.pushEnabled ?? true,
+      emailUpdates: p?.emailUpdates ?? true,
+      appointmentReminders: p?.appointmentReminders ?? true,
+      language: (p?.language ?? "en") as "en" | "fr",
+    };
+  }
+
+  async patchPreferences(userId: string, input: z.infer<typeof PatchPreferencesBody>) {
+    const current = await this.preferences(userId);
+    const next = { ...current, ...input };
+    await this.db.insert(s.userPreferences).values({ userId, ...next, updatedAt: new Date() })
+      .onConflictDoUpdate({ target: s.userPreferences.userId, set: { ...next, updatedAt: new Date() } });
+    await this.audit.write({ actorUserId: userId, action: "user.preferences_updated", resourceType: "user", resourceId: userId });
+    return next;
+  }
+
   async me(userId: string) {
     const [user] = await this.db.select().from(s.users)
       .where(and(eq(s.users.id, userId), isNull(s.users.deletedAt))).limit(1);

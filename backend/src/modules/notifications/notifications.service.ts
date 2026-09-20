@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { sql, and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 import type { Db } from "../../db/client";
 import { schema as s } from "../../db/client";
@@ -50,7 +50,11 @@ export class NotificationsService {
     const rows = await this.db.select().from(s.notifications)
       .where(eq(s.notifications.userId, userId))
       .orderBy(desc(s.notifications.createdAt)).limit(50);
-    const unread = rows.filter((r) => !r.readAt).length;
+    // A real count, not a count of the page: with more than 50 notifications the
+    // badge would otherwise understate how many are unread.
+    const [{ n: unread }] = (await this.db.execute(
+      sql`select count(*)::int n from notifications where user_id = ${userId} and read_at is null`,
+    )).rows as [{ n: number }];
     return {
       unreadCount: unread,
       items: rows.map((r) => ({

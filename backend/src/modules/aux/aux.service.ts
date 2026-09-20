@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, gt, sql } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 import type { Db } from "../../db/client";
 import { schema as s } from "../../db/client";
@@ -10,6 +10,7 @@ import { QuotaService } from "../billing/quota.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { StorageService, BUCKETS } from "../storage/storage.service";
 import { DeterministicAuxDriver, type AuxDriver } from "./aux.driver";
+import { respond, type Suggestion } from "./aux-chat";
 
 export const DISCLAIMER =
   "AUX provides general guidance only and is not a medical diagnosis. Always consult a qualified clinician. In an emergency call 911 or your local emergency number.";
@@ -35,6 +36,77 @@ export class AuxService {
       throw new Error("AUX_DRIVER=llm is not configured; use deterministic");
     }
     this.driver = new DeterministicAuxDriver();
+  }
+
+  // ---- free-text chat ------------------------------------------------------
+  /** A conversation this long is almost certainly abuse or a stuck client. */
+  private static readonly MAX_CHAT_MESSAGES = 200;
+  private static readonly CHAT_RESUME_HOURS = 24;
+
+  private chatMessage = (m: typeof s.aiMessages.$inferSelect) => {
+    if (m.role === "user") return { id: m.id, role: "user" as const, text: m.content, suggestions: [] as Suggestion[], urgent: false, createdAt: m.createdAt };
+    const p = JSON.parse(m.content) as { text: string; suggestions: Suggestion[]; urgent: boolean };
+    return { id: m.id, role: "assistant" as const, text: p.text, suggestions: p.suggestions, urgent: p.urgent, createdAt: m.createdAt };
+  };
+
+  private async ownChatSession(userId: string, id: string) {
+    const [session] = await this.db.select().from(s.aiSessions).where(eq(s.aiSessions.id, id)).limit(1);
+    // 404 whether it is missing or someone else's, so ids can't be probed.
+    if (!session || session.userId !== userId || session.kind !== "chat") throw AppError.notFound("Conversation");
+    return session;
+  }
+
+  async chat(userId: string, input: { sessionId?: string; message: string }) {
+    let sessionId = input.sessionId;
+    if (sessionId) {
+      await this.ownChatSession(userId, sessionId);
+      const [{ n }] = (await this.db.execute(
+        sql`select count(*)::int n from ai_messages where session_id = ${sessionId}`,
+      )).rows as [{ n: number }];
+      if (n >= AuxService.MAX_CHAT_MESSAGES) {
+        throw new AppError("conflict", "This conversation is full. Start a new one to keep going.");
+      }
+    } else {
+      sessionId = uuidv7();
+      await this.db.insert(s.aiSessions).values({
+        id: sessionId, userId, kind: "chat",
+        modelVersion: "rules/2026-09", disclaimerVersion: DISCLAIMER_VERSION,
+      });
+    }
+
+    const reply = respond(input.message);
+    const userMsg = { id: uuidv7(), sessionId, role: "user" as const, content: input.message.trim() };
+    const botMsg = {
+      id: uuidv7(), sessionId, role: "assistant" as const,
+      content: JSON.stringify({ text: reply.text, suggestions: reply.suggestions, urgent: reply.urgent, intent: reply.intent }),
+    };
+    // Two messages a millisecond apart keep the order stable when read back.
+    await this.db.insert(s.aiMessages).values(userMsg);
+    await this.db.insert(s.aiMessages).values(botMsg);
+
+    return {
+      sessionId,
+      mode: "rule_based" as const,
+      reply: { id: botMsg.id, text: reply.text, suggestions: reply.suggestions, urgent: reply.urgent, intent: reply.intent },
+      disclaimer: DISCLAIMER,
+    };
+  }
+
+  async chatHistory(userId: string, sessionId: string) {
+    await this.ownChatSession(userId, sessionId);
+    const rows = await this.db.select().from(s.aiMessages)
+      .where(eq(s.aiMessages.sessionId, sessionId)).orderBy(asc(s.aiMessages.createdAt), asc(s.aiMessages.id)).limit(AuxService.MAX_CHAT_MESSAGES);
+    return { sessionId, messages: rows.map(this.chatMessage) };
+  }
+
+  /** The member's recent conversation, so leaving the tab and coming back doesn't lose it. */
+  async latestChat(userId: string) {
+    const since = new Date(Date.now() - AuxService.CHAT_RESUME_HOURS * 3600_000);
+    const [session] = await this.db.select().from(s.aiSessions)
+      .where(and(eq(s.aiSessions.userId, userId), eq(s.aiSessions.kind, "chat"), gt(s.aiSessions.createdAt, since)))
+      .orderBy(desc(s.aiSessions.createdAt)).limit(1);
+    if (!session) return { sessionId: null, messages: [] as ReturnType<AuxService["chatMessage"]>[] };
+    return this.chatHistory(userId, session.id);
   }
 
   // ---- triage funnel -------------------------------------------------------

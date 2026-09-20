@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import React, { useEffect, useRef, useState } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import AssistantInputBar from "../../components/AssistantInputBar";
 import ScreenContainer from "../../components/ScreenContainer";
 import AppHeader from "../../components/AppHeader";
@@ -10,21 +10,46 @@ import { endpoints } from "../../api/endpoints";
 import { useMe, useReference } from "../../api/queries";
 import { ApiError } from "../../api/errors";
 import { RootNavigation } from "../../navigation/types";
+import type { ChatAction, ChatSuggestion } from "../../api/types";
 
 type Stage = "home" | "symptoms" | "conditions";
 
+interface Msg {
+  id: string; role: "user" | "assistant"; text: string;
+  suggestions?: ChatSuggestion[]; urgent?: boolean; failed?: boolean;
+}
+
 const homeChips = [
   { label: "Meal Analysis", icon: "🍔" },
-  { label: "Medical Activities", icon: "🍎" },
 ];
 
 export default function AuxChatScreen() {
   const navigation = useNavigation<RootNavigation>();
+  const route = useRoute<any>();
   const [stage, setStage] = useState<Stage>("home");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [symptomLabel, setSymptomLabel] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Msg[]>([]);
+  const [replying, setReplying] = useState(false);
+  const [chatSession, setChatSession] = useState<string | null>(null);
+  const scroller = useRef<ScrollView>(null);
+  const seq = useRef(0);
+  const nextId = () => `local-${++seq.current}`;
+
+  // Pick the conversation back up after leaving the tab or restarting the app.
+  useEffect(() => {
+    let alive = true;
+    endpoints.aux.latestChat().then((h) => {
+      if (!alive || !h.messages.length) return;
+      setChatSession(h.sessionId);
+      setMessages((cur) => (cur.length ? cur : h.messages.map((m) => ({
+        id: m.id, role: m.role, text: m.text, suggestions: m.suggestions, urgent: m.urgent,
+      }))));
+    }).catch(() => { /* an empty start is fine; sending a message will surface real errors */ });
+    return () => { alive = false; };
+  }, []);
 
   const me = useMe();
   const reference = useReference();
@@ -84,17 +109,126 @@ export default function AuxChatScreen() {
     }
   };
 
+  const runAction = (action: ChatAction) => {
+    const go = (name: string, params?: object) => (navigation as any).navigate(name, params);
+    switch (action) {
+      case "triage": return setStage("symptoms");
+      case "meal": return go("MealCamera");
+      case "hospitals": return go("Hospitals");
+      case "appointments": return go("AppointmentsTab");
+      case "transport": return go("MedicalTransport");
+      case "pet": return go("PetSpecialist");
+      case "specialists": return go("Specialists");
+      case "upgrade": return go("Upgrade");
+      case "packages": return go("MedicalPackages");
+      case "profile": return go("Profile");
+    }
+  };
+
+  const send = async (text: string, retryId?: string) => {
+    if (replying) return;
+    setStage("home");
+    setError(null);
+    setMessages((m) => [
+      ...m.filter((x) => x.id !== retryId).map((x) => (x.failed ? { ...x, failed: false } : x)),
+      { id: retryId ?? nextId(), role: "user", text },
+    ]);
+    setReplying(true);
+    try {
+      const res = await endpoints.aux.chat(text, chatSession ?? undefined);
+      setChatSession(res.sessionId);
+      setMessages((m) => [...m, {
+        id: res.reply.id, role: "assistant", text: res.reply.text,
+        suggestions: res.reply.suggestions, urgent: res.reply.urgent,
+      }]);
+    } catch (err) {
+      setMessages((m) => m.map((x) => (x.id === (retryId ?? `local-${seq.current}`) ? { ...x, failed: true } : x)));
+      setError(describe(err));
+    } finally {
+      setReplying(false);
+    }
+  };
+
+  // A question typed elsewhere (e.g. on the diagnosis screen) arrives as a route param; send it once.
+  const ask: string | undefined = route.params?.ask;
+  useEffect(() => {
+    if (!ask) return;
+    (navigation as any).setParams({ ask: undefined });
+    void send(ask);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ask]);
+
+  const newChat = () => {
+    setMessages([]);
+    setChatSession(null);
+    setError(null);
+    setStage("home");
+  };
+
   const firstName = me.data?.profile?.firstName ?? "there";
+  const inConversation = messages.length > 0 && stage === "home";
 
   return (
     <ScreenContainer backgroundColor={colors.surface}>
       {stage !== "home" ? (
         <AppHeader onBack={() => setStage(stage === "conditions" ? "symptoms" : "home")} />
+      ) : messages.length > 0 ? (
+        <AppHeader
+          title="AUX"
+          showBack={false}
+          right={
+            <TouchableOpacity onPress={newChat} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityRole="button" accessibilityLabel="Start a new conversation">
+              <Text style={styles.newChat}>New chat</Text>
+            </TouchableOpacity>
+          }
+        />
       ) : (
         <View style={{ height: 48 }} />
       )}
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}>
+      <ScrollView
+        ref={scroller}
+        onContentSizeChange={() => scroller.current?.scrollToEnd({ animated: true })}
+        contentContainerStyle={inConversation ? styles.thread : styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {inConversation ? (
+          <>
+            {messages.map((m, i) => (
+              <View key={m.id} style={{ alignItems: m.role === "user" ? "flex-end" : "flex-start" }}>
+                <View style={[styles.bubble, m.role === "user" ? styles.userBubble : styles.botBubble, m.urgent && styles.urgentBubble]}>
+                  {m.urgent ? <Text style={styles.urgentTag}>Urgent</Text> : null}
+                  <Text style={[styles.bubbleText, m.role === "user" && { color: "#fff" }]} selectable>{m.text}</Text>
+                </View>
+                {m.failed ? (
+                  <TouchableOpacity onPress={() => void send(m.text, m.id)} accessibilityRole="button" accessibilityLabel="Retry sending this message">
+                    <Text style={styles.retry}>Not sent. Tap to retry</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {m.role === "assistant" && m.suggestions?.length && i === messages.length - 1 ? (
+                  <View style={styles.suggestWrap}>
+                    {m.suggestions.map((sg) => (
+                      <TouchableOpacity key={`${sg.action}-${sg.label}`} style={styles.chip} onPress={() => runAction(sg.action)} accessibilityRole="button">
+                        <Text style={styles.chipLabel}>{sg.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            ))}
+            {replying ? (
+              <View style={[styles.bubble, styles.botBubble, { flexDirection: "row", alignItems: "center" }]} accessibilityLiveRegion="polite">
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={[styles.bubbleText, { marginLeft: 8, color: colors.secondaryText }]}>AUX is thinking…</Text>
+              </View>
+            ) : null}
+            {error && !messages.some((m) => m.failed) ? <Text style={styles.error}>{error}</Text> : null}
+            <Text style={styles.disclaimer}>AUX gives general guidance, not a diagnosis. In an emergency call your local emergency number.</Text>
+          </>
+        ) : (
+        <>
         <View style={styles.center}>
           <LogoMark size={40} />
           {stage === "home" && (
@@ -120,12 +254,18 @@ export default function AuxChatScreen() {
           {error ? <Text style={styles.error}>{error}</Text> : null}
           {busy ? <ActivityIndicator color={colors.primary} style={{ marginTop: 14 }} /> : null}
         </View>
+        </>
+        )}
       </ScrollView>
 
       <View style={styles.chipsWrap}>
-        {stage === "home" &&
-          homeChips.map((c) => (
-            <TouchableOpacity key={c.label} style={styles.chip} onPress={() => onHomeChip(c.label)}>
+        {stage === "home" && messages.length === 0 &&
+          [
+            { label: "Symptom check", icon: "🩺" },
+            ...homeChips,
+            { label: "Find a hospital", icon: "🏥" },
+          ].map((c) => (
+            <TouchableOpacity key={c.label} style={styles.chip} onPress={() => (c.label === "Find a hospital" ? runAction("hospitals") : onHomeChip(c.label))}>
               <Text style={styles.chipIcon}>{c.icon}</Text>
               <Text style={styles.chipLabel}>{c.label}</Text>
             </TouchableOpacity>
@@ -156,12 +296,24 @@ export default function AuxChatScreen() {
           ))}
       </View>
 
-      <AssistantInputBar tone="filled" />
+      <AssistantInputBar tone="filled" onSend={(t) => void send(t)} />
+      </KeyboardAvoidingView>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  thread: { paddingHorizontal: spacing.lg, paddingVertical: 12 },
+  bubble: { maxWidth: "84%", borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 10 },
+  userBubble: { backgroundColor: colors.primary, borderBottomRightRadius: 4 },
+  botBubble: { backgroundColor: "#fff", borderWidth: 1, borderColor: colors.borderLight, borderBottomLeftRadius: 4 },
+  urgentBubble: { borderColor: colors.error, backgroundColor: colors.errorBg },
+  urgentTag: { fontSize: 11, fontWeight: "700", color: colors.error, textTransform: "uppercase", marginBottom: 4 },
+  bubbleText: { fontSize: 14, lineHeight: 20, color: colors.text },
+  retry: { fontSize: 12, color: colors.error, marginBottom: 10, textDecorationLine: "underline" },
+  suggestWrap: { flexDirection: "row", flexWrap: "wrap", marginBottom: 6 },
+  disclaimer: { fontSize: 11.5, color: colors.tertiaryText, textAlign: "center", marginTop: 8, lineHeight: 16 },
+  newChat: { fontSize: 13, fontWeight: "600", color: colors.primary },
   content: { flexGrow: 1, justifyContent: "center" },
   center: { alignItems: "flex-start", paddingHorizontal: spacing.xl },
   title: { fontSize: 16.5, fontWeight: "700", color: colors.text, marginTop: 16 },

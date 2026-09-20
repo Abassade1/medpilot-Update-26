@@ -112,10 +112,15 @@ export type AppointmentStatus = "pending" | "confirmed" | "cancelled" | "complet
 export interface AppointmentDto {
   id: string; reference: string; status: AppointmentStatus;
   appointmentType: string; appointmentTypeLabel: string;
-  requestedDate: string; scheduledAt: string | null;
+  requestedDate: string; requestedTime: string | null; scheduledAt: string | null;
   hospital: { id: string; name: string; logoAsset: string | null; location: string };
   contactPerson: { name: string; role: string; photoAsset: string } | null;
-  createdAt: string;
+  underTreatment: boolean; conditionNote: string | null;
+  emergencyContact: { name: string; phone: string; relationship: string; accompanies: boolean } | null;
+  cancelledReason: string | null;
+  /** The server decides what is allowed; the app only reflects it. */
+  canReschedule: boolean; canCancel: boolean;
+  createdAt: string; updatedAt: string;
 }
 export interface TransportDto {
   id: string; reference: string; status: string;
@@ -127,7 +132,7 @@ export interface TransportDto {
   createdAt: string;
 }
 
-export type ActivityTypeDto = "appointment" | "transport" | "diagnosis" | "meal" | "record" | "plan";
+export type ActivityTypeDto = "appointment" | "transport" | "diagnosis" | "meal" | "record" | "plan" | "service";
 export interface ActivityDto {
   id: string; type: ActivityTypeDto; title: string; subtitle: string | null;
   status: "completed" | "booked" | "cancelled" | "pending" | null;
@@ -174,4 +179,79 @@ export interface NotificationsDto {
 
 export interface UploadTicket {
   fileId: string; uploadUrl: string; method: "PUT"; headers: Record<string, string>;
+}
+
+
+// ---- locations & transport availability -------------------------------------
+export type LocationLevel = "country" | "region" | "city";
+export interface LocationDto {
+  id: string; parentId: string | null; level: LocationLevel; name: string; code: string | null;
+  hasAirport: boolean; hasHelipad: boolean; latitude: number | null; longitude: number | null;
+  /** Present when the list was restricted to a provider. */
+  coverage?: "full" | "partial";
+}
+export interface ResolveDto {
+  matched: boolean; matchedLevel: LocationLevel | null;
+  country: LocationDto | null; region: LocationDto | null; city: LocationDto | null;
+}
+export interface AvailableProviderDto {
+  id: string; name: string; rating: number; verified: boolean; priceFromLabel: string | null;
+  logoAsset: string | null; heroAsset: string | null; tags: string;
+  coverage: "full" | "partial"; servedVia: string;
+}
+export interface AvailabilityService {
+  category: "jet" | "ambulance" | "boat"; label: string; available: boolean;
+  coverage: "none" | "full" | "partial"; providers: AvailableProviderDto[];
+}
+export interface AvailabilityDto {
+  location: LocationDto; path: string[]; services: AvailabilityService[]; anyAvailable: boolean;
+}
+
+// ---- pet clinics & independent specialists ----------------------------------
+export interface ServiceOfferDto {
+  id: string; name: string; description: string; priceLabel: string | null; durationLabel: string;
+  kind?: "appointment" | "sitting";
+}
+export interface PetClinicDetail extends PetClinicDto {
+  services: ServiceOfferDto[]; canBookAppointment: boolean; canRequestSitting: boolean;
+}
+export type PetType = "dog" | "cat" | "horse" | "bird" | "small_animal" | "other";
+export interface SpecialistCategoryDto { id: string; title: string; countLabel: string; imageAsset: string | null }
+export interface SpecialistCardDto {
+  id: string; name: string; role: string; rating: number; verified: boolean;
+  locationLabel: string; photoAsset: string | null; availabilityLabel: string;
+  acceptingRequests: boolean; categoryId: string; categoryTitle?: string;
+}
+export interface SpecialistProfileDto extends SpecialistCardDto {
+  bio: string; languages: string; yearsExperience: number | null; services: ServiceOfferDto[];
+}
+export type RequestKind = "pet_appointment" | "pet_sitting" | "specialist_booking" | "specialist_connect";
+export interface ServiceRequestDto {
+  id: string; reference: string; kind: RequestKind; kindLabel: string; status: AppointmentStatus;
+  target: {
+    type: "pet_clinic" | "independent_specialist"; id: string; name: string; subtitle: string;
+    photoAsset: string | null; emoji: string | null;
+  };
+  service: { id: string; name: string; priceLabel: string | null } | null;
+  preferredDate: string | null; endDate: string | null; preferredTime: string | null;
+  message: string | null; details: { petName?: string; petType?: string } | null;
+  canCancel: boolean; cancelledReason: string | null; createdAt: string;
+}
+
+// ---- preferences & chat -----------------------------------------------------
+export interface PreferencesDto {
+  pushEnabled: boolean; emailUpdates: boolean; appointmentReminders: boolean; language: "en" | "fr";
+}
+export type ChatAction =
+  | "triage" | "meal" | "hospitals" | "appointments" | "transport"
+  | "pet" | "specialists" | "upgrade" | "packages" | "profile";
+export interface ChatSuggestion { label: string; action: ChatAction }
+export interface ChatMessageDto {
+  id: string; role: "user" | "assistant"; text: string;
+  suggestions: ChatSuggestion[]; urgent: boolean; createdAt: string;
+}
+export interface ChatHistoryDto { sessionId: string | null; messages: ChatMessageDto[] }
+export interface ChatReplyDto {
+  sessionId: string; mode: "rule_based"; disclaimer: string;
+  reply: { id: string; text: string; suggestions: ChatSuggestion[]; urgent: boolean; intent: string };
 }

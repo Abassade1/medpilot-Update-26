@@ -10,7 +10,8 @@ import { AuditService } from "../auth/audit.service";
 import { QuotaService } from "../billing/quota.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { UsersService } from "../users/users.service";
-import type { CreateAppointmentBody, CreateTransportBody, StaffDecisionBody } from "./bookings.schemas";
+import { LocationsService } from "../locations/locations.service";
+import type { CreateAppointmentBody, CreateTransportBody, RescheduleAppointmentBody, StaffDecisionBody } from "./bookings.schemas";
 
 const TYPE_LABEL: Record<string, string> = {
   general_checkup: "Check-up",
@@ -26,6 +27,7 @@ export class BookingsService {
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
     private readonly users: UsersService,
+    private readonly locations: LocationsService,
   ) {}
 
   /** User-facing reference in the format the UI shows: CA25-3198-324. */
@@ -62,6 +64,7 @@ export class BookingsService {
           hospitalId: hospital.id, packageId: input.packageId ?? null,
           appointmentType: input.appointmentType,
           requestedDate: input.requestedDate,
+          requestedTime: input.requestedTime ?? null,
           underTreatment: input.underTreatment,
           conditionNote: input.conditionNote?.trim() || null,
           emergencyContactId: contact.id,
@@ -88,9 +91,13 @@ export class BookingsService {
     }
   }
 
+  /** Members may change or cancel an appointment until it is finished or already cancelled. */
+  private static ACTIVE = new Set(["pending", "confirmed"]);
+
   private appointmentView = (
     a: typeof s.appointmentRequests.$inferSelect,
     h: typeof s.hospitals.$inferSelect,
+    c?: typeof s.emergencyContacts.$inferSelect | null,
   ) => ({
     id: a.id,
     reference: `#${a.reference}`,
@@ -98,6 +105,7 @@ export class BookingsService {
     appointmentType: a.appointmentType,
     appointmentTypeLabel: TYPE_LABEL[a.appointmentType] ?? a.appointmentType,
     requestedDate: a.requestedDate,
+    requestedTime: a.requestedTime,
     scheduledAt: a.scheduledAt,
     hospital: {
       id: h.id, name: h.name, logoAsset: h.logoAsset,
@@ -106,34 +114,51 @@ export class BookingsService {
     contactPerson: a.assignedStaffName
       ? { name: a.assignedStaffName, role: a.assignedStaffRole ?? "Consultant", photoAsset: "doctor1" }
       : null,
+    underTreatment: a.underTreatment,
+    conditionNote: a.conditionNote,
+    emergencyContact: c
+      ? { name: `${c.firstName} ${c.lastName}`, phone: c.phoneE164, relationship: c.relationship, accompanies: a.contactAccompanies }
+      : null,
+    cancelledReason: a.cancelledReason,
+    // The server decides what is allowed, so the app never has to guess.
+    canReschedule: BookingsService.ACTIVE.has(a.status),
+    canCancel: BookingsService.ACTIVE.has(a.status),
     createdAt: a.createdAt,
+    updatedAt: a.updatedAt,
   });
 
   async listAppointments(userId: string) {
-    const rows = await this.db.select({ a: s.appointmentRequests, h: s.hospitals })
+    const rows = await this.db.select({ a: s.appointmentRequests, h: s.hospitals, c: s.emergencyContacts })
       .from(s.appointmentRequests)
       .innerJoin(s.hospitals, eq(s.hospitals.id, s.appointmentRequests.hospitalId))
+      .leftJoin(s.emergencyContacts, eq(s.emergencyContacts.id, s.appointmentRequests.emergencyContactId))
       .where(and(eq(s.appointmentRequests.userId, userId), isNull(s.appointmentRequests.deletedAt)))
       .orderBy(desc(s.appointmentRequests.createdAt)).limit(50);
-    return rows.map(({ a, h }) => this.appointmentView(a, h));
+    return rows.map(({ a, h, c }) => this.appointmentView(a, h, c));
   }
 
   async getAppointment(userId: string, id: string) {
-    const [row] = await this.db.select({ a: s.appointmentRequests, h: s.hospitals })
+    const [row] = await this.db.select({ a: s.appointmentRequests, h: s.hospitals, c: s.emergencyContacts })
       .from(s.appointmentRequests)
       .innerJoin(s.hospitals, eq(s.hospitals.id, s.appointmentRequests.hospitalId))
+      .leftJoin(s.emergencyContacts, eq(s.emergencyContacts.id, s.appointmentRequests.emergencyContactId))
       .where(and(eq(s.appointmentRequests.id, id), isNull(s.appointmentRequests.deletedAt))).limit(1);
     if (!row || row.a.userId !== userId) throw AppError.notFound("Appointment");
-    return this.appointmentView(row.a, row.h);
+    return this.appointmentView(row.a, row.h, row.c);
   }
 
-  /** Members may cancel only while the request is still pending (spec §14). */
+  /**
+   * Members may cancel while an appointment is pending or confirmed. Completed
+   * and already-cancelled appointments are history and cannot be changed.
+   */
   async cancelAppointment(userId: string, id: string) {
     const [a] = await this.db.select().from(s.appointmentRequests)
       .where(and(eq(s.appointmentRequests.id, id), isNull(s.appointmentRequests.deletedAt))).limit(1);
     if (!a || a.userId !== userId) throw AppError.notFound("Appointment");
-    if (a.status !== "pending") {
-      throw new AppError("conflict", "Only pending requests can be cancelled. Contact your representative.");
+    if (!BookingsService.ACTIVE.has(a.status)) {
+      throw new AppError("conflict", a.status === "cancelled"
+        ? "This appointment has already been cancelled."
+        : "A completed appointment can't be cancelled.");
     }
     await this.db.update(s.appointmentRequests)
       .set({ status: "cancelled", cancelledReason: "Cancelled by member", updatedAt: new Date() })
@@ -145,6 +170,60 @@ export class BookingsService {
     });
     await this.quota.refund(userId, "clinic_access");
     await this.audit.write({ actorUserId: userId, action: "booking.appointment_cancelled", resourceType: "appointment", resourceId: id });
+    return this.getAppointment(userId, id);
+  }
+
+  /**
+   * Changes the date, time or type of an active appointment.
+   *
+   * A confirmed appointment that moves is no longer confirmed: the hospital
+   * agreed to a specific slot, so it returns to "pending" for re-confirmation
+   * and the previously scheduled time is cleared. Re-sending the same values is
+   * a no-op, so a retry after a dropped connection changes nothing.
+   */
+  async rescheduleAppointment(userId: string, id: string, input: z.infer<typeof RescheduleAppointmentBody>) {
+    const [a] = await this.db.select().from(s.appointmentRequests)
+      .where(and(eq(s.appointmentRequests.id, id), isNull(s.appointmentRequests.deletedAt))).limit(1);
+    if (!a || a.userId !== userId) throw AppError.notFound("Appointment");
+    if (!BookingsService.ACTIVE.has(a.status)) {
+      throw new AppError("conflict", a.status === "cancelled"
+        ? "A cancelled appointment can't be changed. Book a new one instead."
+        : "A completed appointment can't be changed.");
+    }
+
+    const next = {
+      requestedDate: input.requestedDate ?? a.requestedDate,
+      requestedTime: input.requestedTime === undefined ? a.requestedTime : input.requestedTime,
+      appointmentType: input.appointmentType ?? a.appointmentType,
+    };
+    const unchanged =
+      next.requestedDate === a.requestedDate &&
+      next.requestedTime === a.requestedTime &&
+      next.appointmentType === a.appointmentType;
+    if (unchanged) return this.getAppointment(userId, id);
+
+    const wasConfirmed = a.status === "confirmed";
+    await this.db.update(s.appointmentRequests).set({
+      ...next,
+      ...(wasConfirmed ? { status: "pending" as const, scheduledAt: null } : {}),
+      updatedAt: new Date(),
+    }).where(eq(s.appointmentRequests.id, id));
+
+    const [h] = await this.db.select().from(s.hospitals).where(eq(s.hospitals.id, a.hospitalId)).limit(1);
+    await this.db.insert(s.activities).values({
+      id: uuidv7(), userId, type: "appointment", title: h?.name ?? "Appointment updated",
+      subtitle: `Rescheduled to ${next.requestedDate}${next.requestedTime ? ` at ${next.requestedTime}` : ""}`,
+      status: "pending", targetType: "appointment", targetId: id,
+    });
+    await this.notifications.notify(userId, {
+      type: "appointment.rescheduled",
+      title: "Change received",
+      body: wasConfirmed
+        ? "Your new time has been sent for confirmation. Your previous slot is released."
+        : "Your appointment request has been updated.",
+      deepLink: `medpilot://appointments/${id}`,
+    });
+    await this.audit.write({ actorUserId: userId, action: "booking.appointment_rescheduled", resourceType: "appointment", resourceId: id });
     return this.getAppointment(userId, id);
   }
 
@@ -218,6 +297,20 @@ export class BookingsService {
       if (!input.needIds.every((n) => ok.has(n))) throw new AppError("validation_failed", "Unknown special need selected");
     }
 
+    // The provider must actually be able to reach the pickup point. The app only offers such
+    // providers, but the API is the authority: a stale or hand-built request is refused here.
+    const pickupMatch = await this.locations.resolve({
+      country: input.pickupCountry, region: input.pickupRegion ?? undefined, city: input.pickupCity ?? undefined,
+    });
+    const pickupNode = pickupMatch.city ?? pickupMatch.region ?? pickupMatch.country;
+    if (!pickupMatch.matched || !pickupNode) {
+      throw new AppError("validation_failed", "We don't operate at that pickup location", { fields: { pickupCountry: "We don't operate at that pickup location" } });
+    }
+    const avail = await this.locations.availability(pickupNode.id);
+    if (!avail.services.some((sv) => sv.providers.some((pr) => pr.id === provider.id))) {
+      throw new AppError("validation_failed", `${provider.name} doesn't serve that pickup location`, { fields: { pickupCountry: `${provider.name} doesn't serve that pickup location` } });
+    }
+
     await this.quota.consume(userId, "evacuation");
     try {
       const contact = await this.users.upsertContact(userId, input.emergencyContact);
@@ -228,9 +321,10 @@ export class BookingsService {
           id, reference, userId, providerId: provider.id, aircraftId: input.aircraftId ?? null,
           pickupDate: input.pickupDate, pickupTime: input.pickupTime ?? null,
           pickupCountry: input.pickupCountry, pickupRegion: input.pickupRegion ?? null,
+          pickupCity: input.pickupCity ?? null, pickupAddress: input.pickupAddress ?? null,
           pickupSiteType: input.pickupSiteType, pickupSiteCode: input.pickupSiteCode ?? null,
           pickupLat: input.pickupLat?.toString() ?? null, pickupLng: input.pickupLng?.toString() ?? null,
-          dropoffCountry: input.dropoffCountry, dropoffRegion: input.dropoffRegion ?? null,
+          dropoffCountry: input.dropoffCountry, dropoffRegion: input.dropoffRegion ?? null, dropoffCity: input.dropoffCity ?? null,
           dropoffSiteType: input.dropoffSiteType, dropoffSiteCode: input.dropoffSiteCode ?? null,
           returnTrip: input.returnTrip,
           otherPurpose: input.otherPurpose?.trim() || null,
@@ -272,8 +366,8 @@ export class BookingsService {
     id: t.id,
     reference: `#${t.reference}`,
     status: t.status,
-    pickup: { country: t.pickupCountry, region: t.pickupRegion, date: t.pickupDate, time: t.pickupTime, siteType: t.pickupSiteType, siteCode: t.pickupSiteCode },
-    dropoff: { country: t.dropoffCountry, region: t.dropoffRegion, siteType: t.dropoffSiteType, siteCode: t.dropoffSiteCode },
+    pickup: { country: t.pickupCountry, region: t.pickupRegion, city: t.pickupCity, address: t.pickupAddress, date: t.pickupDate, time: t.pickupTime, siteType: t.pickupSiteType, siteCode: t.pickupSiteCode },
+    dropoff: { country: t.dropoffCountry, region: t.dropoffRegion, city: t.dropoffCity, siteType: t.dropoffSiteType, siteCode: t.dropoffSiteCode },
     returnTrip: t.returnTrip,
     flightNumber: t.flightNumber,
     departAt: t.departAt, arriveAt: t.arriveAt,

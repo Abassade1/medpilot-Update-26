@@ -18,11 +18,6 @@ export default function MedicalPackagesScreen({ navigation }: RootScreenProps<"M
   return (
     <ScreenContainer>
       <AppHeader
-        right={
-          <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="options-outline" size={20} color={colors.text} />
-          </TouchableOpacity>
-        }
       />
       <FlatList
         data={packagesQuery.data ?? []}

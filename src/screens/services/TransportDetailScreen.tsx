@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Linking } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import ScreenContainer from "../../components/ScreenContainer";
 import AppHeader from "../../components/AppHeader";
-import Chip from "../../components/Chip";
+import PlaceBadges from "../../components/PlaceBadges";
+import ExpandableText from "../../components/ExpandableText";
 import Button from "../../components/Button";
 import BottomSheet from "../../components/BottomSheet";
 import InfoRow from "../../components/InfoRow";
@@ -19,6 +20,7 @@ export default function TransportDetailScreen({ navigation, route }: RootScreenP
   const query = useProvider(route.params.providerId);
   const provider = query.data;
   const [selectedAircraft, setSelectedAircraft] = useState<AircraftDto | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <ScreenContainer backgroundColor={colors.surface}>
@@ -43,32 +45,10 @@ export default function TransportDetailScreen({ navigation, route }: RootScreenP
             </View>
           </View>
 
-          <View style={styles.chipRow}>
-            <Chip
-              label="Direction"
-              elevated
-              icon={<MaterialCommunityIcons name="compass" size={16} color="#8C2B1E" />}
-            />
-            <Chip
-              label="Membership"
-              elevated
-              style={{ marginLeft: 10 }}
-              icon={<MaterialCommunityIcons name="shield-check" size={16} color={colors.success} />}
-            />
-            <Chip
-              label="4.6"
-              elevated
-              style={{ marginLeft: 10 }}
-              icon={<Ionicons name="star" size={14} color={colors.warning} />}
-            />
-          </View>
+          <PlaceBadges name={provider.name} location={provider.location} rating={provider.rating} verified={provider.verified} />
 
           <Text style={styles.sectionTitle}>About</Text>
-          <Text style={styles.about}>
-            {provider.description}
-            {"... "}
-            <Text style={styles.readMore}>Read More</Text>
-          </Text>
+          <ExpandableText text={provider.description} style={styles.about} />
 
           <Text style={styles.sectionTitle}>Route</Text>
           <Text style={styles.routes}>{provider.routes}</Text>

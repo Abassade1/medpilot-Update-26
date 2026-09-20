@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import ScreenContainer from "../../components/ScreenContainer";
@@ -7,6 +7,7 @@ import SearchBar from "../../components/SearchBar";
 import { useServices } from "../../api/queries";
 import { assetSource } from "../../api/assets";
 import ListStateView from "../../components/ListStateView";
+import { openService } from "../../utils/serviceRoutes";
 import type { ServiceDto } from "../../api/types";
 import { colors, radii, spacing } from "../../theme";
 
@@ -14,32 +15,25 @@ export default function ServicesScreen() {
   const navigation = useNavigation();
   const servicesQuery = useServices();
 
-  const open = (service: ServiceDto) => {
-    switch (service.code) {
-      case "transport":
-        navigation.navigate("MedicalTransport");
-        break;
-      case "specialist":
-        navigation.navigate("SpecialistTreatments");
-        break;
-      case "pet":
-        navigation.navigate("PetSpecialist");
-        break;
-      default:
-        navigation.navigate("MedicalPackages");
-    }
-  };
+  const [q, setQ] = useState("");
+  const open = (service: ServiceDto) => openService(navigation, service);
+  const shown = (servicesQuery.data ?? []).filter((x) =>
+    `${x.title} ${x.description}`.toLowerCase().includes(q.trim().toLowerCase()),
+  );
 
   return (
     <ScreenContainer>
       <AppHeader />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <Text style={styles.title}>Services</Text>
-        <SearchBar style={{ marginTop: 14, marginBottom: 18 }} />
+        <SearchBar placeholder="Search services" value={q} onChangeText={setQ} style={{ marginTop: 14, marginBottom: 18 }} />
         {servicesQuery.isPending && <ListStateView kind="loading" message="Loading services…" />}
         {servicesQuery.isError && <ListStateView kind="error" onRetry={() => void servicesQuery.refetch()} />}
+        {!servicesQuery.isPending && !servicesQuery.isError && shown.length === 0 ? (
+          <ListStateView kind="empty" title="No matching services" message="Try a different search." />
+        ) : null}
         <View style={styles.grid}>
-          {(servicesQuery.data ?? []).map((service) => (
+          {shown.map((service) => (
             <TouchableOpacity
               key={service.id}
               style={[styles.card, { backgroundColor: service.color }]}

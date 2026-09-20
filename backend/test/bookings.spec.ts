@@ -113,6 +113,59 @@ describe("transport requests", () => {
     expect(res.body.pickup.country).toBe("Canada");
   });
 
+  it("refuses a pickup place we don't operate in, on the country field", async () => {
+    const s = await registerUser();
+    const { provider, reference } = await base(s);
+    const res = await (await http()).post("/v1/transport-bookings").set("Authorization", s.auth).send({
+      providerId: provider.id, pickupDate: nearFuture(35), pickupCountry: "Atlantis", pickupSiteType: "airport",
+      dropoffCountry: "Canada", dropoffSiteType: "airport",
+      purposeIds: [reference.transportPurposes[0].id], needIds: [reference.specialNeeds[0].id],
+      emergencyContact: contact,
+    }).expect(422);
+    expect(res.body.error.fields.pickupCountry).toMatch(/operate/i);
+  });
+
+  it("refuses a provider that doesn't serve the pickup place", async () => {
+    const s = await registerUser();
+    const providers = (await (await http()).get("/v1/transport-providers").set("Authorization", s.auth).expect(200)).body;
+    const reference = (await (await http()).get("/v1/reference").set("Authorization", s.auth).expect(200)).body;
+    const countries = (await (await http()).get("/v1/locations").set("Authorization", s.auth).expect(200)).body as { id: string; name: string }[];
+    // Find a (provider, country) pair with no coverage.
+    let pair: { providerId: string; country: string } | null = null;
+    for (const c of countries) {
+      const av = (await (await http()).get(`/v1/transport/availability?locationId=${c.id}`).set("Authorization", s.auth).expect(200)).body;
+      const served = new Set(av.services.flatMap((sv: any) => sv.providers.map((p: any) => p.id)));
+      const missing = providers.find((p: any) => !served.has(p.id));
+      if (missing) { pair = { providerId: missing.id, country: c.name }; break; }
+    }
+    expect(pair).not.toBeNull();
+    const res = await (await http()).post("/v1/transport-bookings").set("Authorization", s.auth).send({
+      providerId: pair!.providerId, pickupDate: nearFuture(35), pickupCountry: pair!.country, pickupSiteType: "airport",
+      dropoffCountry: "Zzzland", dropoffSiteType: "airport",
+      purposeIds: [reference.transportPurposes[0].id], needIds: [reference.specialNeeds[0].id],
+      emergencyContact: contact,
+    }).expect(422);
+    expect(res.body.error.fields.pickupCountry).toMatch(/doesn't serve/i);
+  });
+
+  it("stores the pickup city and address", async () => {
+    const s = await registerUser();
+    const { provider, reference } = await base(s);
+    const res = await (await http()).post("/v1/transport-bookings").set("Authorization", s.auth).send({
+      providerId: provider.id, pickupDate: nearFuture(35), pickupCountry: "Canada", pickupRegion: "Ontario",
+      pickupCity: "Toronto", pickupAddress: "123 Main Street", pickupSiteType: "helipad",
+      dropoffCountry: "Italy", dropoffSiteType: "airport",
+      purposeIds: [reference.transportPurposes[0].id], needIds: [reference.specialNeeds[0].id],
+      emergencyContact: contact,
+    });
+    // Either the provider covers Toronto (201) or the API says so plainly; it must never 500.
+    expect([201, 422]).toContain(res.status);
+    if (res.status === 201) {
+      expect(res.body.pickup.city).toBe("Toronto");
+      expect(res.body.pickup.address).toBe("123 Main Street");
+    }
+  });
+
   it("refuses an aircraft that belongs to a different operator", async () => {
     const s = await registerUser();
     const providers = await (await http()).get("/v1/transport-providers").set("Authorization", s.auth).expect(200);

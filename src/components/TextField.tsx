@@ -47,12 +47,12 @@ const TextField = forwardRef<TextInput, Props>(function TextField(
           styles.inputRow,
           focused && styles.inputRowFocused,
           !!error && styles.inputRowError,
+          inputProps.multiline && styles.inputRowMulti,
         ]}
       >
         {left}
         <TextInput
           ref={ref}
-          style={styles.input}
           placeholderTextColor={colors.tertiaryText}
           secureTextEntry={hidden}
           selectionColor={colors.primary}
@@ -67,6 +67,7 @@ const TextField = forwardRef<TextInput, Props>(function TextField(
             onBlur?.(e);
           }}
           {...inputProps}
+          style={[styles.input, inputProps.multiline && styles.inputMulti, inputProps.style]}
         />
         {secure ? (
           <TouchableOpacity
@@ -111,6 +112,9 @@ const styles = StyleSheet.create({
     height: 44,
     backgroundColor: colors.background,
   },
+  // A multiline field grows past the single-line 44pt row and starts text at the top.
+  inputRowMulti: { height: undefined, minHeight: 92, alignItems: "flex-start", paddingVertical: 10 },
+  inputMulti: { minHeight: 70, textAlignVertical: "top" },
   inputRowFocused: { borderColor: colors.primary },
   inputRowError: { borderColor: colors.error },
   input: { flex: 1, minWidth: 0, fontSize: 14, color: colors.text, paddingVertical: 0 },

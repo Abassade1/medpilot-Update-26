@@ -25,6 +25,17 @@ export const qk = {
   subscription: ["subscription"] as const,
   plans: ["plans"] as const,
   notifications: ["notifications"] as const,
+  appointment: (id: string) => ["appointment", id] as const,
+  petClinic: (id: string) => ["petClinic", id] as const,
+  specialists: (categoryId?: string, q?: string) => ["specialists", categoryId ?? "", q ?? ""] as const,
+  specialistCategories: ["specialistCategories"] as const,
+  indieSpecialist: (id: string) => ["indieSpecialist", id] as const,
+  serviceRequests: ["serviceRequests"] as const,
+  serviceRequest: (id: string) => ["serviceRequest", id] as const,
+  locations: (parentId?: string, coveredBy?: string) => ["locations", parentId ?? "", coveredBy ?? ""] as const,
+  availability: (locationId: string) => ["availability", locationId] as const,
+  preferences: ["preferences"] as const,
+  chat: ["chat"] as const,
 };
 
 // Catalog is stable; member data is not.
@@ -119,5 +130,162 @@ export function useDeleteRecord() {
       void qc.invalidateQueries({ queryKey: qk.records });
       void qc.invalidateQueries({ queryKey: ["activities"] });
     },
+  });
+}
+
+
+// ---- appointments: detail, reschedule, cancel ---------------------------------
+export const useAppointment = (id: string) =>
+  useQuery({ queryKey: qk.appointment(id), queryFn: () => endpoints.bookings.appointment(id), staleTime: MEMBER_STALE });
+
+/** Every place an appointment shows up must refresh together, or one screen lies. */
+function invalidateAppointmentViews(qc: ReturnType<typeof useQueryClient>, id?: string) {
+  void qc.invalidateQueries({ queryKey: qk.appointments });
+  void qc.invalidateQueries({ queryKey: ["activities"] });
+  void qc.invalidateQueries({ queryKey: qk.notifications });
+  void qc.invalidateQueries({ queryKey: qk.subscription });
+  if (id) void qc.invalidateQueries({ queryKey: qk.appointment(id) });
+}
+
+export function useRescheduleAppointment(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { requestedDate?: string; requestedTime?: string | null; appointmentType?: string }) =>
+      endpoints.bookings.rescheduleAppointment(id, body),
+    onSuccess: (updated) => {
+      qc.setQueryData(qk.appointment(id), updated);
+      invalidateAppointmentViews(qc, id);
+    },
+  });
+}
+
+export function useCancelAppointment(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => endpoints.bookings.cancelAppointment(id),
+    onSuccess: (updated) => {
+      qc.setQueryData(qk.appointment(id), updated);
+      invalidateAppointmentViews(qc, id);
+    },
+  });
+}
+
+// ---- pet clinics, independent specialists, requests ---------------------------
+export const usePetClinic = (id: string) =>
+  useQuery({ queryKey: qk.petClinic(id), queryFn: () => endpoints.catalog.petClinic(id), staleTime: CATALOG_STALE });
+export const useSpecialistCategories = () =>
+  useQuery({ queryKey: qk.specialistCategories, queryFn: endpoints.catalog.specialistCategories, staleTime: CATALOG_STALE });
+export const useSpecialists = (categoryId?: string, q?: string) =>
+  useQuery({
+    queryKey: qk.specialists(categoryId, q),
+    queryFn: () => endpoints.catalog.specialists({ categoryId, q }),
+    staleTime: CATALOG_STALE,
+    placeholderData: (prev) => prev, // keep the list on screen while a search refetches
+  });
+export const useSpecialistProfile = (id: string) =>
+  useQuery({ queryKey: qk.indieSpecialist(id), queryFn: () => endpoints.catalog.specialistProfile(id), staleTime: CATALOG_STALE });
+
+export const useServiceRequests = () =>
+  useQuery({ queryKey: qk.serviceRequests, queryFn: endpoints.bookings.serviceRequests, staleTime: MEMBER_STALE });
+export const useServiceRequest = (id: string) =>
+  useQuery({ queryKey: qk.serviceRequest(id), queryFn: () => endpoints.bookings.serviceRequest(id), staleTime: MEMBER_STALE });
+
+function invalidateRequestViews(qc: ReturnType<typeof useQueryClient>, id?: string) {
+  void qc.invalidateQueries({ queryKey: qk.serviceRequests });
+  void qc.invalidateQueries({ queryKey: ["activities"] });
+  void qc.invalidateQueries({ queryKey: qk.notifications });
+  if (id) void qc.invalidateQueries({ queryKey: qk.serviceRequest(id) });
+}
+
+export function useRequestPet(clinicId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ body, idempotencyKey }: { body: Record<string, unknown>; idempotencyKey: string }) =>
+      endpoints.bookings.requestPet(clinicId, body, idempotencyKey),
+    onSuccess: (r) => invalidateRequestViews(qc, r.id),
+  });
+}
+export function useRequestSpecialist(specialistId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ body, idempotencyKey }: { body: Record<string, unknown>; idempotencyKey: string }) =>
+      endpoints.bookings.requestSpecialist(specialistId, body, idempotencyKey),
+    onSuccess: (r) => invalidateRequestViews(qc, r.id),
+  });
+}
+export function useCancelServiceRequest(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => endpoints.bookings.cancelServiceRequest(id),
+    onSuccess: (updated) => {
+      qc.setQueryData(qk.serviceRequest(id), updated);
+      invalidateRequestViews(qc, id);
+    },
+  });
+}
+
+// ---- locations & availability ---------------------------------------------------
+/** `enabled` lets a dependent dropdown wait until the field above it is chosen. */
+export const useLocations = (parentId?: string, coveredBy?: string, enabled = true) =>
+  useQuery({
+    queryKey: qk.locations(parentId, coveredBy),
+    queryFn: () => endpoints.catalog.locations({ parentId, coveredBy }),
+    staleTime: CATALOG_STALE,
+    enabled,
+  });
+export const useAvailability = (locationId: string | null) =>
+  useQuery({
+    queryKey: qk.availability(locationId ?? ""),
+    queryFn: () => endpoints.catalog.availability(locationId!),
+    enabled: !!locationId,
+    staleTime: CATALOG_STALE,
+  });
+
+// ---- preferences & notifications -----------------------------------------------
+export const usePreferences = () =>
+  useQuery({ queryKey: qk.preferences, queryFn: endpoints.me.preferences, staleTime: MEMBER_STALE });
+
+export function usePatchPreferences() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Partial<import("./types").PreferencesDto>) => endpoints.me.patchPreferences(body),
+    // Optimistic: a toggle should flip immediately, and snap back if the save fails.
+    onMutate: async (body) => {
+      await qc.cancelQueries({ queryKey: qk.preferences });
+      const prev = qc.getQueryData<import("./types").PreferencesDto>(qk.preferences);
+      if (prev) qc.setQueryData(qk.preferences, { ...prev, ...body });
+      return { prev };
+    },
+    onError: (_e, _b, ctx) => { if (ctx?.prev) qc.setQueryData(qk.preferences, ctx.prev); },
+    onSettled: () => { void qc.invalidateQueries({ queryKey: qk.preferences }); },
+  });
+}
+
+export function useMarkNotificationsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[] | "all") => endpoints.notifications.markRead(ids),
+    onSuccess: (data) => { qc.setQueryData(qk.notifications, data); },
+  });
+}
+
+// ---- profile ---------------------------------------------------------------------
+export function usePatchProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => endpoints.me.patchProfile(body),
+    onSuccess: (me) => {
+      qc.setQueryData(qk.me, me);
+      void qc.invalidateQueries({ queryKey: qk.home });
+    },
+  });
+}
+
+export function usePutEmergencyContact() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { firstName: string; lastName: string; phone: string; relationship: string }) =>
+      endpoints.me.putEmergencyContact(body),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: qk.contact }); },
   });
 }

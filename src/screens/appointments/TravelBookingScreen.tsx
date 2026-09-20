@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -11,27 +11,26 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import * as Location from "expo-location";
 import ScreenContainer from "../../components/ScreenContainer";
 import AppHeader from "../../components/AppHeader";
 import TextField from "../../components/TextField";
 import PhonePrefix from "../../components/PhonePrefix";
+import DateField from "../../components/DateField";
 import SelectField from "../../components/SelectField";
+import LocationPicker, { deepest, describeLocation, EMPTY_LOCATION, LocationSel } from "../../components/LocationPicker";
+import AvailabilityPanel from "../../components/AvailabilityPanel";
 import CheckRow from "../../components/CheckRow";
 import RadioRow from "../../components/RadioRow";
 import Button from "../../components/Button";
 import { colors, radii, spacing } from "../../theme";
 import ListStateView from "../../components/ListStateView";
-import { useCreateTransport, useProvider, useReference } from "../../api/queries";
+import { useAvailability, useCreateTransport, useEmergencyContact, useProvider, useReference } from "../../api/queries";
 import { ApiError } from "../../api/errors";
 import { newIdempotencyKey } from "../../utils/device";
-import { toIsoDateUS, validateBookingDate } from "../../utils/validation";
-import { ensurePermission } from "../../utils/permissions";
+import { BOOKING_WINDOW_DAYS } from "../../utils/validation";
+import { addDays, utcTodayIso } from "../../utils/dates";
 import { useMultiStepBack } from "../../hooks/useMultiStepBack";
 import { RootScreenProps } from "../../navigation/types";
-
-const COUNTRIES = ["Canada", "United States", "United Arab Emirates", "United Kingdom", "South Korea"];
-const PROVINCES = ["Ontario", "Alberta", "Quebec", "British Columbia"];
 
 const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -51,22 +50,16 @@ export default function TravelBookingScreen({
   const aircrafts = providerQuery.data?.aircraft ?? [];
 
   // Step 1 — pickup
-  const [pickupDate, setPickupDate] = useState("");
-  const [dateTouched, setDateTouched] = useState(false);
-  const [timeTouched, setTimeTouched] = useState(false);
+  const [pickupDate, setPickupDate] = useState<string | null>(null);
+  const [pickupTime, setPickupTime] = useState<string | null>(null);
   // Errors the server raised on step 1 fields, shown on the fields themselves.
-  const [serverErrors, setServerErrors] = useState<{ pickupDate?: string; pickupTime?: string }>({});
-  const [pickupTime, setPickupTime] = useState("");
-  const [pickupCountry, setPickupCountry] = useState<string | null>(null);
-  const [pickupProvince, setPickupProvince] = useState<string | null>(null);
+  const [serverErrors, setServerErrors] = useState<{ pickupDate?: string; pickupTime?: string; pickupCountry?: string; dropoffCountry?: string }>({});
+  const [pickup, setPickup] = useState<LocationSel>(EMPTY_LOCATION);
+  const [pickupAddress, setPickupAddress] = useState("");
   const [takeoff, setTakeoff] = useState<"Airport" | "Helipad">("Helipad");
   const [pickupHelipad, setPickupHelipad] = useState("");
-  const [useCurrentLocation, setUseCurrentLocation] = useState(false);
-  const [locating, setLocating] = useState(false);
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   // Step 2 — drop-off
-  const [dropCountry, setDropCountry] = useState<string | null>(null);
-  const [dropProvince, setDropProvince] = useState<string | null>(null);
+  const [drop, setDrop] = useState<LocationSel>(EMPTY_LOCATION);
   const [landing, setLanding] = useState<"Airport" | "Helipad">("Helipad");
   const [dropHelipad, setDropHelipad] = useState("");
   const [returnTrip, setReturnTrip] = useState(false);
@@ -85,49 +78,28 @@ export default function TravelBookingScreen({
   const [relationship, setRelationship] = useState<string | null>(null);
   const [accompany, setAccompany] = useState(false);
 
-  /**
-   * Resolves the device location only when the user opts in, and reverse-geocodes
-   * it into the country / province fields. Any failure clears the checkbox so the
-   * form never gets stuck in a half-applied state.
-   */
-  const applyCurrentLocation = useCallback(async () => {
-    if (locating) return;
-    if (useCurrentLocation) {
-      setUseCurrentLocation(false);
-      return;
-    }
-    setLocating(true);
-    try {
-      const ok = await ensurePermission({
-        label: "Location",
-        reason: "MedPilot uses your location to set the pickup point for medical transport.",
-        status: await Location.getForegroundPermissionsAsync(),
-        request: Location.requestForegroundPermissionsAsync,
-      });
-      if (!ok) return;
+  // Is the provider chosen on the previous screen able to reach the pickup point?
+  const pickupPlace = deepest(pickup);
+  const pickupAvail = useAvailability(pickupPlace?.id ?? null);
+  const providerReaches = pickupAvail.data
+    ? pickupAvail.data.services.some((sv) => sv.providers.some((p) => p.id === route.params.providerId))
+    : null;
+  const dropPlace = deepest(drop);
+  const sameAsPickup = !!pickupPlace && !!dropPlace && pickupPlace.id === dropPlace.id;
 
-      const enabled = await Location.hasServicesEnabledAsync();
-      if (!enabled) {
-        Alert.alert("Location is off", "Turn on location services to use your current position.");
-        return;
-      }
-
-      const pos = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      const [place] = await Location.reverseGeocodeAsync(pos.coords);
-      if (place?.country) setPickupCountry(place.country);
-      if (place?.region) setPickupProvince(place.region);
-      setUseCurrentLocation(true);
-    } catch {
-      Alert.alert("Couldn't get your location", "Please enter your pickup location manually.");
-      setUseCurrentLocation(false);
-      setCoords(null);
-    } finally {
-      setLocating(false);
+  // Reuse the emergency contact from the profile.
+  const savedContact = useEmergencyContact();
+  const prefilled = useRef(false);
+  useEffect(() => {
+    const c = savedContact.data?.contact;
+    if (c && !prefilled.current) {
+      prefilled.current = true;
+      setFirstname((v) => v || c.firstName);
+      setLastname((v) => v || c.lastName);
+      setPhone((v) => v || c.phone);
+      setRelationship((v) => v || titleCase(c.relationship));
     }
-  }, [locating, useCurrentLocation]);
+  }, [savedContact.data]);
 
   useMultiStepBack(step, useCallback(() => setStep((s) => s - 1), []));
 
@@ -146,21 +118,12 @@ export default function TravelBookingScreen({
   // A submit failure belongs to the step it was raised on.
   useEffect(() => { setSubmitError(null); }, [step]);
 
-  const dateError = validateBookingDate(pickupDate, "mdy") ?? serverErrors.pickupDate;
-  const showDateError = !!dateError && (dateTouched || pickupDate.length >= 10 || !!serverErrors.pickupDate);
-  // The API takes HH:MM (24-hour); free text like "9:30 AM" would only fail at the very end.
-  const timeError =
-    pickupTime.trim() && !/^([01]\d|2[0-3]):[0-5]\d$/.test(pickupTime.trim())
-      ? "Use 24-hour time, like 09:30"
-      : serverErrors.pickupTime;
-  const showTimeError = !!timeError && (timeTouched || pickupTime.length >= 5 || !!serverErrors.pickupTime);
-
   const canNext = (() => {
     switch (step) {
       case 1:
-        return !!pickupDate && !dateError && !timeError && !!pickupCountry;
+        return !!pickupDate && !!pickupPlace && providerReaches !== false && !pickupAvail.isError;
       case 2:
-        return !!dropCountry;
+        return !!dropPlace && !sameAsPickup;
       case 3:
         return purposes.length > 0 || otherPurpose.trim().length > 0;
       case 4:
@@ -174,13 +137,9 @@ export default function TravelBookingScreen({
 
   const submit = async () => {
     setSubmitError(null);
-    const isoDate = toIsoDateUS(pickupDate);
-    if (!isoDate || dateError || timeError) {
-      // Unreachable in normal use (Next is gated on the same checks); if it ever
-      // happens, send the member to the field rather than a message on step 6.
-      setStep(1);
-      setDateTouched(true);
-      setTimeTouched(true);
+    if (!pickupDate || !pickup.country || !drop.country) {
+      // Unreachable in normal use (Next is gated on the same checks).
+      setStep(!pickupDate || !pickup.country ? 1 : 2);
       return;
     }
     try {
@@ -189,16 +148,17 @@ export default function TravelBookingScreen({
         body: {
           providerId: route.params.providerId,
           aircraftId: aircraft,
-          pickupDate: isoDate,
-          pickupTime: pickupTime.trim() || null,
-          pickupCountry,
-          pickupRegion: pickupProvince,
+          pickupDate,
+          pickupTime: pickupTime || null,
+          pickupCountry: pickup.country.name,
+          pickupRegion: pickup.region?.name ?? null,
+          pickupCity: pickup.city?.name ?? null,
+          pickupAddress: pickupAddress.trim() || null,
           pickupSiteType: takeoff.toLowerCase(),
           pickupSiteCode: pickupHelipad.trim() || null,
-          pickupLat: coords?.lat ?? null,
-          pickupLng: coords?.lng ?? null,
-          dropoffCountry: dropCountry,
-          dropoffRegion: dropProvince,
+          dropoffCountry: drop.country.name,
+          dropoffRegion: drop.region?.name ?? null,
+          dropoffCity: drop.city?.name ?? null,
           dropoffSiteType: landing.toLowerCase(),
           dropoffSiteCode: dropHelipad.trim() || null,
           returnTrip,
@@ -218,9 +178,14 @@ export default function TravelBookingScreen({
       navigation.replace("BookingSuccess", { reference: created.reference, kind: "transport" });
     } catch (err) {
       const e = err as ApiError;
-      if (e.fields?.pickupDate || e.fields?.pickupTime) {
-        setServerErrors({ pickupDate: e.fields.pickupDate, pickupTime: e.fields.pickupTime });
+      if (e.fields?.pickupDate || e.fields?.pickupTime || e.fields?.pickupCountry) {
+        setServerErrors({ pickupDate: e.fields.pickupDate, pickupTime: e.fields.pickupTime, pickupCountry: e.fields.pickupCountry });
         setStep(1);
+        return;
+      }
+      if (e.fields?.dropoffCountry) {
+        setServerErrors({ dropoffCountry: e.fields.dropoffCountry });
+        setStep(2);
         return;
       }
       setSubmitError(
@@ -274,53 +239,55 @@ export default function TravelBookingScreen({
         {step === 1 && (
           <View>
             <Text style={styles.groupLabel}>Pickup details</Text>
-            <View style={styles.row}>
-              <TextField
-                label="Pickup Date"
-                placeholder="MM/DD/YYYY"
-                value={pickupDate}
-                onChangeText={(v) => { setPickupDate(v); setServerErrors((e) => ({ ...e, pickupDate: undefined })); }}
-                onBlur={() => setDateTouched(true)}
-                error={showDateError ? dateError : undefined}
-                keyboardType="numbers-and-punctuation"
-                maxLength={10}
-                returnKeyType="next"
-                containerStyle={styles.rowField}
-                right={<Ionicons name="calendar-outline" size={16} color={colors.secondaryText} />}
-              />
-              <TextField
-                label="Pickup Time"
-                placeholder="HH:MM"
-                value={pickupTime}
-                onChangeText={(v) => { setPickupTime(v); setServerErrors((e) => ({ ...e, pickupTime: undefined })); }}
-                onBlur={() => setTimeTouched(true)}
-                error={showTimeError ? timeError : undefined}
-                keyboardType="numbers-and-punctuation"
-                maxLength={8}
-                returnKeyType="done"
-                containerStyle={[styles.rowField, { marginLeft: 12 }]}
-                right={<Ionicons name="time-outline" size={16} color={colors.secondaryText} />}
-              />
-            </View>
-            <SelectField
-              label="Pickup Location"
-              placeholder="Select Country"
-              value={pickupCountry}
-              options={COUNTRIES}
-              onSelect={setPickupCountry}
+            <DateField
+              label="Pickup Date"
+              value={pickupDate}
+              onChange={(v) => { setPickupDate(v); setServerErrors((e) => ({ ...e, pickupDate: undefined })); }}
+              min={addDays(utcTodayIso(), 1)}
+              max={addDays(utcTodayIso(), BOOKING_WINDOW_DAYS)}
+              minMessage="Choose a date after today"
+              maxMessage="Choose a date within the next year"
+              requiredMessage="Choose the pickup date"
+              error={serverErrors.pickupDate}
             />
-            <SelectField
-              label="Province/State"
-              placeholder="Select"
-              value={pickupProvince}
-              options={PROVINCES}
-              onSelect={setPickupProvince}
+            <DateField
+              label="Pickup Time"
+              optional
+              mode="time"
+              value={pickupTime}
+              onChange={(v) => { setPickupTime(v); setServerErrors((e) => ({ ...e, pickupTime: undefined })); }}
+              clearable
+              error={serverErrors.pickupTime}
             />
+            <Text style={styles.groupLabel}>Pickup location</Text>
+            <LocationPicker
+              value={pickup}
+              onChange={(v) => { setPickup(v); setServerErrors((e) => ({ ...e, pickupCountry: undefined })); }}
+              detect
+              address={pickupAddress}
+              onAddressChange={setPickupAddress}
+              countryError={serverErrors.pickupCountry}
+            />
+            {pickupPlace ? (
+              <AvailabilityPanel
+                place={describeLocation(pickup)}
+                loading={pickupAvail.isPending && pickupAvail.isFetching}
+                error={pickupAvail.isError}
+                data={pickupAvail.data}
+                onRetry={() => void pickupAvail.refetch()}
+              />
+            ) : null}
+            {providerReaches === false ? (
+              <Text style={styles.blockedNote} accessibilityLiveRegion="polite">
+                {providerQuery.data?.name ?? "This provider"} doesn't serve {describeLocation(pickup)}. Choose a different pickup location, or go back and pick another provider.
+              </Text>
+            ) : null}
             <Text style={styles.groupLabel}>Takeoff Location</Text>
             {radioPair(takeoff, setTakeoff)}
             <TextField
-              label="Enter Helipad Code"
-              placeholder="Coordinates"
+              label={takeoff === "Airport" ? "Airport code" : "Helipad code"}
+              optional
+              placeholder={takeoff === "Airport" ? "e.g. YYZ" : "Coordinates"}
               value={pickupHelipad}
               onChangeText={setPickupHelipad}
               autoCapitalize="characters"
@@ -329,45 +296,23 @@ export default function TravelBookingScreen({
               returnKeyType="done"
               containerStyle={{ marginTop: 14 }}
             />
-            <TouchableOpacity
-              style={styles.checkboxRow}
-              onPress={applyCurrentLocation}
-              disabled={locating}
-              accessibilityRole="checkbox"
-              accessibilityLabel="Use my current location"
-              accessibilityState={{ checked: useCurrentLocation, disabled: locating }}
-            >
-              <View style={[styles.checkbox, useCurrentLocation && styles.checkboxChecked]}>
-                {useCurrentLocation && <Ionicons name="checkmark" size={12} color="#fff" />}
-              </View>
-              <Text style={styles.checkboxText}>Use my current location</Text>
-              {locating && <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: 10 }} />}
-            </TouchableOpacity>
           </View>
         )}
 
         {step === 2 && (
           <View>
             <Text style={styles.groupLabel}>Drop-off details</Text>
-            <SelectField
-              label="Drop-off Location"
-              placeholder="Select Country"
-              value={dropCountry}
-              options={COUNTRIES}
-              onSelect={setDropCountry}
-            />
-            <SelectField
-              label="Province/State"
-              placeholder="Select"
-              value={dropProvince}
-              options={PROVINCES}
-              onSelect={setDropProvince}
+            <LocationPicker
+              value={drop}
+              onChange={(v) => { setDrop(v); setServerErrors((e) => ({ ...e, dropoffCountry: undefined })); }}
+              countryError={serverErrors.dropoffCountry ?? (sameAsPickup ? "Drop-off must be different from pickup" : undefined)}
             />
             <Text style={styles.groupLabel}>Landing Location</Text>
             {radioPair(landing, setLanding)}
             <TextField
-              label="Enter Helipad Code"
-              placeholder="Coordinates"
+              label={landing === "Airport" ? "Airport code" : "Helipad code"}
+              optional
+              placeholder={landing === "Airport" ? "e.g. YYZ" : "Coordinates"}
               value={dropHelipad}
               onChangeText={setDropHelipad}
               autoCapitalize="characters"
@@ -539,6 +484,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row" },
   rowField: { flex: 1 },
   radioPair: { flexDirection: "row", alignItems: "center", marginTop: 2 },
+  blockedNote: { fontSize: 12.5, color: colors.error, lineHeight: 18, marginBottom: 8 },
   checkboxRow: { flexDirection: "row", alignItems: "center", marginTop: 2 },
   checkbox: {
     width: 18,

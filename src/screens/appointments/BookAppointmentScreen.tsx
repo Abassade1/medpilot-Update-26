@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -11,18 +11,19 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import ScreenContainer from "../../components/ScreenContainer";
 import AppHeader from "../../components/AppHeader";
-import CheckRow from "../../components/CheckRow";
+import DateField from "../../components/DateField";
 import RadioRow from "../../components/RadioRow";
 import TextField from "../../components/TextField";
 import PhonePrefix from "../../components/PhonePrefix";
 import SelectField from "../../components/SelectField";
 import Button from "../../components/Button";
 import { colors, radii, spacing } from "../../theme";
-import { useCreateAppointment, useReference } from "../../api/queries";
+import { useCreateAppointment, useEmergencyContact, useReference } from "../../api/queries";
 import { ApiError } from "../../api/errors";
 import { newIdempotencyKey } from "../../utils/device";
 import { useMultiStepBack } from "../../hooks/useMultiStepBack";
-import { toIsoDate, validateBookingDate } from "../../utils/validation";
+import { addDays, utcTodayIso } from "../../utils/dates";
+import { BOOKING_WINDOW_DAYS } from "../../utils/validation";
 import { RootScreenProps } from "../../navigation/types";
 
 export default function BookAppointmentScreen({
@@ -40,8 +41,8 @@ export default function BookAppointmentScreen({
 
   // Step 1
   const [type, setType] = useState<string | null>(null);
-  const [date, setDate] = useState("");
-  const [dateTouched, setDateTouched] = useState(false);
+  const [date, setDate] = useState<string | null>(null);
+  const [time, setTime] = useState<string | null>(null);
   // Set when the server rejects a date the client let through (e.g. the window
   // moved); shown on the field itself rather than on a later step.
   const [serverDateError, setServerDateError] = useState<string | null>(null);
@@ -55,6 +56,20 @@ export default function BookAppointmentScreen({
   const [relationship, setRelationship] = useState<string | null>(null);
   const [accompany, setAccompany] = useState(false);
 
+  // Reuse the emergency contact saved on the profile instead of asking again.
+  const savedContact = useEmergencyContact();
+  const prefilled = useRef(false);
+  useEffect(() => {
+    const c = savedContact.data?.contact;
+    if (c && !prefilled.current) {
+      prefilled.current = true;
+      setFirstname((v) => v || c.firstName);
+      setLastname((v) => v || c.lastName);
+      setPhone((v) => v || c.phone);
+      setRelationship((v) => v || c.relationship.charAt(0).toUpperCase() + c.relationship.slice(1));
+    }
+  }, [savedContact.data]);
+
   const back = useCallback(
     () => (step > 1 ? setStep((s) => s - 1) : navigation.goBack()),
     [step, navigation]
@@ -66,27 +81,23 @@ export default function BookAppointmentScreen({
   // another step shows the member an error about a field that isn't there.
   useEffect(() => { setSubmitError(null); }, [step]);
 
-  const localDateError = validateBookingDate(date, "dmy");
-  const dateError = localDateError ?? serverDateError ?? undefined;
-  // Show as soon as the date is fully typed, or once the member leaves the field.
-  const showDateError = !!dateError && (dateTouched || date.length >= 10 || !!serverDateError);
+  // The API's window: strictly after today, within a year — in UTC, like the server.
+  const minDate = addDays(utcTodayIso(), 1);
+  const maxDate = addDays(utcTodayIso(), BOOKING_WINDOW_DAYS);
 
   const titles = ["Appointment Details", "Medical History", "Emergency Contact"];
   const canNext =
     step === 1
-      ? !!type && !!date && !dateError
+      ? !!type && !!date
       : step === 2
       ? underTreatment === false || (underTreatment === true && condition.trim().length > 0)
       : firstname.trim() && lastname.trim() && phone.trim() && relationship;
 
   const submit = async () => {
     setSubmitError(null);
-    const isoDate = toIsoDate(date);
-    if (!isoDate || localDateError) {
-      // Unreachable in normal use — Next is gated on the same check — but if it
-      // ever happens, send the member to the field, not a message on step 3.
+    if (!date) {
+      // Unreachable in normal use (Next is gated on it); send the member to the field.
       setStep(1);
-      setDateTouched(true);
       return;
     }
     try {
@@ -96,7 +107,8 @@ export default function BookAppointmentScreen({
           hospitalId: route.params.hospitalId,
           packageId: route.params.packageId ?? null,
           appointmentType: type,
-          requestedDate: isoDate,
+          requestedDate: date,
+          requestedTime: time ?? undefined,
           underTreatment: underTreatment === true,
           conditionNote: condition.trim() || undefined,
           emergencyContact: {
@@ -108,7 +120,11 @@ export default function BookAppointmentScreen({
           },
         },
       });
-      navigation.replace("BookingSuccess", { reference: created.reference, kind: "appointment" });
+      navigation.replace("BookingSuccess", {
+        reference: created.reference,
+        kind: "appointment",
+        detail: { route: "AppointmentDetail", appointmentId: created.id },
+      });
     } catch (err) {
       const e = err as ApiError;
       if (e.fields?.requestedDate) {
@@ -153,25 +169,33 @@ export default function BookAppointmentScreen({
           <View>
             <Text style={styles.fieldLabel}>Select type of Appointment</Text>
             {appointmentTypes.map((t) => (
-              <CheckRow
+              <RadioRow
                 key={t.code}
                 label={t.label}
-                checked={type === t.code}
+                selected={type === t.code}
                 onPress={() => setType(t.code)}
-                selectedStyle="filled"
+                bordered
               />
             ))}
-            <Text style={[styles.fieldLabel, { marginTop: 10 }]}>Appointment Date</Text>
-            <TextField
-              placeholder="DD/MM/YYYY"
+            <DateField
+              label="Appointment Date"
               value={date}
-              onChangeText={(v) => { setDate(v); setServerDateError(null); }}
-              onBlur={() => setDateTouched(true)}
-              error={showDateError ? dateError : undefined}
-              keyboardType="numbers-and-punctuation"
-              maxLength={10}
-              accessibilityLabel="Appointment date, day month year"
-              right={<Ionicons name="calendar-outline" size={17} color={colors.secondaryText} />}
+              onChange={(v) => { setDate(v); setServerDateError(null); }}
+              min={minDate}
+              max={maxDate}
+              minMessage="Choose a date after today"
+              maxMessage="Choose a date within the next year"
+              requiredMessage="Choose the appointment date"
+              error={serverDateError ?? undefined}
+              containerStyle={{ marginTop: 10 }}
+            />
+            <DateField
+              label="Preferred time"
+              optional
+              mode="time"
+              value={time}
+              onChange={setTime}
+              clearable
             />
           </View>
         )}

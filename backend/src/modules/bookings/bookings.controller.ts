@@ -1,18 +1,18 @@
-import { Body, Controller, Get, Headers, HttpCode, Param, Post, Query, Req } from "@nestjs/common";
+import { Body, Controller, Get, Headers, HttpCode, Param, Patch, Post, Query, Req } from "@nestjs/common";
 import type { Request } from "express";
 import { z } from "zod";
 import { Roles } from "../../common/auth.guard";
 import { validate } from "../../common/validate";
 import { BookingsService } from "./bookings.service";
 import { IdempotencyService } from "./idempotency";
-import { CreateAppointmentBody, CreateTransportBody, StaffDecisionBody } from "./bookings.schemas";
+import { CreateAppointmentBody, RescheduleAppointmentBody, CreateTransportBody, StaffDecisionBody } from "./bookings.schemas";
 import { ActivitiesService } from "./activities.service";
 import { apiRoute } from "../../docs/registry";
 import { PageQuery } from "../../common/pagination";
 
 const Uuid = z.string().uuid();
 const ActivityQ = PageQuery.extend({
-  type: z.enum(["appointment", "transport", "diagnosis", "meal", "record", "plan"]).optional(),
+  type: z.enum(["appointment", "transport", "diagnosis", "meal", "record", "plan", "service"]).optional(),
 });
 
 @Controller("v1")
@@ -37,6 +37,11 @@ export class BookingsController {
   @Get("appointments/:id")
   getAppointment(@Req() req: Request, @Param("id") id: string) {
     return this.bookings.getAppointment(req.userId!, validate(Uuid, id));
+  }
+
+  @Patch("appointments/:id")
+  rescheduleAppointment(@Req() req: Request, @Param("id") id: string, @Body() body: unknown) {
+    return this.bookings.rescheduleAppointment(req.userId!, validate(Uuid, id), validate(RescheduleAppointmentBody, body));
   }
 
   @HttpCode(200)
@@ -91,3 +96,4 @@ apiRoute({ method: "post", path: "/v1/transport-bookings", tag: "bookings", summ
 apiRoute({ method: "get", path: "/v1/transport-bookings", tag: "bookings", summary: "My transport bookings", auth: true });
 apiRoute({ method: "get", path: "/v1/transport-bookings/{id}", tag: "bookings", summary: "Transport detail", auth: true });
 apiRoute({ method: "get", path: "/v1/activities", tag: "bookings", summary: "Activity feed (keyset paginated, filterable)", auth: true, query: ActivityQ });
+apiRoute({ method: "patch", path: "/v1/appointments/{id}", tag: "bookings", summary: "Reschedule an active appointment (date, time or type)", auth: true, body: RescheduleAppointmentBody });

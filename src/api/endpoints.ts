@@ -6,6 +6,8 @@ import type {
   PetClinicDto, PlanDto, ProviderCardDto, ProviderDetail, ReferenceData,
   ServiceDto, SetupStatus, SpecialistDetail, SubscriptionDto, TokenPairDto,
   TransportDto, TriageResultDto, TriageStep, UploadTicket,
+  AvailabilityDto, ChatHistoryDto, ChatReplyDto, LocationDto, PetClinicDetail, PreferencesDto,
+  ResolveDto, ServiceRequestDto, SpecialistCardDto, SpecialistCategoryDto, SpecialistProfileDto,
 } from "./types";
 
 /** Every server call in one place; screens never build URLs themselves. */
@@ -40,6 +42,8 @@ export const endpoints = {
     get: () => api.get<MeResponse>("/v1/me"),
     setupStatus: () => api.get<SetupStatus>("/v1/me/setup-status"),
     patchProfile: (body: Record<string, unknown>) => api.patch<MeResponse>("/v1/me/profile", body),
+    preferences: () => api.get<PreferencesDto>("/v1/me/preferences"),
+    patchPreferences: (body: Partial<PreferencesDto>) => api.patch<PreferencesDto>("/v1/me/preferences", body),
     setPassword: (password: string, currentPassword?: string) =>
       api.post<{ tokens: TokenPairDto }>("/v1/me/password", { password, currentPassword }),
     deleteAccount: () => api.delete<{ message: string }>("/v1/me"),
@@ -80,6 +84,29 @@ export const endpoints = {
     aircraft: (id: string) => api.get<AircraftDto>(`/v1/aircraft/${id}`),
     petClinics: (category?: string) =>
       api.get<PetClinicDto[]>(`/v1/pet-clinics${category ? `?category=${category}` : ""}`),
+    petClinic: (id: string) => api.get<PetClinicDetail>(`/v1/pet-clinics/${id}`),
+    specialistCategories: () => api.get<SpecialistCategoryDto[]>("/v1/independent-specialist-categories"),
+    specialists: (params?: { categoryId?: string; q?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.categoryId) q.set("categoryId", params.categoryId);
+      if (params?.q) q.set("q", params.q);
+      const qs = q.toString();
+      return api.get<SpecialistCardDto[]>(`/v1/independent-specialists${qs ? `?${qs}` : ""}`);
+    },
+    specialistProfile: (id: string) => api.get<SpecialistProfileDto>(`/v1/independent-specialists/${id}`),
+    locations: (params?: { parentId?: string; coveredBy?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.parentId) q.set("parentId", params.parentId);
+      if (params?.coveredBy) q.set("coveredBy", params.coveredBy);
+      const qs = q.toString();
+      return api.get<LocationDto[]>(`/v1/locations${qs ? `?${qs}` : ""}`);
+    },
+    resolveLocation: (p: { country?: string; region?: string; city?: string }) => {
+      const q = new URLSearchParams();
+      for (const [k, v] of Object.entries(p)) if (v) q.set(k, v);
+      return api.get<ResolveDto>(`/v1/locations/resolve?${q.toString()}`);
+    },
+    availability: (locationId: string) => api.get<AvailabilityDto>(`/v1/transport/availability?locationId=${locationId}`),
     services: () => api.get<ServiceDto[]>("/v1/services"),
     reference: () => api.get<ReferenceData>("/v1/reference"),
   },
@@ -90,6 +117,16 @@ export const endpoints = {
     appointments: () => api.get<AppointmentDto[]>("/v1/appointments"),
     appointment: (id: string) => api.get<AppointmentDto>(`/v1/appointments/${id}`),
     cancelAppointment: (id: string) => api.post<AppointmentDto>(`/v1/appointments/${id}/cancel`),
+    rescheduleAppointment: (id: string, body: { requestedDate?: string; requestedTime?: string | null; appointmentType?: string }) =>
+      api.patch<AppointmentDto>(`/v1/appointments/${id}`, body),
+
+    requestPet: (clinicId: string, body: Record<string, unknown>, idempotencyKey: string) =>
+      api.post<ServiceRequestDto>(`/v1/pet-clinics/${clinicId}/requests`, body, { idempotencyKey }),
+    requestSpecialist: (specialistId: string, body: Record<string, unknown>, idempotencyKey: string) =>
+      api.post<ServiceRequestDto>(`/v1/independent-specialists/${specialistId}/requests`, body, { idempotencyKey }),
+    serviceRequests: () => api.get<ServiceRequestDto[]>("/v1/service-requests"),
+    serviceRequest: (id: string) => api.get<ServiceRequestDto>(`/v1/service-requests/${id}`),
+    cancelServiceRequest: (id: string) => api.post<ServiceRequestDto>(`/v1/service-requests/${id}/cancel`),
 
     createTransport: (body: Record<string, unknown>, idempotencyKey: string) =>
       api.post<TransportDto>("/v1/transport-bookings", body, { idempotencyKey }),
@@ -106,6 +143,9 @@ export const endpoints = {
   },
 
   aux: {
+    chat: (message: string, sessionId?: string) =>
+      api.post<ChatReplyDto>("/v1/aux/chat", { message, ...(sessionId ? { sessionId } : {}) }),
+    latestChat: () => api.get<ChatHistoryDto>("/v1/aux/chat"),
     startTriage: (symptomCode: string) => api.post<TriageStep>("/v1/aux/triage", { symptomCode }),
     continueTriage: (sessionId: string, conditionCode: string) =>
       api.post<TriageStep>("/v1/aux/triage", { sessionId, conditionCode }),

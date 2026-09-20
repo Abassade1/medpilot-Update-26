@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { personName, phone } from "../auth/auth.schemas";
 
-const futureDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use the format YYYY-MM-DD")
+export const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use 24-hour time, like 09:30");
+
+export const futureDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use the format YYYY-MM-DD")
   .superRefine((v, ctx) => {
     // Date.parse rolls 31 Feb into 3 Mar instead of failing, so a real calendar
     // date is one that survives a round trip through its own components.
@@ -27,6 +29,7 @@ export const CreateAppointmentBody = z.object({
   packageId: z.string().uuid().nullish(),
   appointmentType: z.enum(["general_checkup", "specialist_consultation", "surgery"]),
   requestedDate: futureDate,
+  requestedTime: time.nullish(),
   underTreatment: z.boolean(),
   conditionNote: z.string().trim().max(200, "Keep this under 200 characters").optional(),
   emergencyContact: EmergencyContactInput,
@@ -36,6 +39,13 @@ export const CreateAppointmentBody = z.object({
   }
 });
 
+/** What a member may change on an existing appointment. */
+export const RescheduleAppointmentBody = z.object({
+  requestedDate: futureDate.optional(),
+  requestedTime: time.nullable().optional(), // null clears the preferred time
+  appointmentType: z.enum(["general_checkup", "specialist_consultation", "surgery"]).optional(),
+}).refine((o) => Object.keys(o).length > 0, "Nothing to update");
+
 export const CreateTransportBody = z.object({
   providerId: z.string().uuid(),
   aircraftId: z.string().uuid().nullish(),
@@ -43,12 +53,15 @@ export const CreateTransportBody = z.object({
   pickupTime: z.string().regex(/^\d{2}:\d{2}$/, "Use HH:MM").nullish(),
   pickupCountry: z.string().trim().min(2).max(80),
   pickupRegion: z.string().trim().max(80).nullish(),
+  pickupCity: z.string().trim().max(80).nullish(),
+  pickupAddress: z.string().trim().max(160).nullish(),
   pickupSiteType: z.enum(["airport", "helipad"]),
   pickupSiteCode: z.string().trim().max(20).nullish(),
   pickupLat: z.number().min(-90).max(90).nullish(),
   pickupLng: z.number().min(-180).max(180).nullish(),
   dropoffCountry: z.string().trim().min(2).max(80),
   dropoffRegion: z.string().trim().max(80).nullish(),
+  dropoffCity: z.string().trim().max(80).nullish(),
   dropoffSiteType: z.enum(["airport", "helipad"]),
   dropoffSiteCode: z.string().trim().max(20).nullish(),
   returnTrip: z.boolean().default(false),
@@ -65,7 +78,8 @@ export const CreateTransportBody = z.object({
     ctx.addIssue({ code: "custom", path: ["needIds"], message: "Choose at least one need" });
   }
   if (v.pickupCountry.toLowerCase() === v.dropoffCountry.toLowerCase() &&
-      (v.pickupRegion ?? "").toLowerCase() === (v.dropoffRegion ?? "").toLowerCase()) {
+      (v.pickupRegion ?? "").toLowerCase() === (v.dropoffRegion ?? "").toLowerCase() &&
+      (v.pickupCity ?? "").toLowerCase() === (v.dropoffCity ?? "").toLowerCase()) {
     ctx.addIssue({ code: "custom", path: ["dropoffCountry"], message: "Drop-off must differ from pickup" });
   }
 });

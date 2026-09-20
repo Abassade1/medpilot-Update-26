@@ -21,7 +21,7 @@ function TabIcon({ source, color }: { source: ImageSourcePropType; color: string
 export type MainTabsParamList = {
   HomeTab: undefined;
   ActivitiesTab: undefined;
-  AuxTab: undefined;
+  AuxTab: { ask?: string } | undefined;
   AppointmentsTab: undefined;
 };
 

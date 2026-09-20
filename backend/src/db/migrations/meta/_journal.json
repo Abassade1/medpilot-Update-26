@@ -8,6 +8,27 @@
       "when": 1787765633341,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789931920007,
+      "tag": "0001_services_locations_preferences",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789932350663,
+      "tag": "0002_activity_type_service",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789934652529,
+      "tag": "0003_transport_location_detail",
+      "breakpoints": true
     }
   ]
 }

@@ -5,7 +5,7 @@ import { z } from "zod";
 import { validate } from "../../common/validate";
 import { UsersService } from "./users.service";
 import {
-  BiometricBody, CreateRecordBody, PatchProfileBody, PutConditionsBody,
+  BiometricBody, CreateRecordBody, PatchPreferencesBody, PatchProfileBody, PutConditionsBody,
   RecordUploadUrlBody, RegisterDeviceBody, SetPasswordBody, UpsertContactBody,
 } from "./users.schemas";
 import { apiRoute } from "../../docs/registry";
@@ -17,6 +17,13 @@ export class UsersController {
   @Get() me(@Req() req: Request) { return this.users.me(req.userId!); }
 
   @Get("setup-status") setup(@Req() req: Request) { return this.users.setupStatus(req.userId!); }
+
+  @Get("preferences") preferences(@Req() req: Request) { return this.users.preferences(req.userId!); }
+
+  @Patch("preferences")
+  patchPreferences(@Req() req: Request, @Body() body: unknown) {
+    return this.users.patchPreferences(req.userId!, validate(PatchPreferencesBody, body));
+  }
 
   @Patch("profile")
   patchProfile(@Req() req: Request, @Body() body: unknown) {
@@ -100,3 +107,5 @@ apiRoute({ method: "post", path: "/v1/me/records", tag: "health-record", summary
 apiRoute({ method: "delete", path: "/v1/me/records/{id}", tag: "health-record", summary: "Remove a record", auth: true, status: 204 });
 apiRoute({ method: "post", path: "/v1/me/devices", tag: "me", summary: "Register device / push token", auth: true, body: RegisterDeviceBody });
 apiRoute({ method: "post", path: "/v1/me/devices/biometric", tag: "me", summary: "Bind biometric unlock to a device", auth: true, body: BiometricBody });
+apiRoute({ method: "get", path: "/v1/me/preferences", tag: "me", summary: "Notification and language preferences", auth: true });
+apiRoute({ method: "patch", path: "/v1/me/preferences", tag: "me", summary: "Update preferences", auth: true, body: PatchPreferencesBody });

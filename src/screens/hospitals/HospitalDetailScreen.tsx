@@ -4,6 +4,8 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import ScreenContainer from "../../components/ScreenContainer";
 import AppHeader from "../../components/AppHeader";
 import Chip from "../../components/Chip";
+import PlaceBadges from "../../components/PlaceBadges";
+import ExpandableText from "../../components/ExpandableText";
 import InfoRow from "../../components/InfoRow";
 import SpecialistCard from "../../components/SpecialistCard";
 import Button from "../../components/Button";
@@ -30,11 +32,6 @@ export default function HospitalDetailScreen({ navigation, route }: RootScreenPr
     <ScreenContainer>
       <AppHeader
         title="Hospital"
-        right={
-          <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="search" size={20} color={colors.primary} />
-          </TouchableOpacity>
-        }
       />
       {!hospital ? (
         query.isError ? (
@@ -55,33 +52,10 @@ export default function HospitalDetailScreen({ navigation, route }: RootScreenPr
             </View>
           </View>
 
-          <View style={styles.chipRow}>
-            <Chip
-              label="Direction"
-              elevated
-              icon={<MaterialCommunityIcons name="compass" size={16} color="#8C2B1E" />}
-            />
-            <Chip
-              label="Membership"
-              elevated
-              style={{ marginLeft: 10 }}
-              icon={<MaterialCommunityIcons name="shield-check" size={16} color={colors.success} />}
-            />
-            <Chip
-              label={String(hospital.rating)}
-              elevated
-              style={{ marginLeft: 10 }}
-              icon={<Ionicons name="star" size={14} color={colors.warning} />}
-            />
-          </View>
+          <PlaceBadges name={hospital.name} location={hospital.country} rating={hospital.rating} />
 
           <Text style={styles.sectionTitle}>About us</Text>
-          <Text style={styles.about} numberOfLines={expanded ? undefined : 3}>
-            {hospital.about}{" "}
-          </Text>
-          <TouchableOpacity onPress={() => setExpanded((e) => !e)}>
-            <Text style={styles.readMore}>{expanded ? "Read Less" : "Read More"}</Text>
-          </TouchableOpacity>
+          <ExpandableText text={hospital.about} style={styles.about} />
 
           <View style={{ marginTop: 14 }}>
             <InfoRow label="Care system" value={hospital.careSystem} />

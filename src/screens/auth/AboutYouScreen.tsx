@@ -16,13 +16,21 @@ import PhonePrefix from "../../components/PhonePrefix";
 import SelectField from "../../components/SelectField";
 import Button from "../../components/Button";
 import { colors, spacing } from "../../theme";
-import { MAX_NAME, validateDob, validateName, validatePhone } from "../../utils/validation";
+import { MAX_NAME, validateName, validatePhone } from "../../utils/validation";
+import DateField from "../../components/DateField";
+import { utcTodayIso } from "../../utils/dates";
 import { endpoints } from "../../api/endpoints";
 import { ApiError } from "../../api/errors";
 import { useSession } from "../../state/Session";
 import { RootScreenProps } from "../../navigation/types";
 
 type Field = "firstname" | "lastname" | "phone" | "dob";
+
+/** Oldest plausible birth date: 120 years before today (UTC, like the API). */
+const oldestBirthDate = () => {
+  const today = utcTodayIso();
+  return `${Number(today.slice(0, 4)) - 120}${today.slice(4)}`;
+};
 
 export default function AboutYouScreen({ navigation, route }: RootScreenProps<"AboutYou">) {
   const { adopt } = useSession();
@@ -31,7 +39,7 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
   const [firstname, setFirstname] = useState("");
   const [lastname, setLastname] = useState("");
   const [phone, setPhone] = useState("");
-  const [dob, setDob] = useState("");
+  const [dob, setDob] = useState<string | null>(null);
   const [gender, setGender] = useState<string | null>(null);
   const [marital, setMarital] = useState<string | null>(null);
   const [touched, setTouched] = useState<Record<Field, boolean>>({
@@ -43,13 +51,12 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
 
   const lastnameRef = useRef<TextInput>(null);
   const phoneRef = useRef<TextInput>(null);
-  const dobRef = useRef<TextInput>(null);
 
   const errors: Record<Field, string | undefined> = {
     firstname: validateName(firstname, "Firstname"),
     lastname: validateName(lastname, "Lastname"),
     phone: validatePhone(phone),
-    dob: validateDob(dob),
+    dob: dob ? undefined : "Date of birth is required",
   };
   // server-reported field errors win, so 422 responses land on the right input
   const shown = (f: Field) => (serverFields[f] || undefined) ?? (touched[f] ? errors[f] : undefined);
@@ -69,7 +76,7 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
         firstName: firstname.trim(),
         lastName: lastname.trim(),
         phone: phone.trim(),
-        dateOfBirth: dob.trim(),
+        dateOfBirth: dob!,
         ...(gender ? { gender: gender.toLowerCase().replace(/[^a-z]/g, "") === "prefernottosay" ? "undisclosed" : gender.toLowerCase() } : {}),
         ...(marital ? { maritalStatus: marital.toLowerCase() } : {}),
       });
@@ -160,24 +167,21 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
             autoComplete="tel"
             textContentType="telephoneNumber"
             maxLength={20}
-            returnKeyType="next"
-            onSubmitEditing={() => dobRef.current?.focus()}
+            returnKeyType="done"
             left={<PhonePrefix />}
           />
 
-          <TextField
-            ref={dobRef}
+          <DateField
             label="Date of Birth"
-            placeholder="YYYY-MM-DD"
             value={dob}
-            onChangeText={(t) => { setDob(t); setServerFields((p) => ({ ...p, dob: "" })); }}
-            onBlur={() => markTouched("dob")}
-            error={shown("dob")}
-            keyboardType={Platform.OS === "ios" ? "numbers-and-punctuation" : "default"}
-            autoComplete="birthdate-full"
-            maxLength={10}
-            returnKeyType="done"
-            onSubmitEditing={submit}
+            onChange={(v) => { setDob(v); setServerFields((p) => ({ ...p, dob: "" })); }}
+            min={oldestBirthDate()}
+            max={utcTodayIso()}
+            minMessage="Enter a valid date of birth"
+            maxMessage="Date of birth can't be in the future"
+            pickerStart="1990-01-01"
+            requiredMessage="Date of birth is required"
+            error={serverFields.dob || undefined}
           />
 
           <SelectField
@@ -205,7 +209,7 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
           <Button
             label="Submit"
             variant="pill"
-            disabled={!firstname.trim() || !lastname.trim() || !phone.trim() || !dob.trim()}
+            disabled={!firstname.trim() || !lastname.trim() || !phone.trim() || !dob}
             loading={busy}
             onPress={submit}
             style={{ marginTop: 22, marginBottom: 12 }}

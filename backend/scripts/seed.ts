@@ -11,6 +11,7 @@
 import { uuidv7 } from "uuidv7";
 import { createPool, createDb, schema as s } from "../src/db/client";
 import { sql } from "drizzle-orm";
+import { seedServices } from "./seed-services";
 
 const env = process.env.NODE_ENV ?? "development";
 if (env === "production") {
@@ -30,6 +31,7 @@ async function main() {
       hospital_specialists, specialists, hospitals,
       aircraft_facilities, aircraft, transport_providers,
       pet_clinics, service_categories, independent_specialist_categories,
+      locations, pet_services, independent_specialists, independent_services,
       conditions, transport_purposes, special_needs,
       triage_symptoms, triage_conditions, plans
     restart identity cascade
@@ -145,7 +147,7 @@ async function main() {
   await db.insert(s.hospitalSpecialists).values(links);
 
   // ---- transport providers + fleet -------------------------------------
-  const P = { emsAir: id(), pacific: id(), uber: id() };
+  const P = { emsAir: id(), pacific: id(), uber: id(), harbour: id(), gulf: id() };
   const trusted = "Your trusted partner in Emergency Medical Services and Medical Repatriation. Bringing you and your loved ones safely home.";
   await db.insert(s.transportProviders).values([
     {
@@ -169,6 +171,20 @@ async function main() {
       routes: "USA | Mexico | UK | India | Italy", tags: "AIR Ambulance | Canada",
       heroAsset: "airportAerial", logoAsset: "logoUber", status: "published",
     },
+    {
+      id: P.harbour, name: "Harbour Medevac Marine", category: "boat",
+      location: "Vancouver, CA", rating: "4.4", verified: true,
+      priceFromAmount: 85000, description: "Fast medical rescue boats for coastal and harbour transfers, crewed by paramedics.",
+      routes: "Vancouver | Victoria | New York | Los Angeles | Dubai | Seoul", tags: "Speed Boat | Coastal",
+      heroAsset: "medevac", logoAsset: "logoEms", status: "published",
+    },
+    {
+      id: P.gulf, name: "Gulf Air Rescue", category: "jet",
+      location: "Dubai, AE", rating: "4.6", verified: true,
+      priceFromAmount: 320000, description: "Long-range medical jets based in Dubai, serving the Gulf and East Asia.",
+      routes: "UAE | Saudi Arabia | South Korea | India", tags: "Private Jet | Middle East",
+      heroAsset: "emirates", logoAsset: "logoPacific", status: "published",
+    },
   ]);
   const AC = { bombardier: id(), emsDouble: id() };
   const plane = (aid: string, pid: string, name: string, hero: string) => ({
@@ -181,6 +197,12 @@ async function main() {
   // fleet is seeded for every provider so each detail screen has aircraft
   const fleet: (ReturnType<typeof plane>)[] = [];
   for (const pid of Object.values(P)) {
+    if (pid === P.harbour) {
+      // Boats get vessels, not aircraft, so a marine provider never lists a jet.
+      fleet.push({ ...plane(id(), pid, "Rescue Speedboat 40", "medevac"), capacityLabel: "1 patient and up to 4 co-travelers", capacityNote: "up to 4 co-travelers", medicalCrew: "Paramedic crew", medicalCrewNote: "Physician on request", maxAltitudeM: "n/a", maxAltitudeFt: "n/a", priceAmount: 85000 });
+      fleet.push({ ...plane(id(), pid, "Coastal Response Cruiser", "medevac"), capacityLabel: "2 patients and up to 6 co-travelers", capacityNote: "up to 6 co-travelers", medicalCrew: "Paramedic crew", medicalCrewNote: "Physician on request", maxAltitudeM: "n/a", maxAltitudeFt: "n/a", priceAmount: 140000 });
+      continue;
+    }
     fleet.push(plane(pid === P.uber ? AC.bombardier : id(), pid, "Bombardier Global Express", "jet"));
     fleet.push(plane(pid === P.uber ? AC.emsDouble : id(), pid, "EMS Double Engine", "pacific"));
   }
@@ -221,11 +243,8 @@ async function main() {
   await db.insert(s.packageInclusions).values(incl);
 
   // ---- pet clinics, promos, independent categories ----------------------
-  await db.insert(s.petClinics).values([
-    { id: id(), name: "Pet+Life Veterinary Clinic", category: "pedicure", location: "Tokyo, Japan", rating: "4.5", priceFromAmount: 44900, description: "We provide assistance for exporting and importing pets as well as pet hotel services", openTo: "USA | Mexico | UK | India | Italy", logoEmoji: "🦊", heroAsset: "petVet", verified: true },
-    { id: id(), name: "Russell Equine Veterinary Service", category: "pedicure", location: "Ontario Canada", rating: "4.5", priceFromAmount: 44900, description: "We are consistently pushing to offer the best in both diagnostic and therapeutic modalities to our clients", openTo: "Canada | USA", logoEmoji: "🐎", heroAsset: "horses", verified: true },
-    { id: id(), name: "Bonnieland Puppy Parlor", category: "pedicure", location: "Calgary, Canada", rating: "4.5", priceFromAmount: 44900, description: "Grooming Calgary is focused on high-quality service and customer satisfaction", openTo: "USA | Mexico | UK | India | Italy", logoEmoji: "🐶", heroAsset: "dogGroom", verified: true },
-  ]);
+  // pet clinics and their services are seeded in seed-services.ts
+
   await db.insert(s.promoSlides).values([
     { id: id(), title: "Asia Cancer specialists", subtitle: "First class logistics | Accommodation | feeding", priceLabel: "$4.75M", packageId: PK.asia, imageAsset: "cancer", sortOrder: 0 },
     { id: id(), title: "UAE Cardiology specialists", subtitle: "First class logistics | Accommodation | feeding", priceLabel: "$4.75M", packageId: PK.uae, imageAsset: "cardiacTreatment", sortOrder: 1 },
@@ -236,6 +255,8 @@ async function main() {
     { id: id(), title: "Animal Care Givers", countLabel: "+13k Specialists", imageAsset: "petCare", sortOrder: 1 },
     { id: id(), title: "Care Givers", countLabel: "+554k Specialists", imageAsset: "facilityGas", sortOrder: 2 },
   ]);
+
+  await seedServices(db, P);
 
   // ---- plans ------------------------------------------------------------
   await db.insert(s.plans).values([
@@ -257,6 +278,10 @@ async function main() {
     union all select 'providers', count(*) from transport_providers
     union all select 'aircraft', count(*) from aircraft
     union all select 'pet_clinics', count(*) from pet_clinics
+    union all select 'locations', count(*) from locations
+    union all select 'coverage', count(*) from transport_provider_coverage
+    union all select 'pet_services', count(*) from pet_services
+    union all select 'indep_specialists', count(*) from independent_specialists
     union all select 'plans', count(*) from plans
   `);
   console.table(counts.rows);

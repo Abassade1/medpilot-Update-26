@@ -28,6 +28,7 @@ const activityFilters: { id: Filter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "appointment", label: "Appointments" },
   { id: "transport", label: "Transport" },
+  { id: "service", label: "Services" },
   { id: "diagnosis", label: "Diagnosis" },
   { id: "meal", label: "Meal Analysis" },
   { id: "record", label: "Records" },
@@ -61,8 +62,14 @@ export default function ActivitiesScreen() {
       // targetId here is the booking's own id, not a catalog id, so both of
       // these open the Appointments tab rather than a catalog detail screen.
       case "appointment":
+        if (activity.targetId) navigation.navigate("AppointmentDetail", { appointmentId: activity.targetId });
+        else navigation.navigate("MainTabs", { screen: "AppointmentsTab" } as never);
+        break;
       case "transport":
         navigation.navigate("MainTabs", { screen: "AppointmentsTab" } as never);
+        break;
+      case "service":
+        if (activity.targetId) navigation.navigate("ServiceRequestDetail", { requestId: activity.targetId });
         break;
       case "diagnosis":
         if (activity.targetId)
@@ -85,11 +92,6 @@ export default function ActivitiesScreen() {
       <AppHeader
         title="Activities"
         showBack={false}
-        right={
-          <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="options-outline" size={20} color={colors.text} />
-          </TouchableOpacity>
-        }
       />
 
       <View style={styles.filters}>
