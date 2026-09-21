@@ -26,6 +26,7 @@ export const qk = {
   plans: ["plans"] as const,
   notifications: ["notifications"] as const,
   appointment: (id: string) => ["appointment", id] as const,
+  transportBooking: (id: string) => ["transportBooking", id] as const,
   petClinic: (id: string) => ["petClinic", id] as const,
   specialists: (categoryId?: string, q?: string) => ["specialists", categoryId ?? "", q ?? ""] as const,
   specialistCategories: ["specialistCategories"] as const,
@@ -287,5 +288,23 @@ export function usePutEmergencyContact() {
     mutationFn: (body: { firstName: string; lastName: string; phone: string; relationship: string }) =>
       endpoints.me.putEmergencyContact(body),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: qk.contact }); },
+  });
+}
+
+// ---- transport booking detail ------------------------------------------------------
+export const useTransportBooking = (id: string) =>
+  useQuery({ queryKey: qk.transportBooking(id), queryFn: () => endpoints.bookings.transportBooking(id), staleTime: MEMBER_STALE });
+
+export function useCancelTransport(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => endpoints.bookings.cancelTransport(id),
+    onSuccess: (updated) => {
+      qc.setQueryData(qk.transportBooking(id), updated);
+      void qc.invalidateQueries({ queryKey: qk.transport });
+      void qc.invalidateQueries({ queryKey: ["activities"] });
+      void qc.invalidateQueries({ queryKey: qk.notifications });
+      void qc.invalidateQueries({ queryKey: qk.subscription });
+    },
   });
 }

@@ -66,7 +66,8 @@ export default function ActivitiesScreen() {
         else navigation.navigate("MainTabs", { screen: "AppointmentsTab" } as never);
         break;
       case "transport":
-        navigation.navigate("MainTabs", { screen: "AppointmentsTab" } as never);
+        if (activity.targetId) navigation.navigate("TransportBookingDetail", { transportId: activity.targetId });
+        else navigation.navigate("MainTabs", { screen: "AppointmentsTab" } as never);
         break;
       case "service":
         if (activity.targetId) navigation.navigate("ServiceRequestDetail", { requestId: activity.targetId });

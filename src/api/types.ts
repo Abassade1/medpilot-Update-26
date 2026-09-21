@@ -124,12 +124,19 @@ export interface AppointmentDto {
 }
 export interface TransportDto {
   id: string; reference: string; status: string;
-  pickup: { country: string; region: string | null; date: string; time: string | null; siteType: string; siteCode: string | null };
-  dropoff: { country: string; region: string | null; siteType: string; siteCode: string | null };
+  pickup: { country: string; region: string | null; city?: string | null; address?: string | null; date: string; time: string | null; siteType: string; siteCode: string | null };
+  dropoff: { country: string; region: string | null; city?: string | null; siteType: string; siteCode: string | null };
   returnTrip: boolean; flightNumber: string | null;
   departAt: string | null; arriveAt: string | null;
   provider: { id: string; name: string; logoAsset: string | null; tags: string };
   createdAt: string;
+  canCancel?: boolean;
+}
+/** The full record behind a transport booking's own screen. */
+export interface TransportDetailDto extends TransportDto {
+  purposes: string[]; needs: string[]; aircraft: string | null;
+  emergencyContact: { name: string; phone: string; relationship: string; accompanies: boolean } | null;
+  canCancel: boolean; cancelledReason: string | null;
 }
 
 export type ActivityTypeDto = "appointment" | "transport" | "diagnosis" | "meal" | "record" | "plan" | "service";

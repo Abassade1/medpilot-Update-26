@@ -25,6 +25,7 @@ export default function BookingSuccessScreen({
   const openDetail = () => {
     if (!detail) return navigation.navigate("MainTabs", { screen: "AppointmentsTab" } as never);
     if (detail.route === "AppointmentDetail") navigation.navigate("AppointmentDetail", { appointmentId: detail.appointmentId });
+    else if (detail.route === "TransportBookingDetail") navigation.navigate("TransportBookingDetail", { transportId: detail.transportId });
     else navigation.navigate("ServiceRequestDetail", { requestId: detail.requestId });
   };
   return (

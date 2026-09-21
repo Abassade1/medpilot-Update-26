@@ -255,4 +255,33 @@ export class ServicesService {
     await this.audit.write({ actorUserId: userId, action: "service.request_cancelled", resourceType: "service_request", resourceId: id });
     return this.getRequest(userId, id);
   }
+
+  /** Operations decision on a pet / specialist request. */
+  async staffDecideRequest(staffId: string, id: string, decision: "confirm" | "cancel", reason?: string) {
+    const [r] = await this.db.select().from(s.serviceRequests)
+      .where(and(eq(s.serviceRequests.id, id), isNull(s.serviceRequests.deletedAt))).limit(1);
+    if (!r) throw AppError.notFound("Request");
+    if (r.status !== "pending") throw new AppError("conflict", "This request has already been decided");
+    await this.db.update(s.serviceRequests).set(
+      decision === "confirm"
+        ? { status: "confirmed", updatedAt: new Date() }
+        : { status: "cancelled", cancelledReason: reason ?? "Declined by the provider", updatedAt: new Date() },
+    ).where(eq(s.serviceRequests.id, id));
+    await this.notifications.notify(r.userId, {
+      type: decision === "confirm" ? "service.confirmed" : "service.cancelled",
+      title: decision === "confirm" ? "Request confirmed" : "Request update",
+      body: decision === "confirm"
+        ? "The provider has confirmed your request. Open the app for the details."
+        : "The provider couldn't take your request. Open the app for details.",
+      deepLink: `medpilot://requests/${id}`,
+    });
+    await this.db.insert(s.activities).values({
+      id: uuidv7(), userId: r.userId, type: "service",
+      title: decision === "confirm" ? "Request confirmed" : "Request cancelled",
+      subtitle: `Reference #${r.reference}`, status: decision === "confirm" ? "booked" : "cancelled",
+      targetType: "service_request", targetId: id,
+    });
+    await this.audit.write({ actorUserId: staffId, actorType: "staff", action: `service.request_${decision}`, resourceType: "service_request", resourceId: id });
+    return this.getRequest(r.userId, id);
+  }
 }

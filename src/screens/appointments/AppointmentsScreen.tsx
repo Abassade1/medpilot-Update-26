@@ -227,12 +227,18 @@ export default function AppointmentsScreen() {
           ))
         ) : (
           (transportQuery.data ?? []).map((t) => (
-            <View key={t.id} style={styles.card}>
+            <TouchableOpacity
+              key={t.id}
+              activeOpacity={0.85}
+              style={styles.card}
+              onPress={() => navigation.navigate("TransportBookingDetail", { transportId: t.id })}
+              accessibilityRole="button"
+              accessibilityLabel={`Transport from ${t.pickup.region ?? t.pickup.country} to ${t.dropoff.region ?? t.dropoff.country}, ${t.status}. View details`}
+            >
               <View style={styles.flightRow}>
                 <View style={styles.flightEnd}>
-                  <Text style={styles.flightCode}>{t.pickup.siteCode ?? "—"}</Text>
-                  <Text style={styles.flightCity}>{t.pickup.region ?? t.pickup.country}</Text>
-                  <Text style={styles.flightTime}>{t.pickup.time ?? "—"}</Text>
+                  <Text style={styles.flightCode} numberOfLines={1}>{t.pickup.city ?? t.pickup.region ?? t.pickup.country}</Text>
+                  <Text style={styles.flightCity} numberOfLines={1}>{t.pickup.city || t.pickup.region ? t.pickup.country : t.pickup.siteType === "airport" ? "Airport" : "Helipad"}</Text>
                 </View>
                 <View style={styles.flightMiddle}>
                   <Text style={styles.flightDuration}>{t.returnTrip ? "Return" : "One way"}</Text>
@@ -245,20 +251,19 @@ export default function AppointmentsScreen() {
                   </View>
                 </View>
                 <View style={[styles.flightEnd, { alignItems: "flex-end" }]}>
-                  <Text style={styles.flightCode}>{t.dropoff.siteCode ?? "—"}</Text>
-                  <Text style={styles.flightCity}>{t.dropoff.region ?? t.dropoff.country}</Text>
-                  <Text style={styles.flightTime}>{t.status}</Text>
+                  <Text style={styles.flightCode} numberOfLines={1}>{t.dropoff.city ?? t.dropoff.region ?? t.dropoff.country}</Text>
+                  <Text style={styles.flightCity} numberOfLines={1}>{t.dropoff.city || t.dropoff.region ? t.dropoff.country : t.dropoff.siteType === "airport" ? "Airport" : "Helipad"}</Text>
                 </View>
               </View>
               <View style={styles.divider} />
               <View style={styles.cardBottom}>
                 <View>
                   <Text style={styles.smallLabel}>Departure Date</Text>
-                  <Text style={styles.bookingId}>{t.pickup.date}</Text>
+                  <Text style={styles.bookingId}>{formatDate(t.pickup.date)}</Text>
                 </View>
                 <View style={{ alignItems: "flex-end" }}>
                   <Text style={styles.smallLabel}>Flight Number</Text>
-                  <Text style={styles.bookingId}>{t.flightNumber ?? "Pending"}</Text>
+                  <Text style={styles.bookingId}>{t.flightNumber ?? "Not assigned yet"}</Text>
                 </View>
               </View>
               <View style={styles.divider} />
@@ -273,8 +278,9 @@ export default function AppointmentsScreen() {
                   <Text style={styles.contactName}>{t.provider.name}</Text>
                   <Text style={styles.providerTags}>{t.provider.tags}</Text>
                 </View>
+                <View style={{ marginLeft: "auto" }}><StatusPill status={t.status} /></View>
               </View>
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </ScrollView>

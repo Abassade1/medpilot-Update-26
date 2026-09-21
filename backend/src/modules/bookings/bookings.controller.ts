@@ -80,6 +80,12 @@ export class BookingsController {
     return this.bookings.getTransport(req.userId!, validate(Uuid, id));
   }
 
+  @HttpCode(200)
+  @Post("transport-bookings/:id/cancel")
+  cancelTransport(@Req() req: Request, @Param("id") id: string) {
+    return this.bookings.cancelTransport(req.userId!, validate(Uuid, id));
+  }
+
   @Get("activities")
   listActivities(@Req() req: Request, @Query() query: unknown) {
     const q = validate(ActivityQ, query);
@@ -95,5 +101,6 @@ apiRoute({ method: "post", path: "/v1/staff/appointments/{id}/{decision}", tag: 
 apiRoute({ method: "post", path: "/v1/transport-bookings", tag: "bookings", summary: "Request medical transport (Idempotency-Key honoured)", auth: true, body: CreateTransportBody });
 apiRoute({ method: "get", path: "/v1/transport-bookings", tag: "bookings", summary: "My transport bookings", auth: true });
 apiRoute({ method: "get", path: "/v1/transport-bookings/{id}", tag: "bookings", summary: "Transport detail", auth: true });
+apiRoute({ method: "post", path: "/v1/transport-bookings/{id}/cancel", tag: "bookings", summary: "Cancel a transport request while it is pending or confirmed", auth: true, status: 200 });
 apiRoute({ method: "get", path: "/v1/activities", tag: "bookings", summary: "Activity feed (keyset paginated, filterable)", auth: true, query: ActivityQ });
 apiRoute({ method: "patch", path: "/v1/appointments/{id}", tag: "bookings", summary: "Reschedule an active appointment (date, time or type)", auth: true, body: RescheduleAppointmentBody });

@@ -20,7 +20,12 @@ export default function PasswordScreen({ navigation, route }: RootScreenProps<"P
     // The API answers the same way whether or not the address has an account, so this can't be used to probe for one.
     endpoints.auth
       .forgotPassword(route.params.email)
-      .then(() => Alert.alert("Check your email", `If ${route.params.email} has an account, we've sent a link to reset the password.`))
+      .then(() =>
+        Alert.alert("Check your email", `If ${route.params.email} has an account, we've sent a link to reset the password.`, [
+          { text: "OK", style: "cancel" },
+          { text: "I have the code", onPress: () => navigation.navigate("ResetPassword", { email: route.params.email }) },
+        ]),
+      )
       .catch((e) => Alert.alert("Couldn't send the email", e instanceof ApiError && e.isOffline ? e.message : "Please try again in a moment."));
   };
 

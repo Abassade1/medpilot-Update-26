@@ -30,10 +30,10 @@ function when(iso: string): string {
 }
 
 /** Deep links are `medpilot://<kind>/<id>`; anything unrecognised has no destination. */
-function destination(url?: string): { screen: "Transport" } | { screen: "AppointmentDetail"; params: { appointmentId: string } } | { screen: "ServiceRequestDetail"; params: { requestId: string } } | null {
+function destination(url?: string): { screen: "TransportBookingDetail"; params: { transportId: string } } | { screen: "AppointmentDetail"; params: { appointmentId: string } } | { screen: "ServiceRequestDetail"; params: { requestId: string } } | null {
   const m = url ? /^medpilot:\/\/(appointments|requests|transport)\/([\w-]+)$/.exec(url) : null;
   if (!m) return null;
-  if (m[1] === "transport") return { screen: "Transport" };
+  if (m[1] === "transport") return { screen: "TransportBookingDetail", params: { transportId: m[2]! } };
   return m[1] === "appointments"
     ? { screen: "AppointmentDetail", params: { appointmentId: m[2]! } }
     : { screen: "ServiceRequestDetail", params: { requestId: m[2]! } };
@@ -49,7 +49,7 @@ export default function NotificationsScreen({ navigation }: RootScreenProps<"Not
     if (!n.read) markRead.mutate([n.id]);
     const dest = destination(n.data?.url);
     if (!dest) return;
-    if (dest.screen === "Transport") navigation.navigate("MainTabs", { screen: "AppointmentsTab" } as never);
+    if (dest.screen === "TransportBookingDetail") navigation.navigate("TransportBookingDetail", dest.params);
     else if (dest.screen === "AppointmentDetail") navigation.navigate("AppointmentDetail", dest.params);
     else navigation.navigate("ServiceRequestDetail", dest.params);
   };

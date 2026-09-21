@@ -91,6 +91,7 @@ export const transportRequests = pgTable(
     contactAccompanies: boolean("contact_accompanies").notNull().default(false),
     status: transportStatus("status").notNull().default("pending"),
     flightNumber: varchar("flight_number", { length: 20 }),
+    cancelledReason: varchar("cancelled_reason", { length: 200 }),
     departAt: timestamp("depart_at", { withTimezone: true }),
     arriveAt: timestamp("arrive_at", { withTimezone: true }),
     ...ts,

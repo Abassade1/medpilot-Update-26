@@ -1,0 +1,1 @@
+ALTER TABLE "transport_requests" ADD COLUMN "cancelled_reason" varchar(200);

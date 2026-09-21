@@ -175,7 +175,11 @@ export default function TravelBookingScreen({
           },
         },
       });
-      navigation.replace("BookingSuccess", { reference: created.reference, kind: "transport" });
+      navigation.replace("BookingSuccess", {
+        reference: created.reference,
+        kind: "transport",
+        detail: { route: "TransportBookingDetail", transportId: created.id },
+      });
     } catch (err) {
       const e = err as ApiError;
       if (e.fields?.pickupDate || e.fields?.pickupTime || e.fields?.pickupCountry) {

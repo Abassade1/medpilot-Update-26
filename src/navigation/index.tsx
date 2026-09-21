@@ -7,6 +7,7 @@ import MainTabs from "./MainTabs";
 import SplashScreen from "../screens/auth/SplashScreen";
 import OnboardingScreen from "../screens/auth/OnboardingScreen";
 import SignInScreen from "../screens/auth/SignInScreen";
+import ResetPasswordScreen from "../screens/auth/ResetPasswordScreen";
 import PasswordScreen from "../screens/auth/PasswordScreen";
 import SignUpEmailScreen from "../screens/auth/SignUpEmailScreen";
 import AboutYouScreen from "../screens/auth/AboutYouScreen";
@@ -39,6 +40,7 @@ import PetRequestScreen from "../screens/services/PetRequestScreen";
 import SpecialistsScreen from "../screens/specialists/SpecialistsScreen";
 import SpecialistProfileScreen from "../screens/specialists/SpecialistProfileScreen";
 import SpecialistRequestScreen from "../screens/specialists/SpecialistRequestScreen";
+import TransportBookingDetailScreen from "../screens/appointments/TransportBookingDetailScreen";
 import AppointmentDetailScreen from "../screens/appointments/AppointmentDetailScreen";
 import RescheduleAppointmentScreen from "../screens/appointments/RescheduleAppointmentScreen";
 import DiagnosisResultScreen from "../screens/aux/DiagnosisResultScreen";
@@ -50,6 +52,12 @@ import { colors } from "../theme";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
+// The reset email links to medpilot://reset?token=…; nothing else is opened from a URL.
+const linking = {
+  prefixes: ["medpilot://"],
+  config: { screens: { ResetPassword: "reset" } },
+};
 
 /**
  * Sends the member back to sign-in whenever an authenticated session ends: signing out, deleting the
@@ -81,13 +89,14 @@ const navTheme = {
 
 export default function RootNavigator() {
   return (
-    <NavigationContainer theme={navTheme} ref={navigationRef}>
+    <NavigationContainer theme={navTheme} ref={navigationRef} linking={linking}>
       <SessionGuard />
       <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="SignIn" component={SignInScreen} />
         <Stack.Screen name="Password" component={PasswordScreen} />
+        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
         <Stack.Screen name="SignUpEmail" component={SignUpEmailScreen} />
         <Stack.Screen name="AboutYou" component={AboutYouScreen} />
         <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
@@ -120,6 +129,7 @@ export default function RootNavigator() {
         <Stack.Screen name="Specialists" component={SpecialistsScreen} />
         <Stack.Screen name="SpecialistProfile" component={SpecialistProfileScreen} />
         <Stack.Screen name="SpecialistRequest" component={SpecialistRequestScreen} />
+        <Stack.Screen name="TransportBookingDetail" component={TransportBookingDetailScreen} />
         <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} />
         <Stack.Screen name="RescheduleAppointment" component={RescheduleAppointmentScreen} />
         <Stack.Screen name="DiagnosisResult" component={DiagnosisResultScreen} />

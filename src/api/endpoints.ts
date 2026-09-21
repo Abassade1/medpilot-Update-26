@@ -5,7 +5,7 @@ import type {
   MealAnalysisDto, MedicalRecordDto, NotificationsDto, PackageCard, PackageDetail,
   PetClinicDto, PlanDto, ProviderCardDto, ProviderDetail, ReferenceData,
   ServiceDto, SetupStatus, SpecialistDetail, SubscriptionDto, TokenPairDto,
-  TransportDto, TriageResultDto, TriageStep, UploadTicket,
+  TransportDto, TransportDetailDto, TriageResultDto, TriageStep, UploadTicket,
   AvailabilityDto, ChatHistoryDto, ChatReplyDto, LocationDto, PetClinicDetail, PreferencesDto,
   ResolveDto, ServiceRequestDto, SpecialistCardDto, SpecialistCategoryDto, SpecialistProfileDto,
 } from "./types";
@@ -131,6 +131,8 @@ export const endpoints = {
     createTransport: (body: Record<string, unknown>, idempotencyKey: string) =>
       api.post<TransportDto>("/v1/transport-bookings", body, { idempotencyKey }),
     transport: () => api.get<TransportDto[]>("/v1/transport-bookings"),
+    transportBooking: (id: string) => api.get<TransportDetailDto>(`/v1/transport-bookings/${id}`),
+    cancelTransport: (id: string) => api.post<TransportDetailDto>(`/v1/transport-bookings/${id}/cancel`),
 
     activities: (params?: { type?: string; cursor?: string; limit?: number }) => {
       const q = new URLSearchParams();

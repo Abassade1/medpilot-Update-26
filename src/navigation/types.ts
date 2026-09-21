@@ -8,6 +8,7 @@ export type RootStackParamList = {
   Onboarding: undefined;
   SignIn: undefined;
   Password: { email: string };
+  ResetPassword: { email?: string; token?: string } | undefined;
   SignUpEmail: undefined;
   AboutYou: { email: string };
   VerifyEmail: undefined;
@@ -32,7 +33,10 @@ export type RootStackParamList = {
         reference?: string;
         kind?: "appointment" | "transport" | "pet" | "specialist";
         /** Where "View details" goes, so the member is never left at a dead end. */
-        detail?: { route: "AppointmentDetail"; appointmentId: string } | { route: "ServiceRequestDetail"; requestId: string };
+        detail?:
+          | { route: "AppointmentDetail"; appointmentId: string }
+          | { route: "ServiceRequestDetail"; requestId: string }
+          | { route: "TransportBookingDetail"; transportId: string };
         headline?: string;
         message?: string;
       }
@@ -43,6 +47,7 @@ export type RootStackParamList = {
   MealReport: { mealId: string };
   Upgrade: undefined;
   AppointmentDetail: { appointmentId: string; notice?: string };
+  TransportBookingDetail: { transportId: string };
   RescheduleAppointment: { appointmentId: string };
   Profile: undefined;
   EditProfile: undefined;

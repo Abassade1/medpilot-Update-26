@@ -32,6 +32,7 @@ import { BillingService } from "./modules/billing/billing.service";
 import { QuotaService } from "./modules/billing/quota.service";
 import { LocationsController } from "./modules/locations/locations.controller";
 import { LocationsService } from "./modules/locations/locations.service";
+import { StaffController } from "./modules/staff/staff.controller";
 import { ServicesController } from "./modules/services/services.controller";
 import { ServicesService } from "./modules/services/services.service";
 import { NotificationsService } from "./modules/notifications/notifications.service";
@@ -45,7 +46,7 @@ const pool = createPool(env.DATABASE_URL);
   ],
   controllers: [
     HealthController, AuthController, UsersController, StorageController,
-    CatalogController, BookingsController, AuxController, BillingController, LocationsController, ServicesController,
+    CatalogController, BookingsController, AuxController, BillingController, LocationsController, ServicesController, StaffController,
   ],
   providers: [
     { provide: Pool, useValue: pool },

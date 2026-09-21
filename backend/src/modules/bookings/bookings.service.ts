@@ -359,6 +359,31 @@ export class BookingsService {
     }
   }
 
+  private static TRANSPORT_ACTIVE = new Set(["pending", "confirmed"]);
+
+  private async transportDetail(t: typeof s.transportRequests.$inferSelect, p: typeof s.transportProviders.$inferSelect) {
+    const [purposes, needs, craft, contact] = await Promise.all([
+      this.db.select({ label: s.transportPurposes.label }).from(s.transportRequestPurposes)
+        .innerJoin(s.transportPurposes, eq(s.transportPurposes.id, s.transportRequestPurposes.purposeId))
+        .where(eq(s.transportRequestPurposes.requestId, t.id)),
+      this.db.select({ label: s.specialNeeds.label }).from(s.transportRequestNeeds)
+        .innerJoin(s.specialNeeds, eq(s.specialNeeds.id, s.transportRequestNeeds.needId))
+        .where(eq(s.transportRequestNeeds.requestId, t.id)),
+      t.aircraftId ? this.db.select({ name: s.aircraft.name }).from(s.aircraft).where(eq(s.aircraft.id, t.aircraftId)).limit(1) : Promise.resolve([]),
+      t.emergencyContactId ? this.db.select().from(s.emergencyContacts).where(eq(s.emergencyContacts.id, t.emergencyContactId)).limit(1) : Promise.resolve([]),
+    ]);
+    const c = contact[0];
+    return {
+      ...this.transportView(t, p),
+      purposes: [...purposes.map((x) => x.label), ...(t.otherPurpose ? [t.otherPurpose] : [])],
+      needs: [...needs.map((x) => x.label), ...(t.otherNeed ? [t.otherNeed] : [])],
+      aircraft: craft[0]?.name ?? null,
+      emergencyContact: c ? { name: `${c.firstName} ${c.lastName}`, phone: c.phoneE164, relationship: c.relationship, accompanies: t.contactAccompanies } : null,
+      canCancel: BookingsService.TRANSPORT_ACTIVE.has(t.status),
+      cancelledReason: t.cancelledReason,
+    };
+  }
+
   private transportView = (
     t: typeof s.transportRequests.$inferSelect,
     p: typeof s.transportProviders.$inferSelect,
@@ -381,15 +406,73 @@ export class BookingsService {
       .innerJoin(s.transportProviders, eq(s.transportProviders.id, s.transportRequests.providerId))
       .where(and(eq(s.transportRequests.userId, userId), isNull(s.transportRequests.deletedAt)))
       .orderBy(desc(s.transportRequests.createdAt)).limit(50);
-    return rows.map(({ t, p }) => this.transportView(t, p));
+    return rows.map(({ t, p }) => ({ ...this.transportView(t, p), canCancel: BookingsService.TRANSPORT_ACTIVE.has(t.status) }));
   }
 
-  async getTransport(userId: string, id: string) {
+  private async loadTransport(id: string) {
     const [row] = await this.db.select({ t: s.transportRequests, p: s.transportProviders })
       .from(s.transportRequests)
       .innerJoin(s.transportProviders, eq(s.transportProviders.id, s.transportRequests.providerId))
       .where(and(eq(s.transportRequests.id, id), isNull(s.transportRequests.deletedAt))).limit(1);
+    return row;
+  }
+
+  async getTransport(userId: string, id: string) {
+    const row = await this.loadTransport(id);
     if (!row || row.t.userId !== userId) throw AppError.notFound("Transport booking");
-    return this.transportView(row.t, row.p);
+    return this.transportDetail(row.t, row.p);
+  }
+
+  async cancelTransport(userId: string, id: string) {
+    const row = await this.loadTransport(id);
+    if (!row || row.t.userId !== userId) throw AppError.notFound("Transport booking");
+    if (!BookingsService.TRANSPORT_ACTIVE.has(row.t.status)) {
+      throw new AppError("conflict", row.t.status === "cancelled"
+        ? "This transport request has already been cancelled."
+        : "A transport that is under way or finished can't be cancelled here. Please contact your coordinator.");
+    }
+    await this.db.update(s.transportRequests)
+      .set({ status: "cancelled", cancelledReason: "Cancelled by member", updatedAt: new Date() })
+      .where(eq(s.transportRequests.id, id));
+    await this.db.insert(s.activities).values({
+      id: uuidv7(), userId, type: "transport", title: "Transport cancelled",
+      subtitle: `Reference #${row.t.reference}`, status: "cancelled", targetType: "transport", targetId: id,
+    });
+    await this.quota.refund(userId, "evacuation");
+    await this.audit.write({ actorUserId: userId, action: "booking.transport_cancelled", resourceType: "transport", resourceId: id });
+    return this.getTransport(userId, id);
+  }
+
+  async staffDecideTransport(staffId: string, id: string, decision: "confirm" | "cancel", input: z.infer<typeof StaffDecisionBody>) {
+    const row = await this.loadTransport(id);
+    if (!row) throw AppError.notFound("Transport booking");
+    if (row.t.status !== "pending") throw new AppError("conflict", "This request has already been decided");
+    if (decision === "confirm") {
+      await this.db.update(s.transportRequests).set({
+        status: "confirmed", flightNumber: input.flightNumber ?? null,
+        departAt: input.scheduledAt ? new Date(input.scheduledAt) : null, updatedAt: new Date(),
+      }).where(eq(s.transportRequests.id, id));
+    } else {
+      await this.db.update(s.transportRequests).set({
+        status: "cancelled", cancelledReason: input.reason ?? "Declined by operations", updatedAt: new Date(),
+      }).where(eq(s.transportRequests.id, id));
+      await this.quota.refund(row.t.userId, "evacuation");
+    }
+    await this.notifications.notify(row.t.userId, {
+      type: decision === "confirm" ? "transport.confirmed" : "transport.cancelled",
+      title: decision === "confirm" ? "Transport confirmed" : "Transport update",
+      body: decision === "confirm"
+        ? "Your medical transport has been confirmed. Open the app for the details."
+        : "We couldn't confirm your transport request. Open the app for details.",
+      deepLink: `medpilot://transport/${id}`,
+    });
+    await this.db.insert(s.activities).values({
+      id: uuidv7(), userId: row.t.userId, type: "transport",
+      title: decision === "confirm" ? "Transport confirmed" : "Transport cancelled",
+      subtitle: `Reference #${row.t.reference}`, status: decision === "confirm" ? "booked" : "cancelled",
+      targetType: "transport", targetId: id,
+    });
+    await this.audit.write({ actorUserId: staffId, actorType: "staff", action: `booking.transport_${decision}`, resourceType: "transport", resourceId: id });
+    return this.transportDetail((await this.loadTransport(id))!.t, row.p);
   }
 }
