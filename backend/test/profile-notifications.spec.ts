@@ -168,3 +168,29 @@ describe("notifications", () => {
     await (await http()).get("/v1/notifications").expect(401);
   });
 });
+
+describe("account deletion", () => {
+  it("ends every session, refuses the old credentials and anonymises the profile", async () => {
+    const email = `deleteme${Date.now()}@medpilot.test`;
+    const s = await registerUser({ email });
+    await (await http()).delete("/v1/me").set("Authorization", s.auth).expect(202);
+
+    // The refresh token is revoked and the credentials no longer work.
+    await (await http()).post("/v1/auth/refresh").send({ refreshToken: s.refreshToken }).expect(401);
+    await (await http()).post("/v1/auth/login").send({ email, password: "password123" }).expect(401);
+
+    const row = (await pool.query("select email, status, password_hash from users where id = $1", [s.userId])).rows[0];
+    expect(row.status).toBe("deleted");
+    expect(row.password_hash).toBeNull();
+    expect(row.email).not.toBe(email);
+    const profile = (await pool.query("select first_name, phone_e164 from user_profiles where user_id = $1", [s.userId])).rows[0];
+    expect(profile.first_name).toBe("Deleted");
+  });
+
+  it("frees the email address for a new sign-up", async () => {
+    const email = `reuse${Date.now()}@medpilot.test`;
+    const s = await registerUser({ email });
+    await (await http()).delete("/v1/me").set("Authorization", s.auth).expect(202);
+    await registerUser({ email });
+  });
+});
