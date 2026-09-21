@@ -368,7 +368,7 @@ export default function TravelBookingScreen({
             ))}
             <Text style={[styles.groupLabel, { marginTop: 8 }]}>Others(Please Specify)</Text>
             <TextField
-              placeholder="Other purpose"
+              placeholder="Other need"
               value={otherNeed}
               onChangeText={setOtherNeed}
               autoCapitalize="sentences"

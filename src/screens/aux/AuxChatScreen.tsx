@@ -197,10 +197,13 @@ export default function AuxChatScreen() {
         {inConversation ? (
           <>
             {messages.map((m, i) => (
-              <View key={m.id} style={{ alignItems: m.role === "user" ? "flex-end" : "flex-start" }}>
-                <View style={[styles.bubble, m.role === "user" ? styles.userBubble : styles.botBubble, m.urgent && styles.urgentBubble]}>
-                  {m.urgent ? <Text style={styles.urgentTag}>Urgent</Text> : null}
-                  <Text style={[styles.bubbleText, m.role === "user" && { color: "#fff" }]} selectable>{m.text}</Text>
+              <View key={m.id}>
+                {/* A row (not alignItems) so a long user message wraps inside its bubble instead of clipping. */}
+                <View style={{ flexDirection: "row", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+                  <View style={[styles.bubble, m.role === "user" ? styles.userBubble : styles.botBubble, m.urgent && styles.urgentBubble]}>
+                    {m.urgent ? <Text style={styles.urgentTag}>Urgent</Text> : null}
+                    <Text style={[styles.bubbleText, m.role === "user" && { color: "#fff" }]}>{m.text}</Text>
+                  </View>
                 </View>
                 {m.failed ? (
                   <TouchableOpacity onPress={() => void send(m.text, m.id)} accessibilityRole="button" accessibilityLabel="Retry sending this message">

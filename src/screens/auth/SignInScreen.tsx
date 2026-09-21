@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   TextInput,
+  Alert,
 } from "react-native";
 import ScreenContainer from "../../components/ScreenContainer";
 import LogoMark from "../../components/LogoMark";
@@ -21,6 +22,10 @@ import { RootScreenProps } from "../../navigation/types";
 
 export default function SignInScreen({ navigation }: RootScreenProps<"SignIn">) {
   const { adopt } = useSession();
+  // Social sign-in has no backend yet. It must not pretend to work (it used to open the app with no
+  // session), so it says so and points to email.
+  const socialUnavailable = (name: string) =>
+    Alert.alert(`${name} sign-in isn't available yet`, "Please continue with your email address instead.");
   const [email, setEmail] = useState("");
   const [touched, setTouched] = useState(false);
   const [serverError, setServerError] = useState<string | undefined>();
@@ -62,9 +67,9 @@ export default function SignInScreen({ navigation }: RootScreenProps<"SignIn">) 
           <Text style={styles.subtitle}>Sign in to your account</Text>
 
           <View style={styles.socials}>
-            <SocialButton provider="google" mode="in" onPress={() => navigation.replace("MainTabs")} />
-            <SocialButton provider="amazon" mode="in" onPress={() => navigation.replace("MainTabs")} />
-            <SocialButton provider="apple" mode="in" onPress={() => navigation.replace("MainTabs")} />
+            <SocialButton provider="google" mode="in" onPress={() => socialUnavailable("Google")} />
+            <SocialButton provider="amazon" mode="in" onPress={() => socialUnavailable("Amazon")} />
+            <SocialButton provider="apple" mode="in" onPress={() => socialUnavailable("Apple")} />
           </View>
 
           <View style={styles.dividerRow}>
