@@ -1,7 +1,7 @@
 import React from "react";
 import { View, StyleSheet, Modal, Pressable, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, radii, shadows } from "../theme";
+import { colors, MAX_CONTENT_WIDTH, radii, shadows } from "../theme";
 
 interface Props {
   visible: boolean;
@@ -33,7 +33,7 @@ export default function BottomSheet({ visible, onClose, children, maxHeightRatio
 }
 
 const styles = StyleSheet.create({
-  backdropWrap: { flex: 1, justifyContent: "flex-end" },
+  backdropWrap: { flex: 1, justifyContent: "flex-end", alignItems: "center" },
   backdrop: {
     position: "absolute",
     top: 0,
@@ -43,6 +43,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.overlay,
   },
   sheet: {
+    width: "100%",
+    maxWidth: MAX_CONTENT_WIDTH,
     backgroundColor: "#fff",
     borderTopLeftRadius: radii.xl,
     borderTopRightRadius: radii.xl,

@@ -83,3 +83,6 @@ export const shadows = {
     default: {},
   }),
 } as const;
+
+/** Widest a screen's content grows. Phones are narrower, so this only takes effect on tablets. */
+export const MAX_CONTENT_WIDTH = 560;

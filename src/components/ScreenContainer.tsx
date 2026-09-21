@@ -1,7 +1,7 @@
 import React from "react";
 import { View, ScrollView, StyleSheet, ViewStyle, StatusBar } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "../theme";
+import { colors, MAX_CONTENT_WIDTH } from "../theme";
 
 interface Props {
   children: React.ReactNode;
@@ -32,7 +32,9 @@ export default function ScreenContainer({
 
   return (
     <View style={[styles.root, { backgroundColor }, padding, style]}>
-      <StatusBar barStyle={barStyle} />
+      <StatusBar barStyle={barStyle} backgroundColor={backgroundColor} />
+      {/* On tablets the content stays a readable, phone-proportioned column instead of stretching edge to edge. */}
+      <View style={styles.column}>
       {scroll ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -44,11 +46,13 @@ export default function ScreenContainer({
       ) : (
         children
       )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  column: { flex: 1, width: "100%", maxWidth: MAX_CONTENT_WIDTH, alignSelf: "center" },
   scrollContent: { flexGrow: 1, paddingBottom: 32 },
 });

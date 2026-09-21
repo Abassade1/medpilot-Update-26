@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, StyleProp, ViewStyle } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, ScrollView, StyleProp, ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radii, spacing, shadows } from "../theme";
 
@@ -49,6 +49,7 @@ export default function SelectField({
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
           <View style={styles.menu}>
+            <ScrollView showsVerticalScrollIndicator={false}>
             {options.map((opt) => (
               <TouchableOpacity
                 key={opt}
@@ -67,6 +68,7 @@ export default function SelectField({
                 {opt === value && <Ionicons name="checkmark" size={16} color={colors.primary} />}
               </TouchableOpacity>
             ))}
+            </ScrollView>
           </View>
         </Pressable>
       </Modal>
@@ -94,9 +96,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.overlay,
     justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 32,
   },
   menu: {
+    // Centered and capped so it isn't a full-width slab on tablets; scrolls when the list is long.
+    width: "100%",
+    maxWidth: 420,
+    maxHeight: "70%",
     backgroundColor: "#fff",
     borderRadius: radii.md,
     paddingVertical: 6,

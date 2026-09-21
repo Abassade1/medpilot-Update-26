@@ -23,14 +23,16 @@ import { useHome, useMe, useNotifications } from "../../api/queries";
 import ListStateView from "../../components/ListStateView";
 import { openService } from "../../utils/serviceRoutes";
 import type { ServiceDto } from "../../api/types";
-import { colors, radii, spacing } from "../../theme";
+import { colors, MAX_CONTENT_WIDTH, radii, spacing } from "../../theme";
 
 export default function HomeScreen() {
   const navigation = useNavigation();
   const home = useHome();
   const me = useMe();
   const notifications = useNotifications();
-  const { width } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
+  // Card sizes scale from the content column, which is capped on tablets.
+  const width = Math.min(windowWidth, MAX_CONTENT_WIDTH);
   const heroWidth = width - spacing.lg * 2;
   // Card geometry is kept proportional to the 430pt Figma frame so the
   // composition holds its designed ratios on any screen width.
