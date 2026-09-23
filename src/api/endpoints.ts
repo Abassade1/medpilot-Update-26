@@ -118,6 +118,8 @@ export const endpoints = {
     patch: (body: Record<string, unknown>) => api.patch<{ provider: ProviderProfileDto }>("/v1/provider", body),
     submitVerification: (licenseInfo: string) => api.post<{ provider: ProviderProfileDto }>("/v1/provider/verification", { licenseInfo }),
     dashboard: () => api.get<ProviderDashboardDto>("/v1/provider/dashboard"),
+    imageUploadUrl: (mimeType: string, sizeBytes: number) => api.post<UploadTicket>("/v1/provider/images/upload-url", { mimeType, sizeBytes }),
+    confirmImage: (fileId: string) => api.post<{ url: string }>(`/v1/provider/images/${fileId}/confirm`),
     listings: (params?: { kind?: string; status?: string }) => {
       const q = new URLSearchParams();
       if (params?.kind) q.set("kind", params.kind);

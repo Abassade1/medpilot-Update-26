@@ -8,6 +8,7 @@ import SelectField from "../../components/SelectField";
 import CheckRow from "../../components/CheckRow";
 import DynamicField from "../../components/DynamicField";
 import StatusPill from "../../components/StatusPill";
+import { ImagePickerGallery } from "../../components/ImagePickerField";
 import ListStateView from "../../components/ListStateView";
 import { useListingAction, useMyProvider, useProviderListing, useProviderListings, useSaveListing, useTaxonomy } from "../../api/queries";
 import { ApiError } from "../../api/errors";
@@ -20,12 +21,12 @@ interface Form {
   price: string; priceType: string; duration: string; capacity: string;
   locationModes: string[]; country: string; region: string; city: string; radius: string;
   requirements: string; preparation: string; cancellationPolicy: string; terms: string;
-  attributes: Record<string, unknown>; includes: { label: string; listingId?: string }[]; images: string;
+  attributes: Record<string, unknown>; includes: { label: string; listingId?: string }[]; images: string[];
 }
 const empty: Form = {
   name: "", category: "", subcategory: "", description: "", price: "", priceType: "fixed", duration: "", capacity: "1",
   locationModes: [], country: "", region: "", city: "", radius: "", requirements: "", preparation: "", cancellationPolicy: "", terms: "",
-  attributes: {}, includes: [], images: "",
+  attributes: {}, includes: [], images: [],
 };
 
 export default function ListingFormScreen({ navigation, route }: RootScreenProps<"ListingForm">) {
@@ -56,7 +57,7 @@ export default function ListingFormScreen({ navigation, route }: RootScreenProps
         price: centsToDollars(l.priceAmount), priceType: l.priceType, duration: l.durationMinutes ? String(l.durationMinutes) : "",
         capacity: String(l.capacity), locationModes: l.locationModes, country: l.country ?? "", region: l.region ?? "", city: l.city ?? "",
         radius: l.serviceRadiusKm ? String(l.serviceRadiusKm) : "", requirements: l.requirements, preparation: l.preparation,
-        cancellationPolicy: l.cancellationPolicy, terms: l.terms, attributes: l.attributes, includes: l.includes, images: l.images.join("\n"),
+        cancellationPolicy: l.cancellationPolicy, terms: l.terms, attributes: l.attributes, includes: l.includes, images: l.images,
       });
     }
   }, [l]);
@@ -95,7 +96,7 @@ export default function ListingFormScreen({ navigation, route }: RootScreenProps
       locationModes: form.locationModes, country: form.country.trim(), region: form.region.trim(), city: form.city.trim(),
       serviceRadiusKm: num(form.radius), requirements: form.requirements.trim(), preparation: form.preparation.trim(),
       cancellationPolicy: form.cancellationPolicy.trim(), terms: form.terms.trim(), attributes: attrs,
-      includes: form.includes, images: form.images.split(/\s+/).filter(Boolean),
+      includes: form.includes, images: form.images,
     };
   };
 
@@ -185,7 +186,7 @@ export default function ListingFormScreen({ navigation, route }: RootScreenProps
             <TextField label="Preparation" optional value={form.preparation} onChangeText={set("preparation")} multiline />
             <TextField label="Cancellation policy" optional value={form.cancellationPolicy} onChangeText={set("cancellationPolicy")} multiline />
             <TextField label="Terms and conditions" optional value={form.terms} onChangeText={set("terms")} multiline />
-            <TextField label="Image links (https, one per line)" optional value={form.images} onChangeText={set("images")} multiline autoCapitalize="none" error={err("images")} />
+            <ImagePickerGallery label="Photos" values={form.images} onChange={set("images")} onError={setFormError} />
           </View>
 
           {formError ? <Text style={styles.err} accessibilityLiveRegion="polite">{formError}</Text> : null}

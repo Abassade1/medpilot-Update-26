@@ -157,11 +157,23 @@ export class StorageService {
     return `${this.env.API_PUBLIC_URL}/v1/files/${token}`;
   }
 
-  async readObject(token: string): Promise<{ buf: Buffer; mime: string }> {
+  /**
+   * Public-bucket assets (provider logos, listing photos) are shown to any member browsing the
+   * catalog, indefinitely — a 5-minute signed link is the wrong shape for that. The token still
+   * carries the file's identity and MIME/size so `readObject` verifies it the same way; only the
+   * expiry is effectively permanent, matching a real CDN URL.
+   */
+  publicUrl(f: { id: string; bucket: string; objectKey: string; mimeType: string; sizeBytes: number }): string {
+    if (f.bucket !== BUCKETS.public) throw new AppError("bad_request", "Not a public file");
+    const token = this.sign({ f: f.id, b: f.bucket, k: f.objectKey, m: f.mimeType, z: f.sizeBytes, exp: Date.now() + 315_360_000_000, op: "get" });
+    return `${this.env.API_PUBLIC_URL}/v1/files/${token}`;
+  }
+
+  async readObject(token: string): Promise<{ buf: Buffer; mime: string; bucket: string }> {
     const t = this.verify(token, "get");
     const buf = await this.store.get(this.physical(t.b), t.k);
     if (!buf) throw AppError.notFound("File");
-    return { buf, mime: t.m };
+    return { buf, mime: t.m, bucket: t.b };
   }
 
   /** Two-phase delete: caller soft-deletes the row; object removal here. */

@@ -1,11 +1,17 @@
 import { z } from "zod";
+import { loadEnv } from "../../config/env";
 import { LOCATION_MODES, PRICE_TYPES, PROVIDER_TYPES } from "./taxonomy";
 
 const text = (max: number) => z.string().trim().max(max);
 const optText = (max: number) => text(max).optional();
 const HHMM = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM (24-hour)");
 const Day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
-const httpsUrl = z.string().trim().url("Enter a full web address").refine((u) => u.startsWith("https://"), "Images must use https");
+// Either an https link the provider pasted in, or one of our own uploaded-image links (which is
+// http in local dev only — API_PUBLIC_URL is required to be https everywhere it matters, see
+// assertDeployableDrivers — so this never opens the door to a random pasted http:// image).
+const ownFileUrl = () => `${loadEnv().API_PUBLIC_URL}/v1/files/`;
+const httpsUrl = z.string().trim().url("Enter a full web address")
+  .refine((u) => u.startsWith("https://") || u.startsWith(ownFileUrl()), "Images must use https");
 
 export const ProviderTypeCode = z.enum(Object.keys(PROVIDER_TYPES) as [string, ...string[]]);
 
@@ -106,6 +112,11 @@ export const ListingsQuery = z.object({
   kind: z.enum(["service", "package"]).optional(),
   status: z.enum(["draft", "review", "published", "unpublished", "archived"]).optional(),
 });
+export const ImageUploadUrlBody = z.object({
+  mimeType: z.enum(["image/jpeg", "image/png"]),
+  sizeBytes: z.number().int().positive(),
+});
+
 export const SlotsQuery = z.object({ date: Day });
 export const BookListingBody = z.object({
   date: Day,

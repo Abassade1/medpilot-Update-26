@@ -9,8 +9,9 @@ import { AppError } from "../../common/errors";
 import { containsPattern } from "../../common/like";
 import { AuditService } from "../auth/audit.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { BUCKETS, StorageService } from "../storage/storage.service";
 import {
-  AvailabilityBody, BookListingBody, CreateListingBody, CreateProviderBody, DiscoverQuery, ListingsQuery,
+  AvailabilityBody, BookListingBody, CreateListingBody, CreateProviderBody, DiscoverQuery, ImageUploadUrlBody, ListingsQuery,
   PatchListingBody, PatchProviderBody,
 } from "./vendors.schemas";
 import { categoryLabel, fieldsFor, LOCATION_MODES, PRICE_TYPES, PROVIDER_TYPES, typeOf } from "./taxonomy";
@@ -36,7 +37,30 @@ export class VendorsService {
     @Inject("DB") private readonly db: Db,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
+    private readonly storage: StorageService,
   ) {}
+
+  // ---- provider & listing images ---------------------------------------------------------------------
+  private static readonly MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
+  /**
+   * Shared by the provider-profile logo/cover picker and the listing-images picker: both are just
+   * "give me a public URL for this picture", and where it ends up (logoUrl, coverUrl, one entry of
+   * a listing's images[]) is entirely a client-side choice made after the upload completes.
+   */
+  async imageUploadUrl(userId: string, input: z.infer<typeof ImageUploadUrlBody>) {
+    return this.storage.createUploadTicket({
+      ownerUserId: userId, bucket: BUCKETS.public,
+      mimeType: input.mimeType, sizeBytes: input.sizeBytes,
+      maxBytes: VendorsService.MAX_IMAGE_BYTES,
+      allowed: ["image/jpeg", "image/png"],
+    });
+  }
+
+  async confirmImage(userId: string, fileId: string) {
+    const file = await this.storage.assertStored(fileId, userId);
+    return { url: this.storage.publicUrl(file) };
+  }
 
   // ---- provider profile -------------------------------------------------------------------------------
   private async mine(userId: string): Promise<Provider | null> {

@@ -86,3 +86,22 @@ export const api = {
   put: <T>(path: string, body?: unknown) => request<T>(path, { method: "PUT", body }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };
+
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
+/** Two-phase upload (presigned PUT, then confirm) used for provider logos, covers and listing photos. */
+export async function uploadProviderImage(file: File): Promise<string> {
+  if (file.type !== "image/jpeg" && file.type !== "image/png") {
+    throw new ApiError("Please choose a JPEG or PNG image.", 415, "unsupported_type");
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    throw new ApiError(`Images must be under ${MAX_IMAGE_BYTES / 1024 / 1024} MB.`, 413, "file_too_large");
+  }
+  const ticket = await api.post<{ fileId: string; uploadUrl: string }>("/v1/provider/images/upload-url", {
+    mimeType: file.type, sizeBytes: file.size,
+  });
+  const put = await fetch(ticket.uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+  if (!put.ok) throw new ApiError("That upload didn't go through. Please try again.", put.status);
+  const { url } = await api.post<{ url: string }>(`/v1/provider/images/${ticket.fileId}/confirm`);
+  return url;
+}

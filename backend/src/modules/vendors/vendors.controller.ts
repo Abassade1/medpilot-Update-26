@@ -9,7 +9,7 @@ import { VendorsService } from "./vendors.service";
 import { taxonomyForClient } from "./taxonomy";
 import {
   AvailabilityBody, BookListingBody, BookingsQuery, CreateListingBody, CreateProviderBody, DecisionBody, DiscoverQuery,
-  ListingsQuery, PatchListingBody, PatchProviderBody, SlotsQuery, VerificationBody,
+  ImageUploadUrlBody, ListingsQuery, PatchListingBody, PatchProviderBody, SlotsQuery, VerificationBody,
 } from "./vendors.schemas";
 
 const Uuid = z.string().uuid();
@@ -27,6 +27,12 @@ export class ProviderController {
   @HttpCode(200) @Post("verification")
   verification(@Req() req: Request, @Body() body: unknown) { return this.vendors.submitVerification(req.userId!, validate(VerificationBody, body).licenseInfo); }
   @Get("dashboard") dashboard(@Req() req: Request) { return this.vendors.dashboard(req.userId!); }
+
+  @Post("images/upload-url") imageUploadUrl(@Req() req: Request, @Body() body: unknown) {
+    return this.vendors.imageUploadUrl(req.userId!, validate(ImageUploadUrlBody, body));
+  }
+  @HttpCode(200) @Post("images/:fileId/confirm")
+  confirmImage(@Req() req: Request, @Param("fileId") fileId: string) { return this.vendors.confirmImage(req.userId!, validate(Uuid, fileId)); }
 
   @Get("listings") list(@Req() req: Request, @Query() q: unknown) { return this.vendors.listMine(req.userId!, validate(ListingsQuery, q)); }
   @Post("listings") createListing(@Req() req: Request, @Body() body: unknown) { return this.vendors.createListing(req.userId!, validate(CreateListingBody, body)); }
@@ -95,6 +101,8 @@ apiRoute({ method: "post", path: "/v1/provider", tag: A, summary: "Create my pro
 apiRoute({ method: "patch", path: "/v1/provider", tag: A, summary: "Update my provider profile", auth: true, body: PatchProviderBody });
 apiRoute({ method: "post", path: "/v1/provider/verification", tag: A, summary: "Submit licence details for verification", auth: true, body: VerificationBody, status: 200 });
 apiRoute({ method: "get", path: "/v1/provider/dashboard", tag: A, summary: "Provider dashboard figures", auth: true });
+apiRoute({ method: "post", path: "/v1/provider/images/upload-url", tag: A, summary: "Phase 1: presigned upload for a logo/cover/listing photo", auth: true, body: ImageUploadUrlBody });
+apiRoute({ method: "post", path: "/v1/provider/images/{fileId}/confirm", tag: A, summary: "Phase 2: get the public URL for an uploaded image", auth: true, status: 200 });
 apiRoute({ method: "get", path: "/v1/provider/listings", tag: A, summary: "My services and packages", auth: true, query: ListingsQuery });
 apiRoute({ method: "post", path: "/v1/provider/listings", tag: A, summary: "Create a service or package (draft)", auth: true, body: CreateListingBody });
 apiRoute({ method: "get", path: "/v1/provider/listings/{id}", tag: A, summary: "One of my listings", auth: true });

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { TextField, SelectField } from "../components/Field";
+import { ImageSlot } from "../components/ImageField";
 import StatusPill from "../components/StatusPill";
 import { useMyProvider, useSaveProvider, useSubmitVerification, useTaxonomy } from "../lib/queries";
 import { ApiError } from "../lib/api";
@@ -95,8 +96,8 @@ export default function Profile() {
             <TextField label="City" value={form.city} onChange={set("city")} optional error={errors.city} />
             <TextField label="Operating hours" value={form.operatingHours} onChange={set("operatingHours")} optional />
             <TextField label="Languages (comma separated)" value={form.languages} onChange={set("languages")} optional />
-            <TextField label="Logo image link (https)" value={form.logoUrl} onChange={set("logoUrl")} optional />
-            <TextField label="Cover image link (https)" value={form.coverUrl} onChange={set("coverUrl")} optional />
+            <ImageSlot label="Logo" value={form.logoUrl || null} onChange={(url) => set("logoUrl")(url ?? "")} onError={setFormError} />
+            <ImageSlot label="Cover photo" value={form.coverUrl || null} onChange={(url) => set("coverUrl")(url ?? "")} onError={setFormError} />
           </div>
           <TextField label="Service areas" value={form.serviceAreas} onChange={set("serviceAreas")} textarea optional />
           <TextField label="Certifications" value={form.certifications} onChange={set("certifications")} textarea optional />

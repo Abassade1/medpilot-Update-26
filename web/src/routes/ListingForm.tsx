@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { TextField, SelectField, CheckField } from "../components/Field";
 import DynamicField from "../components/DynamicField";
+import { ImageGallery } from "../components/ImageField";
 import StatusPill from "../components/StatusPill";
 import { useListingAction, useListings, useMyProvider, useSaveListing, useTaxonomy } from "../lib/queries";
 import { useListing } from "../lib/queries";
@@ -13,12 +14,12 @@ interface Form {
   price: string; priceType: string; duration: string; capacity: string;
   locationModes: string[]; country: string; region: string; city: string; radius: string;
   requirements: string; preparation: string; cancellationPolicy: string; terms: string;
-  attributes: Record<string, unknown>; includes: { label: string; listingId?: string }[]; images: string;
+  attributes: Record<string, unknown>; includes: { label: string; listingId?: string }[]; images: string[];
 }
 const empty: Form = {
   name: "", category: "", subcategory: "", description: "", price: "", priceType: "fixed", duration: "", capacity: "1",
   locationModes: [], country: "", region: "", city: "", radius: "", requirements: "", preparation: "", cancellationPolicy: "", terms: "",
-  attributes: {}, includes: [], images: "",
+  attributes: {}, includes: [], images: [],
 };
 
 export default function ListingForm({ kind }: { kind: "service" | "package" }) {
@@ -50,7 +51,7 @@ export default function ListingForm({ kind }: { kind: "service" | "package" }) {
         price: centsToDollars(l.priceAmount), priceType: l.priceType, duration: l.durationMinutes ? String(l.durationMinutes) : "",
         capacity: String(l.capacity), locationModes: l.locationModes, country: l.country ?? "", region: l.region ?? "", city: l.city ?? "",
         radius: l.serviceRadiusKm ? String(l.serviceRadiusKm) : "", requirements: l.requirements, preparation: l.preparation,
-        cancellationPolicy: l.cancellationPolicy, terms: l.terms, attributes: l.attributes, includes: l.includes, images: l.images.join("\n"),
+        cancellationPolicy: l.cancellationPolicy, terms: l.terms, attributes: l.attributes, includes: l.includes, images: l.images,
       });
     }
   }, [l]);
@@ -95,7 +96,7 @@ export default function ListingForm({ kind }: { kind: "service" | "package" }) {
       locationModes: form.locationModes, country: form.country.trim(), region: form.region.trim(), city: form.city.trim(),
       serviceRadiusKm: num(form.radius), requirements: form.requirements.trim(), preparation: form.preparation.trim(),
       cancellationPolicy: form.cancellationPolicy.trim(), terms: form.terms.trim(), attributes: attrs,
-      includes: form.includes, images: form.images.split(/\s+/).filter(Boolean),
+      includes: form.includes, images: form.images,
     };
   };
 
@@ -196,7 +197,7 @@ export default function ListingForm({ kind }: { kind: "service" | "package" }) {
             <TextField label="Preparation" optional value={form.preparation} onChange={set("preparation")} textarea />
             <TextField label="Cancellation policy" optional value={form.cancellationPolicy} onChange={set("cancellationPolicy")} textarea />
             <TextField label="Terms and conditions" optional value={form.terms} onChange={set("terms")} textarea />
-            <TextField label="Image links (https, one per line)" optional value={form.images} onChange={set("images")} textarea error={err("images")} />
+            <ImageGallery label="Photos" values={form.images} onChange={set("images")} onError={setFormError} />
           </div>
         </fieldset>
 

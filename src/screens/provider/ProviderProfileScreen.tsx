@@ -6,6 +6,7 @@ import Button from "../../components/Button";
 import TextField from "../../components/TextField";
 import SelectField from "../../components/SelectField";
 import StatusPill from "../../components/StatusPill";
+import { ImagePickerSlot } from "../../components/ImagePickerField";
 import ListStateView from "../../components/ListStateView";
 import { useMyProvider, useSaveProvider, useSubmitVerification, useTaxonomy } from "../../api/queries";
 import { ApiError } from "../../api/errors";
@@ -107,8 +108,8 @@ export default function ProviderProfileScreen({ navigation }: RootScreenProps<"P
           {f("operatingHours", "Operating hours")}
           {f("languages", "Languages (comma separated)")}
           {f("certifications", "Certifications", { multiline: true })}
-          {f("logoUrl", "Logo image link (https)", { autoCapitalize: "none", keyboardType: "url" })}
-          {f("coverUrl", "Cover image link (https)", { autoCapitalize: "none", keyboardType: "url" })}
+          <ImagePickerSlot label="Logo" value={form.logoUrl || null} onChange={(url) => set("logoUrl")(url ?? "")} onError={setFormError} />
+          <ImagePickerSlot label="Cover photo" value={form.coverUrl || null} onChange={(url) => set("coverUrl")(url ?? "")} onError={setFormError} />
           {formError ? <Text style={styles.err} accessibilityLiveRegion="polite">{formError}</Text> : null}
           {msg ? <Text style={styles.ok} accessibilityLiveRegion="polite">{msg}</Text> : null}
           <Button label={isNew ? "Create provider profile" : "Save profile"} variant="pill" onPress={onSave} loading={save.isPending} disabled={save.isPending || (isNew && !form.type)} style={{ marginTop: 10 }} />
