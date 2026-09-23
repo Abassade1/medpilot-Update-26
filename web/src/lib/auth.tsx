@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { api, isSignedIn, onSessionChange, setSession } from "./api";
+import { api, currentRole, isSignedIn, onSessionChange, setSession } from "./api";
 import type { AuthResponse } from "./types";
 
 interface AuthState {
   signedIn: boolean;
+  isStaff: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -11,8 +12,9 @@ const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [signedIn, setSignedIn] = useState(isSignedIn());
+  const [role, setRole] = useState(currentRole());
   useEffect(() => {
-    const unsubscribe = onSessionChange(() => setSignedIn(isSignedIn()));
+    const unsubscribe = onSessionChange(() => { setSignedIn(isSignedIn()); setRole(currentRole()); });
     return unsubscribe;
   }, []);
 
@@ -22,7 +24,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
   const logout = () => setSession(null);
 
-  return <AuthContext.Provider value={{ signedIn, login, logout }}>{children}</AuthContext.Provider>;
+  const isStaff = role === "staff" || role === "admin";
+  return <AuthContext.Provider value={{ signedIn, isStaff, login, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

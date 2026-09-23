@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 import type {
-  ListingDetailFull, ListingDto, NotificationsDto, ProviderAvailabilityDto, ProviderBookingDto, ProviderDashboardDto, ProviderProfileDto, Taxonomy,
+  ListingDetailFull, ListingDto, NotificationsDto, ProviderAvailabilityDto, ProviderBookingDto, ProviderDashboardDto, ProviderProfileDto,
+  StaffQueueDto, Taxonomy,
 } from "./types";
 
 const qk = {
@@ -102,5 +103,24 @@ export function useBookingAction(id: string) {
     mutationFn: ({ action, reason }: { action: "confirm" | "decline" | "complete" | "cancel"; reason?: string }) =>
       api.post<ProviderBookingDto>(`/v1/provider/bookings/${id}/${action}`, reason ? { reason } : {}),
     onSuccess: (b) => { qc.setQueryData(qk.booking(id), b); void qc.invalidateQueries({ queryKey: ["bookings"] }); refresh(qc); },
+  });
+}
+
+// ---- staff review (verify providers, approve/reject listings) --------------------------------------
+export const useStaffQueue = () => useQuery({ queryKey: ["staff", "queue"], queryFn: () => api.get<StaffQueueDto>("/v1/staff/vendor-queue"), staleTime: 10_000 });
+export function useDecideProvider() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, decision, reason }: { id: string; decision: "verify" | "reject"; reason?: string }) =>
+      api.post(`/v1/staff/providers/${id}/${decision}`, reason ? { reason } : {}),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["staff", "queue"] }),
+  });
+}
+export function useDecideListing() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, decision, reason }: { id: string; decision: "approve" | "reject"; reason?: string }) =>
+      api.post(`/v1/staff/listings/${id}/${decision}`, reason ? { reason } : {}),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["staff", "queue"] }),
   });
 }

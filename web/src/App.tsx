@@ -13,10 +13,18 @@ import Bookings from "./routes/Bookings";
 import BookingDetail from "./routes/BookingDetail";
 import Notifications from "./routes/Notifications";
 import Settings from "./routes/Settings";
+import StaffReview from "./routes/StaffReview";
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { signedIn } = useAuth();
   return signedIn ? <>{children}</> : <Navigate to="/login" replace />;
+}
+
+// The backend's @Roles guard is the real boundary; this just keeps a non-staff account from
+// landing on a page full of "That didn't work" errors when every action 403s.
+function StaffOnly({ children }: { children: React.ReactNode }) {
+  const { isStaff } = useAuth();
+  return isStaff ? <>{children}</> : <Navigate to="/" replace />;
 }
 
 export default function App() {
@@ -39,6 +47,7 @@ export default function App() {
         <Route path="bookings/:id" element={<BookingDetail />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="staff" element={<StaffOnly><StaffReview /></StaffOnly>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

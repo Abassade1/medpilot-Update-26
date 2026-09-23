@@ -744,9 +744,16 @@ export class VendorsService {
     const [provs, lst] = await Promise.all([
       this.db.select({ id: s.providers.id, name: s.providers.name, type: s.providers.type, info: s.providers.verificationInfo, createdAt: s.providers.createdAt })
         .from(s.providers).where(and(eq(s.providers.verificationStatus, "pending"), isNull(s.providers.deletedAt))).orderBy(asc(s.providers.updatedAt)).limit(100),
-      this.db.select({ id: s.listings.id, name: s.listings.name, kind: s.listings.kind, providerId: s.listings.providerId, createdAt: s.listings.createdAt })
-        .from(s.listings).where(and(eq(s.listings.status, "review"), isNull(s.listings.deletedAt))).orderBy(asc(s.listings.updatedAt)).limit(100),
+      this.db.select({
+        id: s.listings.id, name: s.listings.name, kind: s.listings.kind, providerId: s.listings.providerId, createdAt: s.listings.createdAt,
+        providerName: s.providers.name, providerType: s.providers.type,
+      })
+        .from(s.listings).innerJoin(s.providers, eq(s.providers.id, s.listings.providerId))
+        .where(and(eq(s.listings.status, "review"), isNull(s.listings.deletedAt))).orderBy(asc(s.listings.updatedAt)).limit(100),
     ]);
-    return { providers: provs, listings: lst };
+    return {
+      providers: provs.map((p) => ({ ...p, typeLabel: typeOf(p.type)?.label ?? p.type })),
+      listings: lst.map((l) => ({ ...l, providerTypeLabel: typeOf(l.providerType)?.label ?? l.providerType })),
+    };
   }
 }

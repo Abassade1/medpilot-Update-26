@@ -34,6 +34,23 @@ export function setSession(tokens: { accessToken: string; refreshToken: string }
 }
 export const isSignedIn = () => !!accessToken;
 
+/**
+ * Reads the `role` claim out of the access token for UI purposes only (e.g. showing the staff
+ * review nav item) — never a security boundary. Every staff/admin route is re-checked by the
+ * backend's own @Roles guard regardless of what this returns.
+ */
+export function currentRole(): string | null {
+  if (!accessToken) return null;
+  try {
+    const payload = accessToken.split(".")[1];
+    if (!payload) return null;
+    const json = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof json.role === "string" ? json.role : null;
+  } catch {
+    return null;
+  }
+}
+
 async function doRefresh(): Promise<void> {
   if (!refreshToken) throw new ApiError("Not signed in", 401, "unauthenticated");
   const res = await fetch(`${BASE}/v1/auth/refresh`, {

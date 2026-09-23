@@ -13,7 +13,7 @@ const NAV = [
 ];
 
 export default function Layout() {
-  const { logout } = useAuth();
+  const { logout, isStaff } = useAuth();
   const me = useMyProvider();
   const provider = me.data?.provider;
   const notifications = useNotifications();
@@ -30,6 +30,14 @@ export default function Layout() {
               {n.to === "/notifications" && unread > 0 ? <span className="nav-badge">{unread > 9 ? "9+" : unread}</span> : null}
             </NavLink>
           ))}
+          {isStaff ? (
+            <>
+              <div style={{ height: 1, background: "var(--border)", margin: "10px 4px" }} />
+              <NavLink to="/staff" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+                Staff review
+              </NavLink>
+            </>
+          ) : null}
         </nav>
         <div className="sidebar-footer">
           <div style={{ fontSize: 13, fontWeight: 600 }}>{provider?.name ?? "Your organization"}</div>

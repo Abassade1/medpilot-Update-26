@@ -83,6 +83,11 @@ export interface NotificationsDto {
   items: { id: string; type: string; title: string; body: string; data: { url?: string } | null; read: boolean; createdAt: string }[];
 }
 
+export interface StaffQueueDto {
+  providers: { id: string; name: string; type: string; typeLabel: string; info: string | null; createdAt: string }[];
+  listings: { id: string; name: string; kind: "service" | "package"; providerId: string; providerName: string; providerType: string; providerTypeLabel: string; createdAt: string }[];
+}
+
 export interface AuthResponse {
   user: { id: string; email: string; emailVerified: boolean };
   profile: { firstName: string; lastName: string; fullName: string };

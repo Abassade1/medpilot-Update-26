@@ -152,6 +152,15 @@ describe("services: draft → publish", () => {
     expect(res.body.error.fields.provider).toMatch(/profile/i);
   });
 
+  it("surfaces a pending provider in the staff queue with a readable type label", async () => {
+    const staff = await staffSession();
+    const owner = await makeProvider();
+    await (await http()).post("/v1/provider/verification").set(...auth(owner)).send({ licenseInfo: "AB vet licence #12345" }).expect(200);
+    const q = (await (await http()).get("/v1/staff/vendor-queue").set(...auth(staff)).expect(200)).body;
+    const queued = q.providers.find((x: any) => x.name === "Paws & Claws Vet");
+    expect(queued).toMatchObject({ typeLabel: "Veterinary clinic", info: "AB vet licence #12345" });
+  });
+
   it("lets staff reject a listing, with the reason back to the provider", async () => {
     const staff = await staffSession();
     const owner = await makeProvider();
@@ -159,7 +168,9 @@ describe("services: draft → publish", () => {
     await (await http()).put(`/v1/provider/listings/${l.id}/availability`).set(...auth(owner)).send({ windows: [{ weekday: 1, start: "09:00", end: "10:00" }], blackouts: [] }).expect(200);
     expect((await (await http()).post(`/v1/provider/listings/${l.id}/publish`).set(...auth(owner)).expect(200)).body.status).toBe("review");
     const q = (await (await http()).get("/v1/staff/vendor-queue").set(...auth(staff)).expect(200)).body;
-    expect(q.listings.some((x: any) => x.id === l.id)).toBe(true);
+    const queued = q.listings.find((x: any) => x.id === l.id);
+    // the queue carries provider context so staff never has to look the listing up separately
+    expect(queued).toMatchObject({ providerName: "Paws & Claws Vet", providerTypeLabel: "Veterinary clinic" });
     await (await http()).post(`/v1/staff/listings/${l.id}/reject`).set(...auth(staff)).send({ reason: "Please add clearer pricing" }).expect(200);
     const after = (await (await http()).get(`/v1/provider/listings/${l.id}`).set(...auth(owner)).expect(200)).body;
     expect(after).toMatchObject({ status: "draft", rejectionNote: "Please add clearer pricing" });
