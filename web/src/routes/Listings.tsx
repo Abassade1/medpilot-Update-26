@@ -1,11 +1,19 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import StatusPill from "../components/StatusPill";
+import ConfirmDialog from "../components/ConfirmDialog";
 import { useListingAction, useListings } from "../lib/queries";
 import { ApiError } from "../lib/api";
 import type { ListingDto } from "../lib/types";
 
 const STATUSES = [["", "All"], ["draft", "Draft"], ["review", "In review"], ["published", "Published"], ["unpublished", "Unpublished"], ["archived", "Archived"]] as const;
+
+type Action = "publish" | "unpublish" | "archive" | "duplicate" | "delete";
+const CONFIRM: Partial<Record<Action, { title: (name: string) => string; body: string; confirmLabel: string }>> = {
+  delete: { title: (n) => `Delete "${n}"?`, body: "This can't be undone.", confirmLabel: "Delete" },
+  unpublish: { title: (n) => `Unpublish "${n}"?`, body: "Members will no longer find or book it.", confirmLabel: "Unpublish" },
+  archive: { title: (n) => `Archive "${n}"?`, body: "It's hidden from members. Existing bookings are unaffected.", confirmLabel: "Archive" },
+};
 
 export default function Listings({ kind }: { kind: "service" | "package" }) {
   const [params] = useSearchParams();
@@ -13,19 +21,20 @@ export default function Listings({ kind }: { kind: "service" | "package" }) {
   const q = useListings(kind, status || undefined);
   const act = useListingAction();
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ listing: ListingDto; action: Action } | null>(null);
 
-  const run = (l: ListingDto, action: "publish" | "unpublish" | "archive" | "duplicate" | "delete") => {
-    if (action === "delete" && !confirm(`Delete "${l.name}"? This can't be undone.`)) return;
-    if (action === "unpublish" && !confirm(`Unpublish "${l.name}"? Members will no longer find or book it.`)) return;
-    if (action === "archive" && !confirm(`Archive "${l.name}"?`)) return;
+  const run = (l: ListingDto, action: Action) => {
+    if (CONFIRM[action] && pending?.listing.id !== l.id) { setPending({ listing: l, action }); return; }
     if (act.isPending) return;
     setError(null);
+    setPending(null);
     act.mutate({ id: l.id, action }, {
       onError: (e) => { const x = e as ApiError; setError(x.fields ? Object.values(x.fields).join(" ") : x.message || "That didn't work."); },
     });
   };
 
   const title = kind === "service" ? "Services" : "Packages";
+  const confirmSpec = pending ? CONFIRM[pending.action] : null;
 
   return (
     <>
@@ -89,6 +98,16 @@ export default function Listings({ kind }: { kind: "service" | "package" }) {
           </div>
         )}
       </div>
+      {pending && confirmSpec ? (
+        <ConfirmDialog
+          title={confirmSpec.title(pending.listing.name)}
+          body={confirmSpec.body}
+          confirmLabel={confirmSpec.confirmLabel}
+          busy={act.isPending}
+          onConfirm={() => run(pending.listing, pending.action)}
+          onCancel={() => setPending(null)}
+        />
+      ) : null}
     </>
   );
 }
