@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 import type {
-  ListingDetailFull, ListingDto, ProviderAvailabilityDto, ProviderBookingDto, ProviderDashboardDto, ProviderProfileDto, Taxonomy,
+  ListingDetailFull, ListingDto, NotificationsDto, ProviderAvailabilityDto, ProviderBookingDto, ProviderDashboardDto, ProviderProfileDto, Taxonomy,
 } from "./types";
 
 const qk = {
   taxonomy: ["taxonomy"] as const,
   me: ["me"] as const,
   dashboard: ["dashboard"] as const,
+  notifications: ["notifications"] as const,
   listings: (kind?: string, status?: string) => ["listings", kind ?? "", status ?? ""] as const,
   listing: (id: string) => ["listing", id] as const,
   availability: (id: string) => ["availability", id] as const,
@@ -18,6 +19,16 @@ const qk = {
 export const useTaxonomy = () => useQuery({ queryKey: qk.taxonomy, queryFn: () => api.get<Taxonomy>("/v1/provider/taxonomy"), staleTime: 5 * 60_000 });
 export const useMyProvider = () => useQuery({ queryKey: qk.me, queryFn: () => api.get<{ provider: ProviderProfileDto | null }>("/v1/provider/me") });
 export const useDashboard = (enabled: boolean) => useQuery({ queryKey: qk.dashboard, queryFn: () => api.get<ProviderDashboardDto>("/v1/provider/dashboard"), enabled });
+
+export const useNotifications = () =>
+  useQuery({ queryKey: qk.notifications, queryFn: () => api.get<NotificationsDto>("/v1/notifications"), refetchInterval: 30_000 });
+export function useMarkNotificationsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[] | "all") => api.post<NotificationsDto>("/v1/notifications/read", { ids }),
+    onSuccess: (d) => qc.setQueryData(qk.notifications, d),
+  });
+}
 
 export const useListings = (kind?: string, status?: string) =>
   useQuery({

@@ -32,6 +32,7 @@ describe("deployment configuration guard", () => {
     GOOGLE_SERVICE_ACCOUNT_EMAIL: "svc@example.iam.gserviceaccount.com",
     GOOGLE_SERVICE_ACCOUNT_KEY: "pem",
     PUSH_DRIVER: "expo",
+    WEB_PORTAL_ORIGINS: "https://provider.medpilot.example",
   };
 
   it("accepts a fully configured staging environment", async () => {
@@ -52,6 +53,8 @@ describe("deployment configuration guard", () => {
     ["a missing web URL for email links", { WEB_PUBLIC_URL: "" }, /WEB_PUBLIC_URL/],
     ["a plaintext API URL", { API_PUBLIC_URL: "http://api.example" }, /API_PUBLIC_URL must be https/],
     ["relaxed TLS verification", { SMTP_ALLOW_INSECURE: "true" }, /SMTP_ALLOW_INSECURE/],
+    ["the default localhost web portal origin", { WEB_PORTAL_ORIGINS: "http://localhost:5173" }, /WEB_PORTAL_ORIGINS/],
+    ["no web portal origin at all", { WEB_PORTAL_ORIGINS: "" }, /WEB_PORTAL_ORIGINS/],
   ])("refuses to start in staging with %s", async (_label, override, expected) => {
     await expect(load({ ...deployable, ...override })).rejects.toThrow(expected);
   });

@@ -11,6 +11,7 @@ import ListingPreview from "./routes/ListingPreview";
 import Availability from "./routes/Availability";
 import Bookings from "./routes/Bookings";
 import BookingDetail from "./routes/BookingDetail";
+import Notifications from "./routes/Notifications";
 import Settings from "./routes/Settings";
 
 function Protected({ children }: { children: React.ReactNode }) {
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="listing/:id/availability" element={<Availability />} />
         <Route path="bookings" element={<Bookings />} />
         <Route path="bookings/:id" element={<BookingDetail />} />
+        <Route path="notifications" element={<Notifications />} />
         <Route path="settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

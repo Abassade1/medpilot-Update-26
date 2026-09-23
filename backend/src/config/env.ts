@@ -165,6 +165,12 @@ function assertDeployableDrivers(env: z.infer<typeof EnvSchema>): void {
 
   if (!env.WEB_PUBLIC_URL) problems.push("WEB_PUBLIC_URL is required: verification and reset links are built from it");
   if (!/^https:/.test(env.API_PUBLIC_URL)) problems.push("API_PUBLIC_URL must be https outside development");
+  {
+    const origins = env.WEB_PORTAL_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean);
+    if (!origins.length || origins.some((o) => /^https?:\/\/(localhost|127\.0\.0\.1)/.test(o))) {
+      problems.push("WEB_PORTAL_ORIGINS must list the deployed provider-portal origin(s) outside development (the localhost default leaves the web portal unreachable)");
+    }
+  }
   if (env.WEB_PUBLIC_URL && !/^https:/.test(env.WEB_PUBLIC_URL)) problems.push("WEB_PUBLIC_URL must be https outside development");
 
   if (problems.length) {

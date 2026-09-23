@@ -78,6 +78,11 @@ export interface ListingDetailFull {
   isOwner: boolean; preview: boolean; bookable: boolean;
 }
 
+export interface NotificationsDto {
+  unreadCount: number;
+  items: { id: string; type: string; title: string; body: string; data: { url?: string } | null; read: boolean; createdAt: string }[];
+}
+
 export interface AuthResponse {
   user: { id: string; email: string; emailVerified: boolean };
   profile: { firstName: string; lastName: string; fullName: string };

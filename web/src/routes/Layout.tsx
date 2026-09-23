@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../lib/auth";
-import { useMyProvider } from "../lib/queries";
+import { useMyProvider, useNotifications } from "../lib/queries";
 
 const NAV = [
   { to: "/", label: "Overview", end: true },
@@ -8,6 +8,7 @@ const NAV = [
   { to: "/services", label: "Services" },
   { to: "/packages", label: "Packages" },
   { to: "/bookings", label: "Bookings" },
+  { to: "/notifications", label: "Notifications" },
   { to: "/settings", label: "Settings" },
 ];
 
@@ -15,6 +16,8 @@ export default function Layout() {
   const { logout } = useAuth();
   const me = useMyProvider();
   const provider = me.data?.provider;
+  const notifications = useNotifications();
+  const unread = notifications.data?.unreadCount ?? 0;
 
   return (
     <div className="app-shell">
@@ -24,6 +27,7 @@ export default function Layout() {
           {NAV.map((n) => (
             <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
               {n.label}
+              {n.to === "/notifications" && unread > 0 ? <span className="nav-badge">{unread > 9 ? "9+" : unread}</span> : null}
             </NavLink>
           ))}
         </nav>

@@ -32,6 +32,7 @@ export default function Overview() {
     { label: "Published services", value: d?.services.published ?? "–", to: "/services" },
     { label: "Published packages", value: d?.packages.published ?? "–", to: "/packages" },
     { label: "Drafts", value: d ? d.services.draft + d.packages.draft : "–", to: "/services" },
+    { label: "Unread notifications", value: d?.unreadNotifications ?? "–", to: "/notifications" },
   ];
 
   return (
