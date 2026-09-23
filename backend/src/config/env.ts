@@ -55,6 +55,8 @@ const EnvSchema = z.object({
   SMTP_PASSWORD: z.string().default(""),
   SMTP_ALLOW_INSECURE: boolFromEnv(false), // local test servers only
   WEB_PUBLIC_URL: z.string().default(""),            // base for verify/reset links
+  // Comma-separated allowed origins for the institutional provider web portal (browser CORS only; the mobile app isn't a browser origin).
+  WEB_PORTAL_ORIGINS: z.string().default("http://localhost:5173,http://127.0.0.1:5173"),
   AUX_DRIVER: z.enum(["deterministic", "llm"]).default("deterministic"),
   BILLING_DRIVER: z.enum(["mock", "store"]).default("mock"),
   APPLE_BUNDLE_ID: z.string().default(""),

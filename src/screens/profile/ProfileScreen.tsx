@@ -120,6 +120,14 @@ export default function ProfileScreen({ navigation }: RootScreenProps<"Profile">
             )}
           </Section>
 
+          <Section title="Provider">
+            <TouchableOpacity style={styles.linkRow} onPress={() => navigation.navigate("ProviderHome")} accessibilityRole="button">
+              <Ionicons name="storefront-outline" size={18} color={colors.primary} />
+              <Text style={styles.linkText}>Provider portal</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.tertiaryText} />
+            </TouchableOpacity>
+          </Section>
+
           <Section title="Security">
             <TouchableOpacity style={styles.linkRow} onPress={() => navigation.navigate("ChangePassword")} accessibilityRole="button">
               <Ionicons name="key-outline" size={18} color={colors.primary} />

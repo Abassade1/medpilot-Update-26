@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ProviderAvailabilityDto } from "./types";
 import { endpoints } from "./endpoints";
 import type { ActivityTypeDto } from "./types";
 
@@ -27,6 +28,19 @@ export const qk = {
   notifications: ["notifications"] as const,
   appointment: (id: string) => ["appointment", id] as const,
   transportBooking: (id: string) => ["transportBooking", id] as const,
+  taxonomy: ["taxonomy"] as const,
+  myProvider: ["myProvider"] as const,
+  providerDashboard: ["myProvider", "dashboard"] as const,
+
+  providerListings: (kind?: string, status?: string) => ["myProvider", "listings", kind ?? "", status ?? ""] as const,
+  providerListing: (id: string) => ["myProvider", "listing", id] as const,
+  providerAvailability: (id: string) => ["myProvider", "availability", id] as const,
+  providerBookings: (status?: string) => ["myProvider", "bookings", status ?? ""] as const,
+  providerBooking: (id: string) => ["myProvider", "booking", id] as const,
+  discover: (p: string) => ["discover", p] as const,
+  facets: ["discover", "facets"] as const,
+  listingDetail: (id: string, preview: boolean) => ["listing", id, preview] as const,
+  slots: (id: string, date: string) => ["listing", id, "slots", date] as const,
   petClinic: (id: string) => ["petClinic", id] as const,
   specialists: (categoryId?: string, q?: string) => ["specialists", categoryId ?? "", q ?? ""] as const,
   specialistCategories: ["specialistCategories"] as const,
@@ -305,6 +319,90 @@ export function useCancelTransport(id: string) {
       void qc.invalidateQueries({ queryKey: ["activities"] });
       void qc.invalidateQueries({ queryKey: qk.notifications });
       void qc.invalidateQueries({ queryKey: qk.subscription });
+    },
+  });
+}
+
+// ---- vendor / provider portal ------------------------------------------------------
+export const useTaxonomy = () =>
+  useQuery({ queryKey: qk.taxonomy, queryFn: endpoints.provider.taxonomy, staleTime: CATALOG_STALE });
+export const useMyProvider = () => useQuery({ queryKey: qk.myProvider, queryFn: endpoints.provider.me, staleTime: MEMBER_STALE });
+export const useProviderDashboard = (enabled = true) =>
+  useQuery({ queryKey: qk.providerDashboard, queryFn: endpoints.provider.dashboard, enabled, staleTime: 15_000 });
+export const useProviderListings = (kind?: string, status?: string) =>
+  useQuery({ queryKey: qk.providerListings(kind, status), queryFn: () => endpoints.provider.listings({ kind, status }), staleTime: 10_000 });
+export const useProviderListing = (id?: string) =>
+  useQuery({ queryKey: qk.providerListing(id ?? ""), queryFn: () => endpoints.provider.listing(id!), enabled: !!id, staleTime: 10_000 });
+export const useProviderAvailability = (id: string) =>
+  useQuery({ queryKey: qk.providerAvailability(id), queryFn: () => endpoints.provider.availability(id) });
+export const useProviderBookings = (status?: string) =>
+  useQuery({ queryKey: qk.providerBookings(status), queryFn: () => endpoints.provider.bookings(status), staleTime: 10_000 });
+export const useProviderBooking = (id: string) =>
+  useQuery({ queryKey: qk.providerBooking(id), queryFn: () => endpoints.provider.booking(id), staleTime: 10_000 });
+
+/** Anything a provider changes can appear on the dashboard and in the lists, so they all refresh together. */
+const refreshProvider = (qc: ReturnType<typeof useQueryClient>) => void qc.invalidateQueries({ queryKey: qk.myProvider });
+
+export function useSaveProvider() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ create, body }: { create: boolean; body: Record<string, unknown> }) =>
+      create ? endpoints.provider.create(body) : endpoints.provider.patch(body),
+    onSuccess: () => refreshProvider(qc),
+  });
+}
+export function useSubmitVerification() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (info: string) => endpoints.provider.submitVerification(info), onSuccess: () => refreshProvider(qc) });
+}
+export function useSaveListing(id?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => (id ? endpoints.provider.patchListing(id, body) : endpoints.provider.createListing(body)),
+    onSuccess: (l) => { qc.setQueryData(qk.providerListing(l.id), l); refreshProvider(qc); void qc.invalidateQueries({ queryKey: ["listing"] }); void qc.invalidateQueries({ queryKey: ["discover"] }); },
+  });
+}
+export function useListingAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, action }: { id: string; action: "publish" | "unpublish" | "archive" | "duplicate" | "delete" }) =>
+      action === "delete" ? endpoints.provider.deleteListing(id).then(() => null) : endpoints.provider.listingAction(id, action),
+    onSuccess: () => { refreshProvider(qc); void qc.invalidateQueries({ queryKey: ["listing"] }); void qc.invalidateQueries({ queryKey: ["discover"] }); },
+  });
+}
+export function usePutAvailability(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: ProviderAvailabilityDto) => endpoints.provider.putAvailability(id, body),
+    onSuccess: () => { refreshProvider(qc); void qc.invalidateQueries({ queryKey: ["listing"] }); void qc.invalidateQueries({ queryKey: ["discover"] }); },
+  });
+}
+export function useBookingAction(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ action, reason }: { action: "confirm" | "decline" | "complete" | "cancel"; reason?: string }) =>
+      endpoints.provider.bookingAction(id, action, reason),
+    onSuccess: (b) => { qc.setQueryData(qk.providerBooking(id), b); refreshProvider(qc); void qc.invalidateQueries({ queryKey: qk.notifications }); void qc.invalidateQueries({ queryKey: qk.serviceRequests }); },
+  });
+}
+
+// ---- discovery and booking of provider listings ---------------------------------------------
+export const useDiscover = (params: Record<string, string | undefined>) =>
+  useQuery({ queryKey: qk.discover(JSON.stringify(params)), queryFn: () => endpoints.listings.discover(params), staleTime: 15_000, placeholderData: (p) => p });
+export const useListingFacets = () => useQuery({ queryKey: qk.facets, queryFn: endpoints.listings.facets, staleTime: CATALOG_STALE });
+export const useListingDetail = (id: string, preview = false) =>
+  useQuery({ queryKey: qk.listingDetail(id, preview), queryFn: () => endpoints.listings.detail(id, preview), staleTime: 15_000 });
+export const useListingSlots = (id: string, date: string | null) =>
+  useQuery({ queryKey: qk.slots(id, date ?? ""), queryFn: () => endpoints.listings.slots(id, date!), enabled: !!date, staleTime: 5_000 });
+export function useBookListing(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ body, idempotencyKey }: { body: Record<string, unknown>; idempotencyKey: string }) => endpoints.listings.book(id, body, idempotencyKey),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: qk.serviceRequests });
+      void qc.invalidateQueries({ queryKey: ["activities"] });
+      void qc.invalidateQueries({ queryKey: qk.notifications });
+      void qc.invalidateQueries({ queryKey: ["listing", id, "slots"] });
     },
   });
 }

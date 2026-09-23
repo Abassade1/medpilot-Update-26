@@ -42,6 +42,17 @@ import SpecialistProfileScreen from "../screens/specialists/SpecialistProfileScr
 import SpecialistRequestScreen from "../screens/specialists/SpecialistRequestScreen";
 import TransportBookingDetailScreen from "../screens/appointments/TransportBookingDetailScreen";
 import AppointmentDetailScreen from "../screens/appointments/AppointmentDetailScreen";
+import ProviderHomeScreen from "../screens/provider/ProviderHomeScreen";
+import ProviderOnboardingScreen from "../screens/provider/ProviderOnboardingScreen";
+import ProviderProfileScreen from "../screens/provider/ProviderProfileScreen";
+import ProviderListingsScreen from "../screens/provider/ProviderListingsScreen";
+import ListingFormScreen from "../screens/provider/ListingFormScreen";
+import ListingAvailabilityScreen from "../screens/provider/ListingAvailabilityScreen";
+import ProviderBookingsScreen from "../screens/provider/ProviderBookingsScreen";
+import ProviderBookingDetailScreen from "../screens/provider/ProviderBookingDetailScreen";
+import DiscoverScreen from "../screens/provider/DiscoverScreen";
+import ListingDetailScreen from "../screens/provider/ListingDetailScreen";
+import ListingBookScreen from "../screens/provider/ListingBookScreen";
 import RescheduleAppointmentScreen from "../screens/appointments/RescheduleAppointmentScreen";
 import DiagnosisResultScreen from "../screens/aux/DiagnosisResultScreen";
 import MealCameraScreen from "../screens/aux/MealCameraScreen";
@@ -131,6 +142,17 @@ export default function RootNavigator() {
         <Stack.Screen name="SpecialistRequest" component={SpecialistRequestScreen} />
         <Stack.Screen name="TransportBookingDetail" component={TransportBookingDetailScreen} />
         <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} />
+        <Stack.Screen name="ProviderHome" component={ProviderHomeScreen} />
+        <Stack.Screen name="ProviderOnboarding" component={ProviderOnboardingScreen} />
+        <Stack.Screen name="ProviderProfile" component={ProviderProfileScreen} />
+        <Stack.Screen name="ProviderListings" component={ProviderListingsScreen} />
+        <Stack.Screen name="ListingForm" component={ListingFormScreen} />
+        <Stack.Screen name="ListingAvailability" component={ListingAvailabilityScreen} />
+        <Stack.Screen name="ProviderBookings" component={ProviderBookingsScreen} />
+        <Stack.Screen name="ProviderBookingDetail" component={ProviderBookingDetailScreen} />
+        <Stack.Screen name="Discover" component={DiscoverScreen} />
+        <Stack.Screen name="ListingDetail" component={ListingDetailScreen} />
+        <Stack.Screen name="ListingBook" component={ListingBookScreen} />
         <Stack.Screen name="RescheduleAppointment" component={RescheduleAppointmentScreen} />
         <Stack.Screen name="DiagnosisResult" component={DiagnosisResultScreen} />
         <Stack.Screen name="MealCamera" component={MealCameraScreen} options={{ animation: "fade" }} />

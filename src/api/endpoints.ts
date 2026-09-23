@@ -5,7 +5,7 @@ import type {
   MealAnalysisDto, MedicalRecordDto, NotificationsDto, PackageCard, PackageDetail,
   PetClinicDto, PlanDto, ProviderCardDto, ProviderDetail, ReferenceData,
   ServiceDto, SetupStatus, SpecialistDetail, SubscriptionDto, TokenPairDto,
-  TransportDto, TransportDetailDto, TriageResultDto, TriageStep, UploadTicket,
+  TransportDto, TransportDetailDto, Taxonomy, ProviderProfileDto, ProviderDashboardDto, ListingDto, ListingStatus, ProviderAvailabilityDto, ProviderBookingDto, ListingCardDto, ListingFacets, ListingDetailFull, SlotsDto, TriageResultDto, TriageStep, UploadTicket,
   AvailabilityDto, ChatHistoryDto, ChatReplyDto, LocationDto, PetClinicDetail, PreferencesDto,
   ResolveDto, ServiceRequestDto, SpecialistCardDto, SpecialistCategoryDto, SpecialistProfileDto,
 } from "./types";
@@ -109,6 +109,49 @@ export const endpoints = {
     availability: (locationId: string) => api.get<AvailabilityDto>(`/v1/transport/availability?locationId=${locationId}`),
     services: () => api.get<ServiceDto[]>("/v1/services"),
     reference: () => api.get<ReferenceData>("/v1/reference"),
+  },
+
+  provider: {
+    taxonomy: () => api.get<Taxonomy>("/v1/provider/taxonomy"),
+    me: () => api.get<{ provider: ProviderProfileDto | null }>("/v1/provider/me"),
+    create: (body: Record<string, unknown>) => api.post<{ provider: ProviderProfileDto }>("/v1/provider", body),
+    patch: (body: Record<string, unknown>) => api.patch<{ provider: ProviderProfileDto }>("/v1/provider", body),
+    submitVerification: (licenseInfo: string) => api.post<{ provider: ProviderProfileDto }>("/v1/provider/verification", { licenseInfo }),
+    dashboard: () => api.get<ProviderDashboardDto>("/v1/provider/dashboard"),
+    listings: (params?: { kind?: string; status?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.kind) q.set("kind", params.kind);
+      if (params?.status) q.set("status", params.status);
+      const qs = q.toString();
+      return api.get<ListingDto[]>(`/v1/provider/listings${qs ? `?${qs}` : ""}`);
+    },
+    listing: (id: string) => api.get<ListingDto>(`/v1/provider/listings/${id}`),
+    createListing: (body: Record<string, unknown>) => api.post<ListingDto>("/v1/provider/listings", body),
+    patchListing: (id: string, body: Record<string, unknown>) => api.patch<ListingDto>(`/v1/provider/listings/${id}`, body),
+    listingAction: (id: string, action: "publish" | "unpublish" | "archive" | "duplicate") =>
+      api.post<ListingDto>(`/v1/provider/listings/${id}/${action}`),
+    deleteListing: (id: string) => api.delete<void>(`/v1/provider/listings/${id}`),
+    availability: (id: string) => api.get<ProviderAvailabilityDto>(`/v1/provider/listings/${id}/availability`),
+    putAvailability: (id: string, body: ProviderAvailabilityDto) =>
+      api.put<ProviderAvailabilityDto & { listingStatus: ListingStatus }>(`/v1/provider/listings/${id}/availability`, body),
+    bookings: (status?: string) => api.get<ProviderBookingDto[]>(`/v1/provider/bookings${status ? `?status=${status}` : ""}`),
+    booking: (id: string) => api.get<ProviderBookingDto>(`/v1/provider/bookings/${id}`),
+    bookingAction: (id: string, action: "confirm" | "decline" | "complete" | "cancel", reason?: string) =>
+      api.post<ProviderBookingDto>(`/v1/provider/bookings/${id}/${action}`, reason ? { reason } : {}),
+  },
+
+  listings: {
+    discover: (params: Record<string, string | undefined>) => {
+      const q = new URLSearchParams();
+      for (const [k, v] of Object.entries(params)) if (v) q.set(k, v);
+      const qs = q.toString();
+      return api.get<ListingCardDto[]>(`/v1/listings${qs ? `?${qs}` : ""}`);
+    },
+    facets: () => api.get<ListingFacets>("/v1/listings/facets"),
+    detail: (id: string, preview = false) => api.get<ListingDetailFull>(`/v1/listings/${id}${preview ? "?preview=true" : ""}`),
+    slots: (id: string, date: string) => api.get<SlotsDto>(`/v1/listings/${id}/slots?date=${date}`),
+    book: (id: string, body: Record<string, unknown>, idempotencyKey: string) =>
+      api.post<{ id: string }>(`/v1/listings/${id}/bookings`, body, { idempotencyKey }),
   },
 
   bookings: {

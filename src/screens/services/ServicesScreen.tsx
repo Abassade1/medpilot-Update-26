@@ -32,6 +32,10 @@ export default function ServicesScreen() {
         {!servicesQuery.isPending && !servicesQuery.isError && shown.length === 0 ? (
           <ListStateView kind="empty" title="No matching services" message="Try a different search." />
         ) : null}
+        <TouchableOpacity style={styles.discover} onPress={() => navigation.navigate("Discover")} accessibilityRole="button" accessibilityLabel="Browse services from independent providers">
+          <Text style={styles.cardTitle}>Browse provider services</Text>
+          <Text style={styles.cardDesc}>Search clinics, nurses, transport, vets and specialists, then book directly.</Text>
+        </TouchableOpacity>
         <View style={styles.grid}>
           {shown.map((service) => (
             <TouchableOpacity
@@ -56,6 +60,7 @@ export default function ServicesScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: spacing.lg, paddingBottom: 32 },
   title: { fontSize: 28, fontWeight: "700", color: colors.text, marginTop: 4 },
+  discover: { backgroundColor: "#E8F0FE", borderRadius: 16, padding: 16, marginBottom: 14 },
   grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
   card: {
     width: "48.2%",

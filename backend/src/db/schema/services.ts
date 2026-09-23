@@ -122,10 +122,15 @@ export const serviceRequests = pgTable(
     details: text("details"),
     status: varchar("status", { length: 12 }).notNull().default("pending"),
     cancelledReason: varchar("cancelled_reason", { length: 200 }),
+    /** Set for bookings of a provider-created listing (kind = listing_booking). */
+    listingId: uuid("listing_id"),
+    providerId: uuid("provider_id"),
     ...ts,
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (t) => [
+    index("service_requests_provider_ix").on(t.providerId, t.status),
+    index("service_requests_slot_ix").on(t.listingId, t.preferredDate),
     uniqueIndex("service_requests_reference_uq").on(t.reference),
     index("service_requests_user_ix").on(t.userId, t.status, t.createdAt),
   ],

@@ -50,6 +50,17 @@ export type RootStackParamList = {
   TransportBookingDetail: { transportId: string };
   RescheduleAppointment: { appointmentId: string };
   Profile: undefined;
+  ProviderHome: undefined;
+  ProviderOnboarding: undefined;
+  ProviderProfile: undefined;
+  ProviderListings: { kind?: "service" | "package" } | undefined;
+  ListingForm: { listingId?: string; kind?: "service" | "package" };
+  ListingAvailability: { listingId: string };
+  ProviderBookings: { status?: "pending" | "confirmed" | "completed" | "cancelled" } | undefined;
+  ProviderBookingDetail: { bookingId: string };
+  Discover: { kind?: "service" | "package"; type?: string; category?: string; q?: string } | undefined;
+  ListingDetail: { listingId: string; preview?: boolean };
+  ListingBook: { listingId: string };
   EditProfile: undefined;
   EmergencyContact: undefined;
   ChangePassword: undefined;

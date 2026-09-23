@@ -32,6 +32,8 @@ import { BillingService } from "./modules/billing/billing.service";
 import { QuotaService } from "./modules/billing/quota.service";
 import { LocationsController } from "./modules/locations/locations.controller";
 import { LocationsService } from "./modules/locations/locations.service";
+import { ProviderController, ListingsController, StaffVendorsController } from "./modules/vendors/vendors.controller";
+import { VendorsService } from "./modules/vendors/vendors.service";
 import { StaffController } from "./modules/staff/staff.controller";
 import { ServicesController } from "./modules/services/services.controller";
 import { ServicesService } from "./modules/services/services.service";
@@ -46,7 +48,7 @@ const pool = createPool(env.DATABASE_URL);
   ],
   controllers: [
     HealthController, AuthController, UsersController, StorageController,
-    CatalogController, BookingsController, AuxController, BillingController, LocationsController, ServicesController, StaffController,
+    CatalogController, BookingsController, AuxController, BillingController, LocationsController, ServicesController, StaffController, ProviderController, ListingsController, StaffVendorsController,
   ],
   providers: [
     { provide: Pool, useValue: pool },
@@ -54,7 +56,7 @@ const pool = createPool(env.DATABASE_URL);
     AuthService, TokenService, AuditService, EmailService,
     UsersService, StorageService, CatalogService,
     BookingsService, ActivitiesService, IdempotencyService,
-    AuxService, BillingService, QuotaService, NotificationsService, LocationsService, ServicesService,
+    AuxService, BillingService, QuotaService, NotificationsService, LocationsService, ServicesService, VendorsService,
     { provide: APP_GUARD, useClass: AppThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: EnvelopeExceptionFilter },

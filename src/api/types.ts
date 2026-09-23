@@ -232,11 +232,11 @@ export interface SpecialistCardDto {
 export interface SpecialistProfileDto extends SpecialistCardDto {
   bio: string; languages: string; yearsExperience: number | null; services: ServiceOfferDto[];
 }
-export type RequestKind = "pet_appointment" | "pet_sitting" | "specialist_booking" | "specialist_connect";
+export type RequestKind = "pet_appointment" | "pet_sitting" | "specialist_booking" | "specialist_connect" | "listing_booking";
 export interface ServiceRequestDto {
   id: string; reference: string; kind: RequestKind; kindLabel: string; status: AppointmentStatus;
   target: {
-    type: "pet_clinic" | "independent_specialist"; id: string; name: string; subtitle: string;
+    type: "pet_clinic" | "independent_specialist" | "listing"; id: string; name: string; subtitle: string;
     photoAsset: string | null; emoji: string | null;
   };
   service: { id: string; name: string; priceLabel: string | null } | null;
@@ -261,4 +261,88 @@ export interface ChatHistoryDto { sessionId: string | null; messages: ChatMessag
 export interface ChatReplyDto {
   sessionId: string; mode: "rule_based"; disclaimer: string;
   reply: { id: string; text: string; suggestions: ChatSuggestion[]; urgent: boolean; intent: string };
+}
+
+// ---- vendor / provider portal -----------------------------------------------
+export type FieldInput = "text" | "textarea" | "number" | "select" | "multiselect" | "toggle";
+export interface FieldDef {
+  key: string; label: string; input: FieldInput; required?: boolean; help?: string;
+  options?: { value: string; label: string }[];
+}
+export interface TaxonomyCategory { code: string; label: string; subcategories: { code: string; label: string }[] }
+export interface ProviderTypeDef {
+  code: string; label: string; family: string; categories: TaxonomyCategory[];
+  serviceFields: FieldDef[]; packageFields: FieldDef[];
+}
+export interface Taxonomy {
+  providerTypes: ProviderTypeDef[]; commonFields: FieldDef[];
+  locationModes: { value: string; label: string }[]; priceTypes: { value: string; label: string }[];
+}
+export type VerificationStatus = "unverified" | "pending" | "verified" | "rejected";
+export interface ProviderProfileDto {
+  id: string; type: string; typeLabel: string; name: string; description: string;
+  phone: string | null; email: string | null; website: string | null; address: string | null;
+  country: string | null; region: string | null; city: string | null;
+  serviceAreas: string; operatingHours: string; languages: string; certifications: string;
+  logoUrl: string | null; coverUrl: string | null;
+  verificationStatus: VerificationStatus; verificationInfo: string | null; verificationNote: string | null;
+  profileComplete: boolean; profileGaps: Record<string, string>;
+}
+export type ListingStatus = "draft" | "review" | "published" | "unpublished" | "archived";
+export interface ListingDto {
+  id: string; kind: "service" | "package"; category: string; subcategory: string;
+  name: string; description: string;
+  priceAmount: number | null; priceCurrency: string; priceType: string; priceLabel: string;
+  durationMinutes: number | null; capacity: number; locationModes: string[];
+  country: string | null; region: string | null; city: string | null; serviceRadiusKm: number | null;
+  requirements: string; preparation: string; cancellationPolicy: string; terms: string;
+  attributes: Record<string, unknown>; includes: { label: string; listingId?: string }[]; images: string[];
+  status: ListingStatus; rejectionNote: string | null; viewCount: number; bookable: boolean; bookingCount: number;
+  categoryLabel: string; subcategoryLabel: string; updatedAt: string;
+}
+export interface ProviderDashboardDto {
+  provider: ProviderProfileDto;
+  services: { published: number; draft: number; total: number };
+  packages: { published: number; draft: number; total: number };
+  bookings: { pending: number; confirmed: number; upcoming: number; completed: number; cancelled: number };
+  completedValueLabel: string | null; completedValueNote: string;
+  topListings: { id: string; name: string; kind: string; views: number; bookings: number }[];
+  unreadNotifications: number;
+}
+export interface ProviderAvailabilityDto {
+  windows: { weekday: number; start: string; end: string }[]; blackouts: string[];
+}
+export interface ProviderBookingDto {
+  id: string; reference: string; status: "pending" | "confirmed" | "completed" | "cancelled";
+  date: string | null; time: string | null; notes: string | null;
+  listing: { id: string; name: string; kind: string } | null; priceLabel: string | null;
+  customer: { name: string; phone: string | null };
+  cancelledReason: string | null; createdAt: string;
+  canConfirm: boolean; canDecline: boolean; canComplete: boolean; canCancel: boolean;
+}
+export interface ListingCardDto {
+  id: string; kind: "service" | "package"; name: string; category: string; categoryLabel: string; subcategoryLabel: string;
+  priceLabel: string; priceAmount: number | null; priceType: string; durationMinutes: number | null;
+  locationModes: string[]; country: string | null; region: string | null; city: string | null; image: string | null; bookable: boolean;
+  provider: { id: string; name: string; type: string; typeLabel: string; verified: boolean; logoUrl: string | null; city: string | null; country: string | null };
+}
+export interface ListingDetailFull extends Omit<ListingCardDto, "category"> {
+  status: string; description: string; capacity: number;
+  category: { code: string; label: string }; subcategory: { code: string; label: string };
+  locationLabels: string[]; serviceRadiusKm: number | null;
+  requirements: string; preparation: string; cancellationPolicy: string; terms: string;
+  details: { label: string; value: string }[];
+  includes: { label: string; listingId?: string }[]; images: string[];
+  availability: { weekday: number; start: string; end: string }[]; priceTypeLabel: string;
+  providerProfile: {
+    id: string; name: string; typeLabel: string; verified: boolean; description: string; city: string | null; region: string | null; country: string | null;
+    languages: string[]; operatingHours: string; phone: string | null; email: string | null; website: string | null;
+    logoUrl: string | null; coverUrl: string | null; certifications: string; address: string | null; serviceAreas: string;
+  };
+  isOwner: boolean; preview: boolean;
+}
+export interface SlotsDto { date: string; slots: { time: string; remaining: number }[]; reason: string | null }
+export interface ListingFacets {
+  types: { code: string; label: string; count: number }[];
+  categories: { type: string; code: string; label: string; count: number }[];
 }

@@ -19,6 +19,7 @@ const KIND_LABEL: Record<string, string> = {
   pet_sitting: "Pet sitting",
   specialist_booking: "Specialist booking",
   specialist_connect: "Connection request",
+  listing_booking: "Booking",
 };
 
 const ACTIVE = new Set(["pending", "confirmed"]);
@@ -198,9 +199,29 @@ export class ServicesService {
     const clinics = clinicIds.length ? await this.db.select().from(s.petClinics).where(inArray(s.petClinics.id, clinicIds)) : [];
     const specs = specIds.length ? await this.db.select().from(s.independentSpecialists).where(inArray(s.independentSpecialists.id, specIds)) : [];
     const petSvc = clinicIds.length ? await this.db.select().from(s.petServices).where(inArray(s.petServices.clinicId, clinicIds)) : [];
+    const listingIds = rows.filter((r) => r.targetType === "listing").map((r) => r.targetId);
+    const listingRows = listingIds.length
+      ? await this.db.select({ l: s.listings, p: s.providers }).from(s.listings).innerJoin(s.providers, eq(s.providers.id, s.listings.providerId)).where(inArray(s.listings.id, listingIds))
+      : [];
     const indSvc = specIds.length ? await this.db.select().from(s.independentServices).where(inArray(s.independentServices.specialistId, specIds)) : [];
 
     return rows.map((r) => {
+      if (r.targetType === "listing") {
+        const row = listingRows.find((x) => x.l.id === r.targetId);
+        const d = r.details ? (JSON.parse(r.details) as { priceAmount?: number | null; priceCurrency?: string }) : {};
+        return {
+          id: r.id, reference: `#${r.reference}`, kind: r.kind, kindLabel: KIND_LABEL[r.kind] ?? r.kind,
+          status: r.status as "pending" | "confirmed" | "cancelled" | "completed",
+          target: {
+            type: "listing" as const, id: r.targetId, name: row?.p.name ?? "Provider", subtitle: [row?.p.city, row?.p.country].filter(Boolean).join(", "),
+            photoAsset: null, emoji: null,
+          },
+          service: { id: r.targetId, name: row?.l.name ?? "Service", priceLabel: money(d.priceAmount ?? null, d.priceCurrency ?? "USD") },
+          preferredDate: r.preferredDate, endDate: r.endDate, preferredTime: r.preferredTime, message: r.message,
+          details: null as { petName?: string; petType?: string } | null,
+          canCancel: ACTIVE.has(r.status), cancelledReason: r.cancelledReason, createdAt: r.createdAt,
+        };
+      }
       const isPet = r.targetType === "pet_clinic";
       const clinic = isPet ? clinics.find((c) => c.id === r.targetId) : undefined;
       const spec = !isPet ? specs.find((x) => x.id === r.targetId) : undefined;
@@ -252,6 +273,16 @@ export class ServicesService {
       id: uuidv7(), userId, type: "service", title: "Request cancelled",
       subtitle: `Reference #${r.reference}`, status: "cancelled", targetType: "service_request", targetId: id,
     });
+    if (r.providerId) {
+      // A member cancelling a provider booking must reach the provider.
+      const [p] = await this.db.select().from(s.providers).where(eq(s.providers.id, r.providerId)).limit(1);
+      if (p) {
+        await this.notifications.notify(p.ownerUserId, {
+          type: "provider.booking_cancelled", title: "Booking cancelled",
+          body: `A customer cancelled their booking for ${r.preferredDate}.`, deepLink: `medpilot://provider/bookings/${id}`,
+        });
+      }
+    }
     await this.audit.write({ actorUserId: userId, action: "service.request_cancelled", resourceType: "service_request", resourceId: id });
     return this.getRequest(userId, id);
   }

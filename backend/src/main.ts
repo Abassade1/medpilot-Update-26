@@ -15,6 +15,9 @@ export async function createApp(): Promise<NestExpressApplication> {
 
   app.set("trust proxy", env.isProd);
   app.use(helmet());
+  // The institutional provider web portal is a separate browser origin; the mobile app doesn't send Origin, so this is additive.
+  const webOrigins = env.WEB_PORTAL_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean);
+  app.enableCors({ origin: webOrigins, credentials: false });
   app.use(express.json({ limit: "256kb" })); // JSON bodies only; file bytes go to storage
   app.getHttpAdapter().getInstance().disable("x-powered-by");
 
