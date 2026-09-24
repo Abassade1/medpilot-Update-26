@@ -83,6 +83,15 @@ export interface NotificationsDto {
   items: { id: string; type: string; title: string; body: string; data: { url?: string } | null; read: boolean; createdAt: string }[];
 }
 
+export type TeamMemberRole = "manager" | "staff";
+export type MyRole = "owner" | TeamMemberRole;
+export interface TeamMemberDto {
+  id: string; email: string; role: TeamMemberRole; status: "invited" | "active" | "removed";
+  invitedAt: string; joinedAt: string | null;
+}
+export interface TeamDto { owner: { email: string }; members: TeamMemberDto[] }
+export interface InvitePreviewDto { providerName: string; role: TeamMemberRole; email: string }
+
 export interface StaffQueueDto {
   providers: { id: string; name: string; type: string; typeLabel: string; info: string | null; createdAt: string }[];
   listings: { id: string; name: string; kind: "service" | "package"; providerId: string; providerName: string; providerType: string; providerTypeLabel: string; createdAt: string }[];

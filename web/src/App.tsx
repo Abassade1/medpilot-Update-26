@@ -2,6 +2,8 @@ import React from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./lib/auth";
 import Login from "./routes/Login";
+import AcceptInvite from "./routes/AcceptInvite";
+import Team from "./routes/Team";
 import Layout from "./routes/Layout";
 import Overview from "./routes/Overview";
 import Profile from "./routes/Profile";
@@ -32,9 +34,11 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={signedIn ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/invite" element={<AcceptInvite />} />
       <Route path="/" element={<Protected><Layout /></Protected>}>
         <Route index element={<Overview />} />
         <Route path="profile" element={<Profile />} />
+        <Route path="team" element={<Team />} />
         <Route path="services" element={<Listings kind="service" />} />
         <Route path="services/new" element={<ListingForm kind="service" />} />
         <Route path="services/:id" element={<ListingForm kind="service" />} />

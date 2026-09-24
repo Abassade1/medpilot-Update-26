@@ -1,18 +1,20 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, asc, desc, eq, ilike, inArray, isNull, lte, or, sql } from "drizzle-orm";
-import { randomInt } from "node:crypto";
+import { and, asc, desc, eq, ilike, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
+import { createHash, randomBytes, randomInt } from "node:crypto";
 import { uuidv7 } from "uuidv7";
 import { z } from "zod";
 import type { Db } from "../../db/client";
 import { schema as s } from "../../db/client";
 import { AppError } from "../../common/errors";
 import { containsPattern } from "../../common/like";
+import { loadEnv } from "../../config/env";
 import { AuditService } from "../auth/audit.service";
+import { EmailService } from "../email/email.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { BUCKETS, StorageService } from "../storage/storage.service";
 import {
-  AvailabilityBody, BookListingBody, CreateListingBody, CreateProviderBody, DiscoverQuery, ImageUploadUrlBody, ListingsQuery,
-  PatchListingBody, PatchProviderBody,
+  AvailabilityBody, BookListingBody, CreateListingBody, CreateProviderBody, DiscoverQuery, ImageUploadUrlBody, InviteMemberBody,
+  ListingsQuery, PatchListingBody, PatchProviderBody,
 } from "./vendors.schemas";
 import { categoryLabel, fieldsFor, LOCATION_MODES, PRICE_TYPES, PROVIDER_TYPES, typeOf } from "./taxonomy";
 
@@ -30,14 +32,18 @@ const json = <T,>(v: string, fallback: T): T => { try { return JSON.parse(v) as 
 const toMin = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
 const fromMin = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 const blankToNull = (v: string | null | undefined) => (v === undefined ? undefined : v === "" ? null : v);
+const sha256 = (v: string) => createHash("sha256").update(v).digest("hex");
+const INVITE_TTL_MS = 7 * 24 * 3600_000;
 
 @Injectable()
 export class VendorsService {
+  private readonly env = loadEnv();
   constructor(
     @Inject("DB") private readonly db: Db,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
     private readonly storage: StorageService,
+    private readonly email: EmailService,
   ) {}
 
   // ---- provider & listing images ---------------------------------------------------------------------
@@ -63,16 +69,32 @@ export class VendorsService {
   }
 
   // ---- provider profile -------------------------------------------------------------------------------
-  private async mine(userId: string): Promise<Provider | null> {
-    const [p] = await this.db.select().from(s.providers)
+  /** Resolves the caller to a provider either as the owner, or as an active team member. */
+  private async resolveMembership(userId: string): Promise<{ provider: Provider; role: "owner" | "manager" | "staff" } | null> {
+    const [owned] = await this.db.select().from(s.providers)
       .where(and(eq(s.providers.ownerUserId, userId), isNull(s.providers.deletedAt))).limit(1);
-    return p ?? null;
+    if (owned) return { provider: owned, role: "owner" };
+    const [row] = await this.db.select({ m: s.providerMembers, p: s.providers }).from(s.providerMembers)
+      .innerJoin(s.providers, eq(s.providers.id, s.providerMembers.providerId))
+      .where(and(eq(s.providerMembers.userId, userId), eq(s.providerMembers.status, "active"), isNull(s.providers.deletedAt))).limit(1);
+    if (row) return { provider: row.p, role: row.m.role as "manager" | "staff" };
+    return null;
   }
-  /** Every provider route starts here: the caller must own a provider account. */
+  private async mine(userId: string): Promise<Provider | null> {
+    return (await this.resolveMembership(userId))?.provider ?? null;
+  }
+  /** Every provider route starts here: the caller must own or belong to a provider account. */
   private async requireProvider(userId: string): Promise<Provider> {
     const p = await this.mine(userId);
     if (!p) throw new AppError("forbidden", "You don't have a provider account yet");
     return p;
+  }
+  /** Team management (invite/resend/remove) is restricted to the owner and manager-level members. */
+  private async requireTeamManager(userId: string): Promise<Provider> {
+    const m = await this.resolveMembership(userId);
+    if (!m) throw new AppError("forbidden", "You don't have a provider account yet");
+    if (m.role === "staff") throw new AppError("forbidden", "Only the owner or a manager can manage the team");
+    return m.provider;
   }
 
   /** What the profile still needs before its listings can go live. */
@@ -106,8 +128,8 @@ export class VendorsService {
   }
 
   async getMine(userId: string) {
-    const p = await this.mine(userId);
-    return { provider: p ? this.providerView(p) : null };
+    const m = await this.resolveMembership(userId);
+    return { provider: m ? this.providerView(m.provider) : null, myRole: m?.role ?? null };
   }
 
   async createProvider(userId: string, input: z.infer<typeof CreateProviderBody>) {
@@ -737,6 +759,124 @@ export class VendorsService {
       completedValueLabel: money(value, "USD"), completedValueNote: "Listed prices of completed bookings. Payments are not processed in the app.",
       topListings: top.map((t) => ({ ...t, bookings: perListing.get(t.id) ?? 0 })), unreadNotifications: unread.unreadCount,
     };
+  }
+
+  // ---- team roster --------------------------------------------------------------------------------------
+  private inviteLink(token: string): string {
+    const base = this.env.WEB_PUBLIC_URL || "http://localhost:5173";
+    return `${base.replace(/\/$/, "")}/invite?token=${encodeURIComponent(token)}`;
+  }
+  private teamMemberView(m: typeof s.providerMembers.$inferSelect) {
+    return {
+      id: m.id, email: m.email, role: m.role as "manager" | "staff", status: m.status as "invited" | "active" | "removed",
+      invitedAt: m.invitedAt, joinedAt: m.joinedAt,
+    };
+  }
+
+  async listTeam(userId: string) {
+    const provider = await this.requireProvider(userId);
+    const [[owner], rows] = await Promise.all([
+      this.db.select({ email: s.users.email }).from(s.users).where(eq(s.users.id, provider.ownerUserId)).limit(1),
+      this.db.select().from(s.providerMembers)
+        .where(and(eq(s.providerMembers.providerId, provider.id), ne(s.providerMembers.status, "removed")))
+        .orderBy(asc(s.providerMembers.invitedAt)),
+    ]);
+    return { owner: { email: owner?.email ?? provider.email ?? "" }, members: rows.map((m) => this.teamMemberView(m)) };
+  }
+
+  async inviteMember(userId: string, input: z.infer<typeof InviteMemberBody>) {
+    const provider = await this.requireTeamManager(userId);
+    const [owner] = await this.db.select({ email: s.users.email }).from(s.users).where(eq(s.users.id, provider.ownerUserId)).limit(1);
+    if (owner?.email.toLowerCase() === input.email) {
+      throw new AppError("conflict", "That's already the owner's email", { fields: { email: "That's already the owner's email" } });
+    }
+    const [existing] = await this.db.select().from(s.providerMembers)
+      .where(and(eq(s.providerMembers.providerId, provider.id), eq(s.providerMembers.email, input.email), ne(s.providerMembers.status, "removed"))).limit(1);
+    if (existing) {
+      const msg = existing.status === "active" ? "This person is already on your team" : "An invite is already pending for this email";
+      throw new AppError("conflict", msg, { fields: { email: msg } });
+    }
+    const id = uuidv7();
+    const raw = "pmi_" + randomBytes(24).toString("base64url");
+    await this.db.insert(s.providerMembers).values({
+      id, providerId: provider.id, email: input.email, role: input.role, status: "invited",
+      invitedByUserId: userId, inviteTokenHash: sha256(raw + this.env.APP_SECRET), inviteExpiresAt: new Date(Date.now() + INVITE_TTL_MS),
+    });
+    await this.email.send({
+      to: input.email, subject: `You're invited to join ${provider.name} on MedPilot`,
+      text: `${provider.name} invited you to help manage their MedPilot provider account as ${input.role === "manager" ? "a manager" : "a staff member"}. This invite expires in 7 days.`,
+      actionUrl: this.inviteLink(raw), actionLabel: "Accept invite",
+    });
+    await this.audit.write({ actorUserId: userId, action: "provider.member_invited", resourceType: "provider", resourceId: provider.id });
+    return this.listTeam(userId);
+  }
+
+  async resendInvite(userId: string, memberId: string) {
+    const provider = await this.requireTeamManager(userId);
+    const [row] = await this.db.select().from(s.providerMembers)
+      .where(and(eq(s.providerMembers.id, memberId), eq(s.providerMembers.providerId, provider.id))).limit(1);
+    if (!row || row.status !== "invited") throw new AppError("conflict", "This invite can't be resent");
+    const raw = "pmi_" + randomBytes(24).toString("base64url");
+    await this.db.update(s.providerMembers)
+      .set({ inviteTokenHash: sha256(raw + this.env.APP_SECRET), inviteExpiresAt: new Date(Date.now() + INVITE_TTL_MS), updatedAt: new Date() })
+      .where(eq(s.providerMembers.id, memberId));
+    await this.email.send({
+      to: row.email, subject: `Reminder: you're invited to join ${provider.name} on MedPilot`,
+      text: `${provider.name} invited you to help manage their MedPilot provider account as ${row.role === "manager" ? "a manager" : "a staff member"}. This invite expires in 7 days.`,
+      actionUrl: this.inviteLink(raw), actionLabel: "Accept invite",
+    });
+    await this.audit.write({ actorUserId: userId, action: "provider.member_reinvited", resourceType: "provider", resourceId: provider.id });
+    return this.listTeam(userId);
+  }
+
+  async removeMember(userId: string, memberId: string) {
+    const provider = await this.requireTeamManager(userId);
+    const [row] = await this.db.select().from(s.providerMembers)
+      .where(and(eq(s.providerMembers.id, memberId), eq(s.providerMembers.providerId, provider.id))).limit(1);
+    if (!row || row.status === "removed") throw AppError.notFound("Team member");
+    await this.db.update(s.providerMembers)
+      .set({ status: "removed", removedAt: new Date(), inviteTokenHash: null, inviteExpiresAt: null, updatedAt: new Date() })
+      .where(eq(s.providerMembers.id, memberId));
+    if (row.userId) {
+      await this.notifications.notify(row.userId, {
+        type: "provider.member_removed", title: "Removed from team", body: `You were removed from ${provider.name}'s team on MedPilot.`,
+      });
+    }
+    await this.audit.write({ actorUserId: userId, action: "provider.member_removed", resourceType: "provider", resourceId: provider.id });
+    return this.listTeam(userId);
+  }
+
+  /** Public preview of an invite before the invitee signs in or registers. */
+  async inviteInfo(rawToken: string) {
+    const [row] = await this.db.select().from(s.providerMembers).where(eq(s.providerMembers.inviteTokenHash, sha256(rawToken + this.env.APP_SECRET))).limit(1);
+    if (!row || row.status !== "invited" || !row.inviteExpiresAt || row.inviteExpiresAt.getTime() < Date.now()) {
+      throw new AppError("bad_request", "This invite link is invalid or has expired");
+    }
+    const [provider] = await this.db.select({ name: s.providers.name }).from(s.providers).where(eq(s.providers.id, row.providerId)).limit(1);
+    return { providerName: provider?.name ?? "", role: row.role, email: row.email };
+  }
+
+  async acceptInvite(userId: string, rawToken: string) {
+    const hash = sha256(rawToken + this.env.APP_SECRET);
+    const [row] = await this.db.select().from(s.providerMembers).where(eq(s.providerMembers.inviteTokenHash, hash)).limit(1);
+    if (!row || row.status !== "invited" || !row.inviteExpiresAt || row.inviteExpiresAt.getTime() < Date.now()) {
+      throw new AppError("bad_request", "This invite link is invalid or has expired");
+    }
+    const [user] = await this.db.select({ email: s.users.email }).from(s.users).where(eq(s.users.id, userId)).limit(1);
+    if (!user || user.email.toLowerCase() !== row.email.toLowerCase()) {
+      throw new AppError("forbidden", "This invite was sent to a different email address. Sign in with that address to accept it.");
+    }
+    await this.db.update(s.providerMembers)
+      .set({ userId, status: "active", joinedAt: new Date(), inviteTokenHash: null, inviteExpiresAt: null, updatedAt: new Date() })
+      .where(eq(s.providerMembers.id, row.id));
+    const [provider] = await this.db.select().from(s.providers).where(eq(s.providers.id, row.providerId)).limit(1);
+    if (provider) {
+      await this.notifications.notify(provider.ownerUserId, {
+        type: "provider.member_joined", title: "Team member joined", body: `${user.email} joined your MedPilot team.`,
+      });
+    }
+    await this.audit.write({ actorUserId: userId, action: "provider.member_joined", resourceType: "provider", resourceId: row.providerId });
+    return this.getMine(userId);
   }
 
   /** Staff queue additions. */

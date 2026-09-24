@@ -43,6 +43,13 @@
       "when": 1789963352944,
       "tag": "0005_vendor_portal",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790224292145,
+      "tag": "0006_gray_wind_dancer",
+      "breakpoints": true
     }
   ]
 }

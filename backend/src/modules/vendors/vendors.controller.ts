@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Headers, HttpCode, Param, Patch, Post, Put, Query, Req } from "@nestjs/common";
 import type { Request } from "express";
 import { z } from "zod";
-import { Roles } from "../../common/auth.guard";
+import { Public, Roles } from "../../common/auth.guard";
 import { validate } from "../../common/validate";
 import { apiRoute } from "../../docs/registry";
 import { IdempotencyService } from "../bookings/idempotency";
@@ -9,7 +9,7 @@ import { VendorsService } from "./vendors.service";
 import { taxonomyForClient } from "./taxonomy";
 import {
   AvailabilityBody, BookListingBody, BookingsQuery, CreateListingBody, CreateProviderBody, DecisionBody, DiscoverQuery,
-  ImageUploadUrlBody, ListingsQuery, PatchListingBody, PatchProviderBody, SlotsQuery, VerificationBody,
+  ImageUploadUrlBody, InviteMemberBody, InviteTokenBody, ListingsQuery, PatchListingBody, PatchProviderBody, SlotsQuery, VerificationBody,
 } from "./vendors.schemas";
 
 const Uuid = z.string().uuid();
@@ -56,6 +56,15 @@ export class ProviderController {
   act(@Req() req: Request, @Param("id") id: string, @Param("action") action: string, @Body() body: unknown) {
     return this.vendors.actOnBooking(req.userId!, validate(Uuid, id), validate(BookingAction, action), validate(DecisionBody, body ?? {}).reason);
   }
+
+  @Public() @Get("team/invite/:token")
+  inviteInfo(@Param("token") token: string) { return this.vendors.inviteInfo(validate(InviteTokenBody, { token }).token); }
+  @HttpCode(200) @Post("team/accept")
+  acceptInvite(@Req() req: Request, @Body() body: unknown) { return this.vendors.acceptInvite(req.userId!, validate(InviteTokenBody, body).token); }
+  @Get("team") team(@Req() req: Request) { return this.vendors.listTeam(req.userId!); }
+  @Post("team/invite") invite(@Req() req: Request, @Body() body: unknown) { return this.vendors.inviteMember(req.userId!, validate(InviteMemberBody, body)); }
+  @HttpCode(200) @Post("team/:id/resend") resend(@Req() req: Request, @Param("id") id: string) { return this.vendors.resendInvite(req.userId!, validate(Uuid, id)); }
+  @HttpCode(200) @Delete("team/:id") removeMember(@Req() req: Request, @Param("id") id: string) { return this.vendors.removeMember(req.userId!, validate(Uuid, id)); }
 }
 
 /** What members see: only published listings. */
@@ -117,6 +126,12 @@ apiRoute({ method: "put", path: "/v1/provider/listings/{id}/availability", tag: 
 apiRoute({ method: "get", path: "/v1/provider/bookings", tag: A, summary: "Bookings for my listings", auth: true, query: BookingsQuery });
 apiRoute({ method: "get", path: "/v1/provider/bookings/{id}", tag: A, summary: "One booking", auth: true });
 apiRoute({ method: "post", path: "/v1/provider/bookings/{id}/{action}", tag: A, summary: "Confirm, decline, complete or cancel a booking", auth: true, status: 200 });
+apiRoute({ method: "get", path: "/v1/provider/team/invite/{token}", tag: A, summary: "Preview an invite before signing in (public)", auth: false });
+apiRoute({ method: "post", path: "/v1/provider/team/accept", tag: A, summary: "Accept a team invite as the signed-in user", auth: true, body: InviteTokenBody, status: 200 });
+apiRoute({ method: "get", path: "/v1/provider/team", tag: A, summary: "My provider's team roster", auth: true });
+apiRoute({ method: "post", path: "/v1/provider/team/invite", tag: A, summary: "Invite a team member by email (owner/manager)", auth: true, body: InviteMemberBody });
+apiRoute({ method: "post", path: "/v1/provider/team/{id}/resend", tag: A, summary: "Resend a pending invite (owner/manager)", auth: true, status: 200 });
+apiRoute({ method: "delete", path: "/v1/provider/team/{id}", tag: A, summary: "Remove a team member (owner/manager)", auth: true, status: 200 });
 apiRoute({ method: "get", path: "/v1/listings", tag: "catalog", summary: "Discover published services and packages", auth: true, query: DiscoverQuery });
 apiRoute({ method: "get", path: "/v1/listings/facets", tag: "catalog", summary: "Provider types and categories that have listings", auth: true });
 apiRoute({ method: "get", path: "/v1/listings/{id}", tag: "catalog", summary: "Service or package detail", auth: true });

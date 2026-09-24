@@ -2,6 +2,7 @@ const LABELS: Record<string, string> = {
   draft: "Draft", review: "In review", published: "Published", unpublished: "Unpublished", archived: "Archived",
   verified: "Verified", unverified: "Not verified", pending: "Pending", rejected: "Not approved",
   confirmed: "Confirmed", completed: "Completed", cancelled: "Cancelled",
+  invited: "Invite sent", active: "Active",
 };
 
 export default function StatusPill({ status }: { status: string }) {

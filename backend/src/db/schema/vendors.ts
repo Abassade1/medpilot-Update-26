@@ -1,7 +1,8 @@
+import { sql } from "drizzle-orm";
 import {
-  pgTable, uuid, varchar, timestamp, integer, smallint, text, primaryKey, uniqueIndex, index,
+  pgTable, uuid, varchar, timestamp, integer, smallint, text, char, primaryKey, uniqueIndex, index, pgEnum,
 } from "drizzle-orm/pg-core";
-import { users } from "./identity";
+import { citext, users } from "./identity";
 
 const ts = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -41,6 +42,40 @@ export const providers = pgTable(
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (t) => [uniqueIndex("providers_owner_uq").on(t.ownerUserId), index("providers_type_ix").on(t.type)],
+);
+
+export const providerMemberRole = pgEnum("provider_member_role", ["manager", "staff"]);
+export const providerMemberStatus = pgEnum("provider_member_status", ["invited", "active", "removed"]);
+
+/**
+ * A second user given access to a provider's portal, beyond the single `owner_user_id`. A row starts
+ * `invited` (userId still null, only an email on file) and becomes `active` once that email's user
+ * accepts via the token; `removed` keeps history instead of deleting the row. `manager` can do
+ * everything the owner can, including managing the roster; `staff` gets operational access
+ * (listings, bookings) but can't invite or remove teammates.
+ */
+export const providerMembers = pgTable(
+  "provider_members",
+  {
+    id: uuid("id").primaryKey(),
+    providerId: uuid("provider_id").notNull().references(() => providers.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id),
+    email: citext("email").notNull(),
+    role: providerMemberRole("role").notNull().default("staff"),
+    status: providerMemberStatus("status").notNull().default("invited"),
+    invitedByUserId: uuid("invited_by_user_id").notNull().references(() => users.id),
+    inviteTokenHash: char("invite_token_hash", { length: 64 }),
+    inviteExpiresAt: timestamp("invite_expires_at", { withTimezone: true }),
+    invitedAt: timestamp("invited_at", { withTimezone: true }).notNull().defaultNow(),
+    joinedAt: timestamp("joined_at", { withTimezone: true }),
+    removedAt: timestamp("removed_at", { withTimezone: true }),
+    ...ts,
+  },
+  (t) => [
+    uniqueIndex("provider_members_provider_email_uq").on(t.providerId, t.email).where(sql`status <> 'removed'`),
+    uniqueIndex("provider_members_token_uq").on(t.inviteTokenHash),
+    index("provider_members_user_ix").on(t.userId).where(sql`status = 'active'`),
+  ],
 );
 
 /**

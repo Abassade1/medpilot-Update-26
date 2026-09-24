@@ -117,6 +117,14 @@ export const ImageUploadUrlBody = z.object({
   sizeBytes: z.number().int().positive(),
 });
 
+export const TeamMemberRole = z.enum(["manager", "staff"]);
+export const InviteMemberBody = z.object({
+  email: z.string().trim().min(1, "Email address is required").email("Enter a valid email address").max(254)
+    .transform((v) => v.toLowerCase()),
+  role: TeamMemberRole,
+});
+export const InviteTokenBody = z.object({ token: z.string().min(10).max(200) });
+
 export const SlotsQuery = z.object({ date: Day });
 export const BookListingBody = z.object({
   date: Day,

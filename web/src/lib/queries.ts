@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 import type {
-  ListingDetailFull, ListingDto, NotificationsDto, ProviderAvailabilityDto, ProviderBookingDto, ProviderDashboardDto, ProviderProfileDto,
-  StaffQueueDto, Taxonomy,
+  InvitePreviewDto, ListingDetailFull, ListingDto, MyRole, NotificationsDto, ProviderAvailabilityDto, ProviderBookingDto,
+  ProviderDashboardDto, ProviderProfileDto, StaffQueueDto, Taxonomy, TeamDto, TeamMemberRole,
 } from "./types";
 
 const qk = {
@@ -15,10 +15,12 @@ const qk = {
   availability: (id: string) => ["availability", id] as const,
   bookings: (status?: string) => ["bookings", status ?? ""] as const,
   booking: (id: string) => ["booking", id] as const,
+  team: ["team"] as const,
 };
 
 export const useTaxonomy = () => useQuery({ queryKey: qk.taxonomy, queryFn: () => api.get<Taxonomy>("/v1/provider/taxonomy"), staleTime: 5 * 60_000 });
-export const useMyProvider = () => useQuery({ queryKey: qk.me, queryFn: () => api.get<{ provider: ProviderProfileDto | null }>("/v1/provider/me") });
+export const useMyProvider = () =>
+  useQuery({ queryKey: qk.me, queryFn: () => api.get<{ provider: ProviderProfileDto | null; myRole: MyRole | null }>("/v1/provider/me") });
 export const useDashboard = (enabled: boolean) => useQuery({ queryKey: qk.dashboard, queryFn: () => api.get<ProviderDashboardDto>("/v1/provider/dashboard"), enabled });
 
 export const useNotifications = () =>
@@ -103,6 +105,39 @@ export function useBookingAction(id: string) {
     mutationFn: ({ action, reason }: { action: "confirm" | "decline" | "complete" | "cancel"; reason?: string }) =>
       api.post<ProviderBookingDto>(`/v1/provider/bookings/${id}/${action}`, reason ? { reason } : {}),
     onSuccess: (b) => { qc.setQueryData(qk.booking(id), b); void qc.invalidateQueries({ queryKey: ["bookings"] }); refresh(qc); },
+  });
+}
+
+// ---- team roster ------------------------------------------------------------------------------------
+export const useTeam = () => useQuery({ queryKey: qk.team, queryFn: () => api.get<TeamDto>("/v1/provider/team") });
+export function useInviteMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { email: string; role: TeamMemberRole }) => api.post<TeamDto>("/v1/provider/team/invite", body),
+    onSuccess: (d) => qc.setQueryData(qk.team, d),
+  });
+}
+export function useResendInvite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post<TeamDto>(`/v1/provider/team/${id}/resend`),
+    onSuccess: (d) => qc.setQueryData(qk.team, d),
+  });
+}
+export function useRemoveMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<TeamDto>(`/v1/provider/team/${id}`),
+    onSuccess: (d) => qc.setQueryData(qk.team, d),
+  });
+}
+export const useInvitePreview = (token: string | null) =>
+  useQuery({ queryKey: ["invite", token ?? ""], queryFn: () => api.get<InvitePreviewDto>(`/v1/provider/team/invite/${encodeURIComponent(token!)}`), enabled: !!token, retry: false });
+export function useAcceptInvite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (token: string) => api.post<{ provider: ProviderProfileDto | null; myRole: MyRole | null }>("/v1/provider/team/accept", { token }),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: qk.me }); },
   });
 }
 

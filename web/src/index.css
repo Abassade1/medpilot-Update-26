@@ -70,9 +70,9 @@ a { color: var(--primary); }
 .pill { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
 .pill-draft { background: var(--surface-alt); color: var(--secondary-text); }
 .pill-review { background: var(--warning-bg); color: var(--warning-text); }
-.pill-published, .pill-verified, .pill-confirmed, .pill-completed { background: var(--success-bg); color: #1B7A46; }
+.pill-published, .pill-verified, .pill-confirmed, .pill-completed, .pill-active { background: var(--success-bg); color: #1B7A46; }
 .pill-unpublished, .pill-archived, .pill-unverified { background: var(--surface-alt); color: var(--secondary-text); }
-.pill-pending { background: var(--warning-bg); color: var(--warning-text); }
+.pill-pending, .pill-invited { background: var(--warning-bg); color: var(--warning-text); }
 .pill-rejected, .pill-cancelled { background: var(--error-bg); color: var(--error); }
 
 .banner { border-radius: var(--radius-sm); padding: 12px 14px; font-size: 13px; line-height: 1.5; }
