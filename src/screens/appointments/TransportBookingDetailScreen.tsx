@@ -149,6 +149,15 @@ export default function TransportBookingDetailScreen({ navigation, route }: Root
           {t.status === "cancelled" ? (
             <Button label="Request transport again" variant="pill" onPress={() => navigation.navigate("MedicalTransport")} />
           ) : null}
+          {t.canReview && !t.reviewed ? (
+            <Button
+              label="Rate this transport"
+              variant="pill"
+              onPress={() => navigation.navigate("RateVisit", { targetType: "transport_provider", requestId: t.id, targetName: t.provider.name })}
+              style={{ marginTop: 10 }}
+            />
+          ) : null}
+          {t.reviewed ? <Text style={styles.reviewed}>You've rated this transport. Thank you!</Text> : null}
           <Button
             label="Back to appointments"
             variant="outlinePill"
@@ -189,4 +198,5 @@ const styles = StyleSheet.create({
   rowValue: { fontSize: 13.5, fontWeight: "600", color: colors.text, textAlign: "right" },
   hint: { fontSize: 11.5, color: colors.secondaryText, marginTop: 1, textAlign: "right" },
   list: { fontSize: 13.5, color: colors.text, lineHeight: 20 },
+  reviewed: { fontSize: 12.5, color: colors.secondaryText, textAlign: "center", marginTop: 10, fontWeight: "600" },
 });

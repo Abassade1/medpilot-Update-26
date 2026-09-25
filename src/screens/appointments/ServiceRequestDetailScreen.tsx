@@ -82,6 +82,19 @@ export default function ServiceRequestDetailScreen({ navigation, route }: RootSc
           {r.canCancel ? (
             <Button label="Cancel request" variant="outlinePill" tone="danger" onPress={confirmCancel} loading={cancel.isPending} disabled={cancel.isPending} />
           ) : null}
+          {r.canReview && !r.reviewed && r.target.type !== "listing" ? (
+            <Button
+              label="Rate this visit"
+              variant="pill"
+              onPress={() => {
+                const targetType = r.target.type;
+                if (targetType === "listing") return;
+                navigation.navigate("RateVisit", { targetType, requestId: r.id, targetName: r.target.name });
+              }}
+              style={{ marginTop: 10 }}
+            />
+          ) : null}
+          {r.reviewed ? <Text style={styles.reviewed}>You've rated this visit. Thank you!</Text> : null}
           <Button
             label="Back to appointments"
             variant="outlinePill"
@@ -119,4 +132,5 @@ const styles = StyleSheet.create({
   rowValue: { fontSize: 13.5, fontWeight: "600", color: colors.text, textAlign: "right" },
   hint: { fontSize: 11.5, color: colors.secondaryText, marginTop: 1 },
   cancelled: { fontSize: 13, color: colors.error, marginTop: 4 },
+  reviewed: { fontSize: 12.5, color: colors.secondaryText, textAlign: "center", marginTop: 10, fontWeight: "600" },
 });

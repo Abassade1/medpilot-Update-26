@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { randomInt } from "node:crypto";
 import { uuidv7 } from "uuidv7";
 import { z } from "zod";
@@ -12,6 +12,8 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { UsersService } from "../users/users.service";
 import { LocationsService } from "../locations/locations.service";
 import type { CreateAppointmentBody, CreateTransportBody, RescheduleAppointmentBody, StaffDecisionBody } from "./bookings.schemas";
+
+const utcToday = () => new Date().toISOString().slice(0, 10);
 
 const TYPE_LABEL: Record<string, string> = {
   general_checkup: "Check-up",
@@ -98,6 +100,7 @@ export class BookingsService {
     a: typeof s.appointmentRequests.$inferSelect,
     h: typeof s.hospitals.$inferSelect,
     c?: typeof s.emergencyContacts.$inferSelect | null,
+    reviewed = false,
   ) => ({
     id: a.id,
     reference: `#${a.reference}`,
@@ -123,9 +126,18 @@ export class BookingsService {
     // The server decides what is allowed, so the app never has to guess.
     canReschedule: BookingsService.ACTIVE.has(a.status),
     canCancel: BookingsService.ACTIVE.has(a.status),
+    canReview: a.status === "completed" || (a.status === "confirmed" && a.requestedDate < utcToday()),
+    reviewed,
     createdAt: a.createdAt,
     updatedAt: a.updatedAt,
   });
+
+  private async reviewedIds(requestType: string, ids: string[]): Promise<Set<string>> {
+    if (!ids.length) return new Set();
+    const rows = await this.db.select({ id: s.reviews.requestId }).from(s.reviews)
+      .where(and(eq(s.reviews.requestType, requestType), inArray(s.reviews.requestId, ids)));
+    return new Set(rows.map((r) => r.id));
+  }
 
   async listAppointments(userId: string) {
     const rows = await this.db.select({ a: s.appointmentRequests, h: s.hospitals, c: s.emergencyContacts })
@@ -134,7 +146,8 @@ export class BookingsService {
       .leftJoin(s.emergencyContacts, eq(s.emergencyContacts.id, s.appointmentRequests.emergencyContactId))
       .where(and(eq(s.appointmentRequests.userId, userId), isNull(s.appointmentRequests.deletedAt)))
       .orderBy(desc(s.appointmentRequests.createdAt)).limit(50);
-    return rows.map(({ a, h, c }) => this.appointmentView(a, h, c));
+    const reviewed = await this.reviewedIds("appointment", rows.map((r) => r.a.id));
+    return rows.map(({ a, h, c }) => this.appointmentView(a, h, c, reviewed.has(a.id)));
   }
 
   async getAppointment(userId: string, id: string) {
@@ -144,7 +157,8 @@ export class BookingsService {
       .leftJoin(s.emergencyContacts, eq(s.emergencyContacts.id, s.appointmentRequests.emergencyContactId))
       .where(and(eq(s.appointmentRequests.id, id), isNull(s.appointmentRequests.deletedAt))).limit(1);
     if (!row || row.a.userId !== userId) throw AppError.notFound("Appointment");
-    return this.appointmentView(row.a, row.h, row.c);
+    const reviewed = await this.reviewedIds("appointment", [id]);
+    return this.appointmentView(row.a, row.h, row.c, reviewed.has(id));
   }
 
   /**
@@ -373,8 +387,9 @@ export class BookingsService {
       t.emergencyContactId ? this.db.select().from(s.emergencyContacts).where(eq(s.emergencyContacts.id, t.emergencyContactId)).limit(1) : Promise.resolve([]),
     ]);
     const c = contact[0];
+    const reviewed = (await this.reviewedIds("transport", [t.id])).has(t.id);
     return {
-      ...this.transportView(t, p),
+      ...this.transportView(t, p, reviewed),
       purposes: [...purposes.map((x) => x.label), ...(t.otherPurpose ? [t.otherPurpose] : [])],
       needs: [...needs.map((x) => x.label), ...(t.otherNeed ? [t.otherNeed] : [])],
       aircraft: craft[0]?.name ?? null,
@@ -387,6 +402,7 @@ export class BookingsService {
   private transportView = (
     t: typeof s.transportRequests.$inferSelect,
     p: typeof s.transportProviders.$inferSelect,
+    reviewed = false,
   ) => ({
     id: t.id,
     reference: `#${t.reference}`,
@@ -397,6 +413,8 @@ export class BookingsService {
     flightNumber: t.flightNumber,
     departAt: t.departAt, arriveAt: t.arriveAt,
     provider: { id: p.id, name: p.name, logoAsset: p.logoAsset, tags: p.tags },
+    canReview: t.status === "completed" || (t.status === "confirmed" && t.pickupDate < utcToday()),
+    reviewed,
     createdAt: t.createdAt,
   });
 
@@ -406,7 +424,8 @@ export class BookingsService {
       .innerJoin(s.transportProviders, eq(s.transportProviders.id, s.transportRequests.providerId))
       .where(and(eq(s.transportRequests.userId, userId), isNull(s.transportRequests.deletedAt)))
       .orderBy(desc(s.transportRequests.createdAt)).limit(50);
-    return rows.map(({ t, p }) => ({ ...this.transportView(t, p), canCancel: BookingsService.TRANSPORT_ACTIVE.has(t.status) }));
+    const reviewed = await this.reviewedIds("transport", rows.map((r) => r.t.id));
+    return rows.map(({ t, p }) => ({ ...this.transportView(t, p, reviewed.has(t.id)), canCancel: BookingsService.TRANSPORT_ACTIVE.has(t.status) }));
   }
 
   private async loadTransport(id: string) {

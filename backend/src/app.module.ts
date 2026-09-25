@@ -38,6 +38,8 @@ import { StaffController } from "./modules/staff/staff.controller";
 import { ServicesController } from "./modules/services/services.controller";
 import { ServicesService } from "./modules/services/services.service";
 import { NotificationsService } from "./modules/notifications/notifications.service";
+import { ReviewsController } from "./modules/reviews/reviews.controller";
+import { ReviewsService } from "./modules/reviews/reviews.service";
 
 const env = loadEnv();
 const pool = createPool(env.DATABASE_URL);
@@ -48,7 +50,7 @@ const pool = createPool(env.DATABASE_URL);
   ],
   controllers: [
     HealthController, AuthController, UsersController, StorageController,
-    CatalogController, BookingsController, AuxController, BillingController, LocationsController, ServicesController, StaffController, ProviderController, ListingsController, StaffVendorsController,
+    CatalogController, BookingsController, AuxController, BillingController, LocationsController, ServicesController, StaffController, ProviderController, ListingsController, StaffVendorsController, ReviewsController,
   ],
   providers: [
     { provide: Pool, useValue: pool },
@@ -56,7 +58,7 @@ const pool = createPool(env.DATABASE_URL);
     AuthService, TokenService, AuditService, EmailService,
     UsersService, StorageService, CatalogService,
     BookingsService, ActivitiesService, IdempotencyService,
-    AuxService, BillingService, QuotaService, NotificationsService, LocationsService, ServicesService, VendorsService,
+    AuxService, BillingService, QuotaService, NotificationsService, LocationsService, ServicesService, VendorsService, ReviewsService,
     { provide: APP_GUARD, useClass: AppThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: EnvelopeExceptionFilter },

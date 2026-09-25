@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ProviderAvailabilityDto } from "./types";
 import { endpoints } from "./endpoints";
-import type { ActivityTypeDto } from "./types";
+import type { ActivityTypeDto, ReviewTargetType } from "./types";
 
 /** Query keys in one place so invalidation stays consistent. */
 export const qk = {
@@ -51,6 +51,7 @@ export const qk = {
   availability: (locationId: string) => ["availability", locationId] as const,
   preferences: ["preferences"] as const,
   chat: ["chat"] as const,
+  reviews: (targetType: string, targetId: string) => ["reviews", targetType, targetId] as const,
 };
 
 // Catalog is stable; member data is not.
@@ -335,6 +336,36 @@ export const useProviderListing = (id?: string) =>
   useQuery({ queryKey: qk.providerListing(id ?? ""), queryFn: () => endpoints.provider.listing(id!), enabled: !!id, staleTime: 10_000 });
 export const useProviderAvailability = (id: string) =>
   useQuery({ queryKey: qk.providerAvailability(id), queryFn: () => endpoints.provider.availability(id) });
+
+// ---- reviews -----------------------------------------------------------------------
+export const useReviews = (targetType: ReviewTargetType, targetId: string) =>
+  useQuery({
+    queryKey: qk.reviews(targetType, targetId),
+    queryFn: () => endpoints.reviews.list(targetType, targetId),
+    staleTime: CATALOG_STALE,
+    enabled: !!targetId,
+  });
+
+export function useSubmitReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { targetType: ReviewTargetType; requestId: string; rating: number; comment?: string }) => endpoints.reviews.create(body),
+    onSuccess: () => {
+      // The booking that was reviewed, and the target's own rating, both need a refetch.
+      void qc.invalidateQueries({ queryKey: qk.appointments });
+      void qc.invalidateQueries({ queryKey: qk.transport });
+      void qc.invalidateQueries({ queryKey: qk.serviceRequests });
+      void qc.invalidateQueries({ queryKey: ["appointment"] });
+      void qc.invalidateQueries({ queryKey: ["transportBooking"] });
+      void qc.invalidateQueries({ queryKey: ["serviceRequest"] });
+      void qc.invalidateQueries({ queryKey: ["reviews"] });
+      void qc.invalidateQueries({ queryKey: ["hospital"] });
+      void qc.invalidateQueries({ queryKey: ["provider"] });
+      void qc.invalidateQueries({ queryKey: ["petClinic"] });
+      void qc.invalidateQueries({ queryKey: ["indieSpecialist"] });
+    },
+  });
+}
 export const useProviderBookings = (status?: string) =>
   useQuery({ queryKey: qk.providerBookings(status), queryFn: () => endpoints.provider.bookings(status), staleTime: 10_000 });
 export const useProviderBooking = (id: string) =>

@@ -2,6 +2,7 @@ import type {
   NativeStackNavigationProp,
   NativeStackScreenProps,
 } from "@react-navigation/native-stack";
+import type { ReviewTargetType } from "../api/types";
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -72,6 +73,7 @@ export type RootStackParamList = {
   SpecialistProfile: { specialistId: string };
   SpecialistRequest: { specialistId: string; kind: "booking" | "connect"; serviceId?: string };
   ServiceRequestDetail: { requestId: string; notice?: string };
+  RateVisit: { targetType: ReviewTargetType; requestId: string; targetName: string };
 };
 
 export type RootScreenProps<T extends keyof RootStackParamList> = NativeStackScreenProps<

@@ -7,7 +7,7 @@ import type {
   ServiceDto, SetupStatus, SpecialistDetail, SubscriptionDto, TokenPairDto,
   TransportDto, TransportDetailDto, Taxonomy, ProviderProfileDto, ProviderDashboardDto, ListingDto, ListingStatus, ProviderAvailabilityDto, ProviderBookingDto, ListingCardDto, ListingFacets, ListingDetailFull, SlotsDto, TriageResultDto, TriageStep, UploadTicket,
   AvailabilityDto, ChatHistoryDto, ChatReplyDto, LocationDto, PetClinicDetail, PreferencesDto,
-  ResolveDto, ServiceRequestDto, SpecialistCardDto, SpecialistCategoryDto, SpecialistProfileDto,
+  ResolveDto, ReviewDto, ReviewTargetType, ServiceRequestDto, SpecialistCardDto, SpecialistCategoryDto, SpecialistProfileDto,
 } from "./types";
 
 /** Every server call in one place; screens never build URLs themselves. */
@@ -218,5 +218,12 @@ export const endpoints = {
   notifications: {
     list: () => api.get<NotificationsDto>("/v1/notifications"),
     markRead: (ids: string[] | "all") => api.post<NotificationsDto>("/v1/notifications/read", { ids }),
+  },
+
+  reviews: {
+    create: (body: { targetType: ReviewTargetType; requestId: string; rating: number; comment?: string }) =>
+      api.post<{ id: string; rating: number }>("/v1/reviews", body),
+    list: (targetType: ReviewTargetType, targetId: string) =>
+      api.get<ReviewDto[]>(`/v1/reviews?targetType=${targetType}&targetId=${targetId}`),
   },
 };

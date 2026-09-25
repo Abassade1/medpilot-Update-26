@@ -13,6 +13,7 @@ import type { PetRequestBody, SpecialistListQuery, SpecialistRequestBody } from 
 
 const money = (amount: number | null, currency = "USD") =>
   amount == null ? null : `${currency === "USD" ? "$" : `${currency} `}${(amount / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+const utcToday = () => new Date().toISOString().slice(0, 10);
 
 const KIND_LABEL: Record<string, string> = {
   pet_appointment: "Pet appointment",
@@ -204,6 +205,13 @@ export class ServicesService {
       ? await this.db.select({ l: s.listings, p: s.providers }).from(s.listings).innerJoin(s.providers, eq(s.providers.id, s.listings.providerId)).where(inArray(s.listings.id, listingIds))
       : [];
     const indSvc = specIds.length ? await this.db.select().from(s.independentServices).where(inArray(s.independentServices.specialistId, specIds)) : [];
+    const reviewableIds = rows.filter((r) => r.targetType !== "listing").map((r) => r.id);
+    const reviewedRows = reviewableIds.length
+      ? await this.db.select({ id: s.reviews.requestId }).from(s.reviews)
+        .where(and(eq(s.reviews.requestType, "service_request"), inArray(s.reviews.requestId, reviewableIds)))
+      : [];
+    const reviewed = new Set(reviewedRows.map((x) => x.id));
+    const today = utcToday();
 
     return rows.map((r) => {
       if (r.targetType === "listing") {
@@ -219,7 +227,8 @@ export class ServicesService {
           service: { id: r.targetId, name: row?.l.name ?? "Service", priceLabel: money(d.priceAmount ?? null, d.priceCurrency ?? "USD") },
           preferredDate: r.preferredDate, endDate: r.endDate, preferredTime: r.preferredTime, message: r.message,
           details: null as { petName?: string; petType?: string } | null,
-          canCancel: ACTIVE.has(r.status), cancelledReason: r.cancelledReason, createdAt: r.createdAt,
+          // Vendor-marketplace bookings don't feed the catalog ratings system.
+          canCancel: ACTIVE.has(r.status), canReview: false, reviewed: false, cancelledReason: r.cancelledReason, createdAt: r.createdAt,
         };
       }
       const isPet = r.targetType === "pet_clinic";
@@ -240,6 +249,8 @@ export class ServicesService {
         message: r.message,
         details: r.details ? (JSON.parse(r.details) as { petName?: string; petType?: string }) : null,
         canCancel: ACTIVE.has(r.status),
+        canReview: r.status === "completed" || (r.status === "confirmed" && !!r.preferredDate && r.preferredDate < today),
+        reviewed: reviewed.has(r.id),
         cancelledReason: r.cancelledReason, createdAt: r.createdAt,
       };
     });

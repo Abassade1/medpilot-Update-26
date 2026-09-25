@@ -189,6 +189,15 @@ export default function AppointmentDetailScreen({ navigation, route }: RootScree
               onPress={() => navigation.navigate("BookAppointment", { hospitalId: a.hospital.id })}
             />
           ) : null}
+          {a.canReview && !a.reviewed ? (
+            <Button
+              label="Rate this visit"
+              variant="pill"
+              onPress={() => navigation.navigate("RateVisit", { targetType: "hospital", requestId: a.id, targetName: a.hospital.name })}
+              style={{ marginTop: 10 }}
+            />
+          ) : null}
+          {a.reviewed ? <Text style={styles.reviewed}>You've rated this visit. Thank you!</Text> : null}
           <Button
             label="Back to appointments"
             variant="outlinePill"
@@ -240,4 +249,5 @@ const styles = StyleSheet.create({
   rowHint: { fontSize: 11.5, color: colors.secondaryText, marginTop: 1, textAlign: "right" },
   actions: { marginTop: 22 },
   cancelBtn: { marginTop: 10 },
+  reviewed: { fontSize: 12.5, color: colors.secondaryText, textAlign: "center", marginTop: 10, fontWeight: "600" },
 });

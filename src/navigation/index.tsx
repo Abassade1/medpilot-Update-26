@@ -59,6 +59,7 @@ import MealCameraScreen from "../screens/aux/MealCameraScreen";
 import MealAnalyzingScreen from "../screens/aux/MealAnalyzingScreen";
 import MealReportScreen from "../screens/aux/MealReportScreen";
 import UpgradeScreen from "../screens/aux/UpgradeScreen";
+import RateVisitScreen from "../screens/reviews/RateVisitScreen";
 import { colors } from "../theme";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -159,6 +160,7 @@ export default function RootNavigator() {
         <Stack.Screen name="MealAnalyzing" component={MealAnalyzingScreen} />
         <Stack.Screen name="MealReport" component={MealReportScreen} />
         <Stack.Screen name="Upgrade" component={UpgradeScreen} />
+        <Stack.Screen name="RateVisit" component={RateVisitScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

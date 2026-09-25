@@ -120,6 +120,7 @@ export interface AppointmentDto {
   cancelledReason: string | null;
   /** The server decides what is allowed; the app only reflects it. */
   canReschedule: boolean; canCancel: boolean;
+  canReview: boolean; reviewed: boolean;
   createdAt: string; updatedAt: string;
 }
 export interface TransportDto {
@@ -129,6 +130,7 @@ export interface TransportDto {
   returnTrip: boolean; flightNumber: string | null;
   departAt: string | null; arriveAt: string | null;
   provider: { id: string; name: string; logoAsset: string | null; tags: string };
+  canReview: boolean; reviewed: boolean;
   createdAt: string;
   canCancel?: boolean;
 }
@@ -138,6 +140,9 @@ export interface TransportDetailDto extends TransportDto {
   emergencyContact: { name: string; phone: string; relationship: string; accompanies: boolean } | null;
   canCancel: boolean; cancelledReason: string | null;
 }
+
+export type ReviewTargetType = "hospital" | "transport_provider" | "pet_clinic" | "independent_specialist";
+export interface ReviewDto { id: string; rating: number; comment: string | null; reviewer: string; createdAt: string }
 
 export type ActivityTypeDto = "appointment" | "transport" | "diagnosis" | "meal" | "record" | "plan" | "service";
 export interface ActivityDto {
@@ -242,7 +247,7 @@ export interface ServiceRequestDto {
   service: { id: string; name: string; priceLabel: string | null } | null;
   preferredDate: string | null; endDate: string | null; preferredTime: string | null;
   message: string | null; details: { petName?: string; petType?: string } | null;
-  canCancel: boolean; cancelledReason: string | null; createdAt: string;
+  canCancel: boolean; canReview: boolean; reviewed: boolean; cancelledReason: string | null; createdAt: string;
 }
 
 // ---- preferences & chat -----------------------------------------------------
