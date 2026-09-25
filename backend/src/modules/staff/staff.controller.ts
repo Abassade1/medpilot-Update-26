@@ -10,10 +10,11 @@ import type { Db } from "../../db/client";
 import { schema as s } from "../../db/client";
 import { BookingsService } from "../bookings/bookings.service";
 import { StaffDecisionBody } from "../bookings/bookings.schemas";
+import { CompletionService } from "../bookings/completion.service";
 import { ServicesService } from "../services/services.service";
 
 const Uuid = z.string().uuid();
-const Decision = z.enum(["confirm", "cancel"]);
+const Decision = z.enum(["confirm", "cancel", "complete"]);
 
 /**
  * Operations surface. Every route is role-gated (staff/admin); the member app never calls it.
@@ -25,6 +26,7 @@ export class StaffController {
     @Inject("DB") private readonly db: Db,
     private readonly bookings: BookingsService,
     private readonly services: ServicesService,
+    private readonly completion: CompletionService,
   ) {}
 
   /** Everything waiting for a decision, oldest first. Contains references and dates, not clinical detail. */
@@ -48,22 +50,33 @@ export class StaffController {
     };
   }
 
+  /** Runs the automatic completion sweep now instead of waiting for the next interval. */
+  @Roles("staff", "admin")
+  @HttpCode(200)
+  @Post("completion-sweep")
+  sweep() { return this.completion.sweep(); }
+
   @Roles("staff", "admin")
   @HttpCode(200)
   @Post("transport/:id/:decision")
   decideTransport(@Req() req: Request, @Param("id") id: string, @Param("decision") decision: string, @Body() body: unknown) {
-    return this.bookings.staffDecideTransport(req.userId!, validate(Uuid, id), validate(Decision, decision), validate(StaffDecisionBody, body ?? {}));
+    const d = validate(Decision, decision);
+    if (d === "complete") return this.completion.completeByStaff(req.userId!, "transport", validate(Uuid, id));
+    return this.bookings.staffDecideTransport(req.userId!, validate(Uuid, id), d, validate(StaffDecisionBody, body ?? {}));
   }
 
   @Roles("staff", "admin")
   @HttpCode(200)
   @Post("service-requests/:id/:decision")
   decideRequest(@Req() req: Request, @Param("id") id: string, @Param("decision") decision: string, @Body() body: unknown) {
+    const d = validate(Decision, decision);
+    if (d === "complete") return this.completion.completeByStaff(req.userId!, "service_request", validate(Uuid, id));
     const input = validate(StaffDecisionBody, body ?? {});
-    return this.services.staffDecideRequest(req.userId!, validate(Uuid, id), validate(Decision, decision), input.reason);
+    return this.services.staffDecideRequest(req.userId!, validate(Uuid, id), d, input.reason);
   }
 }
 
 apiRoute({ method: "get", path: "/v1/staff/queue", tag: "staff", summary: "Requests waiting for a decision (staff/admin)", auth: true });
-apiRoute({ method: "post", path: "/v1/staff/transport/{id}/{decision}", tag: "staff", summary: "Confirm or decline a transport request (staff/admin)", auth: true, body: StaffDecisionBody, status: 200 });
-apiRoute({ method: "post", path: "/v1/staff/service-requests/{id}/{decision}", tag: "staff", summary: "Confirm or decline a pet/specialist request (staff/admin)", auth: true, body: StaffDecisionBody, status: 200 });
+apiRoute({ method: "post", path: "/v1/staff/transport/{id}/{decision}", tag: "staff", summary: "Confirm, decline or complete a transport request (staff/admin)", auth: true, body: StaffDecisionBody, status: 200 });
+apiRoute({ method: "post", path: "/v1/staff/service-requests/{id}/{decision}", tag: "staff", summary: "Confirm, decline or complete a pet/specialist request (staff/admin)", auth: true, body: StaffDecisionBody, status: 200 });
+apiRoute({ method: "post", path: "/v1/staff/completion-sweep", tag: "staff", summary: "Complete every confirmed booking whose date has passed (staff/admin)", auth: true, status: 200 });

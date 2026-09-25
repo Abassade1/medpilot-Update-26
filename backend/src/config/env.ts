@@ -70,6 +70,8 @@ const EnvSchema = z.object({
   QUOTA_MEAL_ANALYSIS: z.coerce.number().int().min(0).default(1),
   QUOTA_CLINIC_ACCESS: z.coerce.number().int().min(0).default(10),
   QUOTA_EVACUATION: z.coerce.number().int().min(0).default(2),
+  // How often confirmed bookings whose date has passed are marked completed (0 disables the sweep).
+  COMPLETION_SWEEP_MINUTES: z.coerce.number().int().min(0).default(60),
 });
 
 export type Env = z.infer<typeof EnvSchema> & {

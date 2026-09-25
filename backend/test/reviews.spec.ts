@@ -94,7 +94,8 @@ describe("reviews", () => {
     }).expect(201);
     const staff = await staffSession();
     await (await http()).post(`/v1/staff/appointments/${created.body.id}/confirm`).set(...auth(staff)).send({}).expect(200);
-    await pool.query("update appointment_requests set requested_date = current_date - interval '1 day' where id = $1", [created.body.id]);
+    // The app compares against the UTC date, so set yesterday in UTC, not the DB server's local date.
+    await pool.query("update appointment_requests set requested_date = $2 where id = $1", [created.body.id, nearFuture(-1)]);
 
     const res = await (await http()).post("/v1/reviews").set(...auth(s)).send({ targetType: "hospital", requestId: created.body.id, rating: 4 });
     expect(res.status).toBe(201);

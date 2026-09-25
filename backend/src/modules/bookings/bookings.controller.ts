@@ -7,6 +7,7 @@ import { BookingsService } from "./bookings.service";
 import { IdempotencyService } from "./idempotency";
 import { CreateAppointmentBody, RescheduleAppointmentBody, CreateTransportBody, StaffDecisionBody } from "./bookings.schemas";
 import { ActivitiesService } from "./activities.service";
+import { CompletionService } from "./completion.service";
 import { apiRoute } from "../../docs/registry";
 import { PageQuery } from "../../common/pagination";
 
@@ -21,6 +22,7 @@ export class BookingsController {
     private readonly bookings: BookingsService,
     private readonly idem: IdempotencyService,
     private readonly activities: ActivitiesService,
+    private readonly completion: CompletionService,
   ) {}
 
   @Post("appointments")
@@ -60,7 +62,8 @@ export class BookingsController {
     @Param("decision") decision: string,
     @Body() body: unknown,
   ) {
-    const d = validate(z.enum(["confirm", "cancel"]), decision);
+    const d = validate(z.enum(["confirm", "cancel", "complete"]), decision);
+    if (d === "complete") return this.completion.completeByStaff(req.userId!, "appointment", validate(Uuid, id));
     return this.bookings.staffDecideAppointment(req.userId!, validate(Uuid, id), d, validate(StaffDecisionBody, body ?? {}));
   }
 
@@ -97,7 +100,7 @@ apiRoute({ method: "post", path: "/v1/appointments", tag: "bookings", summary: "
 apiRoute({ method: "get", path: "/v1/appointments", tag: "bookings", summary: "My appointment requests", auth: true });
 apiRoute({ method: "get", path: "/v1/appointments/{id}", tag: "bookings", summary: "Appointment detail", auth: true });
 apiRoute({ method: "post", path: "/v1/appointments/{id}/cancel", tag: "bookings", summary: "Cancel while pending", auth: true, status: 200 });
-apiRoute({ method: "post", path: "/v1/staff/appointments/{id}/{decision}", tag: "staff", summary: "Confirm or cancel a request (staff/admin)", auth: true, body: StaffDecisionBody, status: 200 });
+apiRoute({ method: "post", path: "/v1/staff/appointments/{id}/{decision}", tag: "staff", summary: "Confirm, cancel or complete an appointment (staff/admin)", auth: true, body: StaffDecisionBody, status: 200 });
 apiRoute({ method: "post", path: "/v1/transport-bookings", tag: "bookings", summary: "Request medical transport (Idempotency-Key honoured)", auth: true, body: CreateTransportBody });
 apiRoute({ method: "get", path: "/v1/transport-bookings", tag: "bookings", summary: "My transport bookings", auth: true });
 apiRoute({ method: "get", path: "/v1/transport-bookings/{id}", tag: "bookings", summary: "Transport detail", auth: true });
