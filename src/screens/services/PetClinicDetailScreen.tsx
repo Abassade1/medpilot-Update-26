@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import ScreenContainer from "../../components/ScreenContainer";
 import AppHeader from "../../components/AppHeader";
 import Button from "../../components/Button";
+import ReviewsList from "../../components/ReviewsList";
 import Rating from "../../components/Rating";
 import ListStateView from "../../components/ListStateView";
 import { usePetClinic } from "../../api/queries";
@@ -79,6 +80,9 @@ export default function PetClinicDetailScreen({ navigation, route }: RootScreenP
             );
           })
         )}
+
+        <Text style={styles.section}>Reviews</Text>
+        <ReviewsList targetType="pet_clinic" targetId={c.id} />
 
         <View style={{ marginTop: 20 }}>
           {c.canBookAppointment ? <Button label="Book appointment" variant="pill" onPress={() => go("appointment")} /> : null}

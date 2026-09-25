@@ -6,6 +6,7 @@ import AppHeader from "../../components/AppHeader";
 import PlaceBadges from "../../components/PlaceBadges";
 import ExpandableText from "../../components/ExpandableText";
 import Button from "../../components/Button";
+import ReviewsList from "../../components/ReviewsList";
 import BottomSheet from "../../components/BottomSheet";
 import InfoRow from "../../components/InfoRow";
 import LogoBox from "../../components/LogoBox";
@@ -77,6 +78,12 @@ export default function TransportDetailScreen({ navigation, route }: RootScreenP
           ))}
         </ScrollView>
 
+        <View style={styles.body}>
+          <Text style={styles.sectionTitle}>Reviews</Text>
+          <View style={{ marginTop: 10 }}>
+            <ReviewsList targetType="transport_provider" targetId={provider.id} />
+          </View>
+        </View>
       </ScrollView>
 
       <View style={styles.footer}>

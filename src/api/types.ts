@@ -143,6 +143,7 @@ export interface TransportDetailDto extends TransportDto {
 
 export type ReviewTargetType = "hospital" | "transport_provider" | "pet_clinic" | "independent_specialist";
 export interface ReviewDto { id: string; rating: number; comment: string | null; reviewer: string; createdAt: string }
+export interface ReviewsPage { total: number; average: number | null; items: ReviewDto[] }
 
 export type ActivityTypeDto = "appointment" | "transport" | "diagnosis" | "meal" | "record" | "plan" | "service";
 export interface ActivityDto {

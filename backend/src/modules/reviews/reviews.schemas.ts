@@ -12,4 +12,5 @@ export const CreateReviewBody = z.object({
 export const ReviewsQuery = z.object({
   targetType: ReviewTargetType,
   targetId: z.string().uuid(),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
 });

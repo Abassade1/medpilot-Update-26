@@ -9,6 +9,7 @@ import ExpandableText from "../../components/ExpandableText";
 import InfoRow from "../../components/InfoRow";
 import SpecialistCard from "../../components/SpecialistCard";
 import Button from "../../components/Button";
+import ReviewsList from "../../components/ReviewsList";
 import BottomSheet from "../../components/BottomSheet";
 import LogoBox from "../../components/LogoBox";
 import Rating from "../../components/Rating";
@@ -80,6 +81,13 @@ export default function HospitalDetailScreen({ navigation, route }: RootScreenPr
             <SpecialistCard key={sp.id} specialist={sp} onPress={() => setSelectedId(sp.id)} />
           ))}
         </ScrollView>
+
+        <View style={styles.body}>
+          <Text style={styles.sectionTitle}>Reviews</Text>
+          <View style={{ marginTop: 10 }}>
+            <ReviewsList targetType="hospital" targetId={hospital.id} />
+          </View>
+        </View>
 
         <Button
           label="Book Appointment"

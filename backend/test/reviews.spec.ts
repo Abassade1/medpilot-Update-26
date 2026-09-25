@@ -42,8 +42,8 @@ describe("reviews", () => {
     expect(hospital.body.rating).toBe(5);
 
     const list = await (await http()).get("/v1/reviews").set(...auth(s)).query({ targetType: "hospital", targetId: hospitalId }).expect(200);
-    expect(list.body).toHaveLength(1);
-    expect(list.body[0]).toMatchObject({ rating: 5, comment: "Excellent care." });
+    expect(list.body).toMatchObject({ total: 1, average: 5 });
+    expect(list.body.items[0]).toMatchObject({ rating: 5, comment: "Excellent care.", reviewer: "Test M." });
 
     const appt = await (await http()).get(`/v1/appointments/${id}`).set(...auth(s)).expect(200);
     expect(appt.body).toMatchObject({ canReview: true, reviewed: true });
@@ -67,11 +67,18 @@ describe("reviews", () => {
     // Hospital seed data is shared across tests, so assert the aggregate matches the review list,
     // not a hardcoded value — other tests in this file may have already reviewed the same hospital.
     const list = await (await http()).get("/v1/reviews").set(...auth(b)).query({ targetType: "hospital", targetId: hospitalId }).expect(200);
-    const ratings = list.body.map((r: { rating: number }) => r.rating);
+    const ratings = list.body.items.map((r: { rating: number }) => r.rating);
     expect(ratings).toEqual(expect.arrayContaining([4, 2]));
+    expect(list.body.total).toBe(ratings.length);
     const expected = Math.round((ratings.reduce((a: number, r: number) => a + r, 0) / ratings.length) * 10) / 10;
+    expect(list.body.average).toBe(expected);
     const hospital = await (await http()).get(`/v1/hospitals/${hospitalId}`).set(...auth(b)).expect(200);
     expect(hospital.body.rating).toBe(expected);
+
+    // The page size caps the items but never the total.
+    const page = await (await http()).get("/v1/reviews").set(...auth(b)).query({ targetType: "hospital", targetId: hospitalId, limit: 1 }).expect(200);
+    expect(page.body.items).toHaveLength(1);
+    expect(page.body.total).toBe(ratings.length);
   });
 
   it("blocks reviewing before the appointment is confirmed or completed", async () => {

@@ -4,6 +4,7 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import ScreenContainer from "../../components/ScreenContainer";
 import AppHeader from "../../components/AppHeader";
 import Button from "../../components/Button";
+import ReviewsList from "../../components/ReviewsList";
 import Rating from "../../components/Rating";
 import ListStateView from "../../components/ListStateView";
 import { useSpecialistProfile } from "../../api/queries";
@@ -71,6 +72,9 @@ export default function SpecialistProfileScreen({ navigation, route }: RootScree
             </View>
           </TouchableOpacity>
         ))}
+
+        <Text style={styles.section}>Reviews</Text>
+        <ReviewsList targetType="independent_specialist" targetId={s.id} />
 
         <View style={{ marginTop: 18 }}>
           {s.acceptingRequests ? (

@@ -68,15 +68,24 @@ export class ReviewsService {
     }
   }
 
+  /** The newest reviews plus the true total, so the app can say "12 reviews" while showing a few. */
   async list(q: z.infer<typeof ReviewsQuery>) {
-    const rows = await this.db.select({ r: s.reviews, firstName: s.userProfiles.firstName, lastName: s.userProfiles.lastName })
-      .from(s.reviews).leftJoin(s.userProfiles, eq(s.userProfiles.userId, s.reviews.userId))
-      .where(and(eq(s.reviews.targetType, q.targetType), eq(s.reviews.targetId, q.targetId)))
-      .orderBy(desc(s.reviews.createdAt)).limit(50);
-    return rows.map(({ r, firstName, lastName }) => ({
-      id: r.id, rating: r.rating, comment: r.comment,
-      reviewer: firstName ? `${firstName} ${(lastName ?? "").slice(0, 1)}.` : "Member",
-      createdAt: r.createdAt,
-    }));
+    const where = and(eq(s.reviews.targetType, q.targetType), eq(s.reviews.targetId, q.targetId));
+    const [rows, [agg]] = await Promise.all([
+      this.db.select({ r: s.reviews, firstName: s.userProfiles.firstName, lastName: s.userProfiles.lastName })
+        .from(s.reviews).leftJoin(s.userProfiles, eq(s.userProfiles.userId, s.reviews.userId))
+        .where(where).orderBy(desc(s.reviews.createdAt)).limit(q.limit),
+      this.db.select({ total: sql<number>`count(*)::int`, average: sql<string | null>`round(avg(${s.reviews.rating})::numeric, 1)::text` })
+        .from(s.reviews).where(where),
+    ]);
+    return {
+      total: agg?.total ?? 0,
+      average: agg?.average ? Number(agg.average) : null,
+      items: rows.map(({ r, firstName, lastName }) => ({
+        id: r.id, rating: r.rating, comment: r.comment,
+        reviewer: firstName ? `${firstName} ${(lastName ?? "").slice(0, 1)}.` : "Member",
+        createdAt: r.createdAt,
+      })),
+    };
   }
 }
