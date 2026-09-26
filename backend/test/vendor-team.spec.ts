@@ -154,4 +154,48 @@ describe("provider team roster", () => {
     const ownEmail = await req().post("/v1/provider/team/invite").set(...auth(owner.auth)).send({ email: owner.email, role: "manager" });
     expect(ownEmail.status).toBe(409);
   }, 60_000);
+
+  async function invite(role: "manager" | "staff" = "staff") {
+    const owner = await makeProvider();
+    const email = uniqueEmail("joiner");
+    inbox.length = 0;
+    await req().post("/v1/provider/team/invite").set(...auth(owner.auth)).send({ email, role }).expect(201);
+    return { owner, email, token: linkIn(inbox[0]!.body)! };
+  }
+
+  it("an invitee can create an account with just a name and password, and lands on the team", async () => {
+    const { owner, email, token } = await invite("staff");
+    const res = await req().post("/v1/provider/team/join")
+      .send({ token, firstName: "Grace", lastName: "Hopper", password: "Str0ngPassw0rd!" }).expect(201);
+    expect(res.body.user).toMatchObject({ email, emailVerified: true });
+    expect(res.body.profile).toMatchObject({ firstName: "Grace", lastName: "Hopper" });
+
+    const bearer = `Bearer ${res.body.tokens.accessToken}`;
+    const me = await req().get("/v1/provider/me").set("Authorization", bearer).expect(200);
+    expect(me.body.myRole).toBe("staff");
+    const roster = await req().get("/v1/provider/team").set(...auth(owner.auth)).expect(200);
+    expect(roster.body.members[0]).toMatchObject({ email, status: "active" });
+
+    // The new account can sign in normally afterwards.
+    await req().post("/v1/auth/login").send({ email, password: "Str0ngPassw0rd!" }).expect(200);
+  }, 60_000);
+
+  it("won't create a second account for an email that already has one", async () => {
+    const { owner, email, token } = await invite();
+    await registerUser({ email });
+    const res = await req().post("/v1/provider/team/join")
+      .send({ token, firstName: "Grace", lastName: "Hopper", password: "Str0ngPassw0rd!" });
+    expect(res.status).toBe(409);
+    const roster = await req().get("/v1/provider/team").set(...auth(owner.auth)).expect(200);
+    expect(roster.body.members[0]).toMatchObject({ email, status: "invited" });
+  }, 60_000);
+
+  it("rejects an invalid invite token and a weak password", async () => {
+    const bad = await req().post("/v1/provider/team/join")
+      .send({ token: "pmi_not-a-real-token", firstName: "Grace", lastName: "Hopper", password: "Str0ngPassw0rd!" });
+    expect(bad.status).toBe(400);
+    const { token } = await invite();
+    const weak = await req().post("/v1/provider/team/join").send({ token, firstName: "Grace", lastName: "Hopper", password: "short" });
+    expect(weak.status).toBe(422);
+  }, 60_000);
 });

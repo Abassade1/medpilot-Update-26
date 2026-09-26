@@ -2,14 +2,13 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { api, currentRole, isSignedIn, onSessionChange, setSession } from "./api";
 import type { AuthResponse } from "./types";
 
-export interface RegisterInput {
-  email: string; password: string; firstName: string; lastName: string; phone: string; dateOfBirth: string;
-}
+export interface JoinTeamInput { token: string; firstName: string; lastName: string; password: string }
 interface AuthState {
   signedIn: boolean;
   isStaff: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (input: RegisterInput) => Promise<void>;
+  /** Creates an account from a team invite (name and password only) and joins the team. */
+  joinTeam: (input: JoinTeamInput) => Promise<void>;
   logout: () => void;
 }
 const AuthContext = createContext<AuthState | null>(null);
@@ -26,14 +25,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const res = await api.post<AuthResponse>("/v1/auth/login", { email, password });
     setSession(res.tokens);
   };
-  const register = async (input: RegisterInput) => {
-    const res = await api.post<AuthResponse>("/v1/auth/register", input);
+  const joinTeam = async (input: JoinTeamInput) => {
+    const res = await api.post<AuthResponse>("/v1/provider/team/join", input);
     setSession(res.tokens);
   };
   const logout = () => setSession(null);
 
   const isStaff = role === "staff" || role === "admin";
-  return <AuthContext.Provider value={{ signedIn, isStaff, login, register, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ signedIn, isStaff, login, joinTeam, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

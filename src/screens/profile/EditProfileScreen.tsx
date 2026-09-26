@@ -39,7 +39,7 @@ export default function EditProfileScreen({ navigation }: RootScreenProps<"EditP
   useEffect(() => {
     if (p && !seeded.current) {
       seeded.current = true;
-      setFirst(p.firstName); setLast(p.lastName); setPhone(p.phone);
+      setFirst(p.firstName); setLast(p.lastName); setPhone(p.phone ?? "");
       setGender(labelOf(GENDERS, p.gender)); setMarital(labelOf(MARITAL, p.maritalStatus));
       setLocation(p.locationLabel ?? "");
     }
@@ -66,7 +66,7 @@ export default function EditProfileScreen({ navigation }: RootScreenProps<"EditP
   const body: Record<string, unknown> = {};
   if (first.trim() !== p.firstName) body.firstName = first.trim();
   if (last.trim() !== p.lastName) body.lastName = last.trim();
-  if (phone.trim() !== p.phone) body.phone = phone.trim();
+  if (phone.trim() !== (p.phone ?? "")) body.phone = phone.trim();
   if (gender && GENDERS[gender] !== p.gender) body.gender = GENDERS[gender];
   if (marital && MARITAL[marital] !== p.maritalStatus) body.maritalStatus = MARITAL[marital];
   if (location.trim() !== (p.locationLabel ?? "")) body.locationLabel = location.trim();

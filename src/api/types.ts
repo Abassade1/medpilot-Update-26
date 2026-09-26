@@ -17,7 +17,7 @@ export interface MeResponse {
   plan: "basic" | "pro";
   profile?: {
     firstName: string; lastName: string; fullName: string;
-    phone: string; dateOfBirth: string;
+    phone: string | null; dateOfBirth: string | null;
     gender: string | null; maritalStatus: string | null;
     locationLabel: string | null; avatarAsset: string;
   };

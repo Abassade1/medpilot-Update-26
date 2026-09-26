@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { loadEnv } from "../../config/env";
+import { password, personName } from "../auth/auth.schemas";
 import { LOCATION_MODES, PRICE_TYPES, PROVIDER_TYPES } from "./taxonomy";
 
 const text = (max: number) => z.string().trim().max(max);
@@ -124,6 +125,13 @@ export const InviteMemberBody = z.object({
   role: TeamMemberRole,
 });
 export const InviteTokenBody = z.object({ token: z.string().min(10).max(200) });
+/** Creating an account straight from a team invite: staff aren't patients, so just a name and password. */
+export const JoinTeamBody = z.object({
+  token: z.string().min(10).max(200),
+  firstName: personName("Firstname"),
+  lastName: personName("Lastname"),
+  password,
+});
 
 export const SlotsQuery = z.object({ date: Day });
 export const BookListingBody = z.object({

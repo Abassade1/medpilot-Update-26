@@ -1,15 +1,17 @@
 import { Body, Controller, Delete, Get, Headers, HttpCode, Param, Patch, Post, Put, Query, Req } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import type { Request } from "express";
 import { z } from "zod";
 import { Public, Roles } from "../../common/auth.guard";
 import { validate } from "../../common/validate";
 import { apiRoute } from "../../docs/registry";
 import { IdempotencyService } from "../bookings/idempotency";
+import { AuthService } from "../auth/auth.service";
 import { VendorsService } from "./vendors.service";
 import { taxonomyForClient } from "./taxonomy";
 import {
   AvailabilityBody, BookListingBody, BookingsQuery, CreateListingBody, CreateProviderBody, DecisionBody, DiscoverQuery,
-  ImageUploadUrlBody, InviteMemberBody, InviteTokenBody, ListingsQuery, PatchListingBody, PatchProviderBody, SlotsQuery, VerificationBody,
+  ImageUploadUrlBody, InviteMemberBody, InviteTokenBody, JoinTeamBody, ListingsQuery, PatchListingBody, PatchProviderBody, SlotsQuery, VerificationBody,
 } from "./vendors.schemas";
 
 const Uuid = z.string().uuid();
@@ -18,7 +20,7 @@ const BookingAction = z.enum(["confirm", "decline", "complete", "cancel"]);
 /** The provider portal. Every route resolves the caller's own provider account first, so a provider can only ever reach their own records. */
 @Controller("v1/provider")
 export class ProviderController {
-  constructor(private readonly vendors: VendorsService) {}
+  constructor(private readonly vendors: VendorsService, private readonly auth: AuthService) {}
 
   @Get("taxonomy") taxonomy() { return taxonomyForClient(); }
   @Get("me") me(@Req() req: Request) { return this.vendors.getMine(req.userId!); }
@@ -59,6 +61,18 @@ export class ProviderController {
 
   @Public() @Get("team/invite/:token")
   inviteInfo(@Param("token") token: string) { return this.vendors.inviteInfo(validate(InviteTokenBody, { token }).token); }
+  /** Creates the invitee's account (name and password only) and joins the team in one step. */
+  @Public() @Throttle({ default: { limit: 5, ttl: 3_600_000 } }) @Post("team/join")
+  async joinTeam(@Req() req: Request, @Body() body: unknown) {
+    const input = validate(JoinTeamBody, body);
+    const invite = await this.vendors.inviteInfo(input.token);
+    const session = await this.auth.registerInvited(
+      { email: invite.email, firstName: input.firstName, lastName: input.lastName, password: input.password },
+      { ip: req.ip, ua: req.headers["user-agent"] },
+    );
+    await this.vendors.acceptInvite(session.user.id, input.token);
+    return session;
+  }
   @HttpCode(200) @Post("team/accept")
   acceptInvite(@Req() req: Request, @Body() body: unknown) { return this.vendors.acceptInvite(req.userId!, validate(InviteTokenBody, body).token); }
   @Get("team") team(@Req() req: Request) { return this.vendors.listTeam(req.userId!); }
@@ -127,6 +141,7 @@ apiRoute({ method: "get", path: "/v1/provider/bookings", tag: A, summary: "Booki
 apiRoute({ method: "get", path: "/v1/provider/bookings/{id}", tag: A, summary: "One booking", auth: true });
 apiRoute({ method: "post", path: "/v1/provider/bookings/{id}/{action}", tag: A, summary: "Confirm, decline, complete or cancel a booking", auth: true, status: 200 });
 apiRoute({ method: "get", path: "/v1/provider/team/invite/{token}", tag: A, summary: "Preview an invite before signing in (public)", auth: false });
+apiRoute({ method: "post", path: "/v1/provider/team/join", tag: A, summary: "Create an account from a team invite and join (public; name and password only)", auth: false, body: JoinTeamBody });
 apiRoute({ method: "post", path: "/v1/provider/team/accept", tag: A, summary: "Accept a team invite as the signed-in user", auth: true, body: InviteTokenBody, status: 200 });
 apiRoute({ method: "get", path: "/v1/provider/team", tag: A, summary: "My provider's team roster", auth: true });
 apiRoute({ method: "post", path: "/v1/provider/team/invite", tag: A, summary: "Invite a team member by email (owner/manager)", auth: true, body: InviteMemberBody });

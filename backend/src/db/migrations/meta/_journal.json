@@ -71,6 +71,13 @@
       "when": 1790402074387,
       "tag": "0009_reset_unreviewed_ratings",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790403669254,
+      "tag": "0010_optional_profile_phone_dob",
+      "breakpoints": true
     }
   ]
 }

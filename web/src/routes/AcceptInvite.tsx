@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { TextField } from "../components/Field";
 import { ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
@@ -11,7 +12,8 @@ export default function AcceptInvite() {
   const [params] = useSearchParams();
   const token = params.get("token");
   const navigate = useNavigate();
-  const { login, register } = useAuth();
+  const { login, joinTeam } = useAuth();
+  const qc = useQueryClient();
   const preview = useInvitePreview(token);
   const accept = useAcceptInvite();
 
@@ -19,8 +21,6 @@ export default function AcceptInvite() {
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,10 +42,13 @@ export default function AcceptInvite() {
     try {
       if (mode === "signin") {
         await login(email, password);
+        await finish();
       } else {
-        await register({ email, password, firstName: firstName.trim(), lastName: lastName.trim(), phone: phone.trim(), dateOfBirth });
+        // One call creates the account and joins the team.
+        await joinTeam({ token: token!, firstName: firstName.trim(), lastName: lastName.trim(), password });
+        await qc.invalidateQueries();
+        navigate("/", { replace: true });
       }
-      await finish();
     } catch (err) {
       const x = err as ApiError;
       setError(x.fields ? Object.values(x.fields)[0]! : x.isOffline ? "You appear to be offline." : x.message || "That didn't work.");
@@ -95,8 +98,6 @@ export default function AcceptInvite() {
               <TextField label="First name" value={firstName} onChange={setFirstName} />
               <TextField label="Last name" value={lastName} onChange={setLastName} />
             </div>
-            <TextField label="Phone" value={phone} onChange={setPhone} placeholder="+1 403 555 0100" />
-            <TextField label="Date of birth" value={dateOfBirth} onChange={setDateOfBirth} type="date" />
           </>
         ) : null}
         <div className="field">

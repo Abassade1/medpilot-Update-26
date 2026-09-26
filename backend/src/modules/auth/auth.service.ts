@@ -71,6 +71,29 @@ export class AuthService {
     return this.authPayload(userId, pair);
   }
 
+  /**
+   * Account for someone joining a provider's team from an emailed invite. Only name and password:
+   * staff aren't patients, so none of the member profile (phone, date of birth) is asked for. The
+   * invite link was delivered to this address, which proves it, so the email starts verified.
+   * The caller must have validated the invite token for `email` first.
+   */
+  async registerInvited(input: { email: string; firstName: string; lastName: string; password: string }, ctx: { ip?: string; ua?: string }) {
+    if (await this.findActiveByEmail(input.email)) {
+      throw new AppError("conflict", "An account with this email already exists. Sign in to accept the invite.", {
+        fields: { email: "An account with this email already exists. Sign in to accept the invite." },
+      });
+    }
+    const userId = uuidv7();
+    const passwordHash = await argon2.hash(input.password, ARGON);
+    await this.db.transaction(async (tx) => {
+      await tx.insert(s.users).values({ id: userId, email: input.email, passwordHash, emailVerifiedAt: new Date() });
+      await tx.insert(s.userProfiles).values({ userId, firstName: input.firstName, lastName: input.lastName });
+    });
+    await this.audit.write({ actorUserId: userId, action: "auth.register_invited", resourceType: "user", resourceId: userId, ip: ctx.ip, ua: ctx.ua });
+    const [user] = await this.db.select().from(s.users).where(eq(s.users.id, userId)).limit(1);
+    return this.authPayload(userId, await this.tokens.issuePair(user!, "basic"));
+  }
+
   async login(emailAddr: string, password: string, ctx: { ip?: string; ua?: string }) {
     const user = await this.findActiveByEmail(emailAddr);
     // Constant-shape failure: same error whether the email or password is wrong.
