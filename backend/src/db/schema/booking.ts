@@ -139,6 +139,21 @@ export const activities = pgTable(
   (t) => [index("activities_feed_ix").on(t.userId, t.occurredAt, t.id)],
 );
 
+/**
+ * One row per reminder sent, keyed on the date it was for: inserting first is how a sweep claims a
+ * booking (so two API instances can't both send), and a rescheduled booking gets a fresh reminder.
+ */
+export const bookingReminders = pgTable(
+  "booking_reminders",
+  {
+    requestType: varchar("request_type", { length: 24 }).notNull(), // appointment | transport | service_request
+    requestId: uuid("request_id").notNull(),
+    forDate: date("for_date").notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.requestType, t.requestId, t.forDate] })],
+);
+
 export const idempotencyKeys = pgTable(
   "idempotency_keys",
   {

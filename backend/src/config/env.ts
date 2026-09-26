@@ -72,6 +72,8 @@ const EnvSchema = z.object({
   QUOTA_EVACUATION: z.coerce.number().int().min(0).default(2),
   // How often confirmed bookings whose date has passed are marked completed (0 disables the sweep).
   COMPLETION_SWEEP_MINUTES: z.coerce.number().int().min(0).default(60),
+  // How often to send day-before reminders for confirmed bookings (0 disables them).
+  REMINDER_SWEEP_MINUTES: z.coerce.number().int().min(0).default(60),
 });
 
 export type Env = z.infer<typeof EnvSchema> & {

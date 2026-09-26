@@ -26,6 +26,7 @@ import { BookingsService } from "./modules/bookings/bookings.service";
 import { ActivitiesService } from "./modules/bookings/activities.service";
 import { IdempotencyService } from "./modules/bookings/idempotency";
 import { CompletionService } from "./modules/bookings/completion.service";
+import { ReminderService } from "./modules/bookings/reminder.service";
 import { AuxController } from "./modules/aux/aux.controller";
 import { AuxService } from "./modules/aux/aux.service";
 import { BillingController } from "./modules/billing/billing.controller";
@@ -58,7 +59,7 @@ const pool = createPool(env.DATABASE_URL);
     { provide: "DB", useValue: createDb(pool) },
     AuthService, TokenService, AuditService, EmailService,
     UsersService, StorageService, CatalogService,
-    BookingsService, ActivitiesService, IdempotencyService, CompletionService,
+    BookingsService, ActivitiesService, IdempotencyService, CompletionService, ReminderService,
     AuxService, BillingService, QuotaService, NotificationsService, LocationsService, ServicesService, VendorsService, ReviewsService,
     { provide: APP_GUARD, useClass: AppThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },

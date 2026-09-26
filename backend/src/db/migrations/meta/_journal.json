@@ -57,6 +57,13 @@
       "when": 1790227441937,
       "tag": "0007_productive_wallflower",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790401572011,
+      "tag": "0008_curious_wrecking_crew",
+      "breakpoints": true
     }
   ]
 }

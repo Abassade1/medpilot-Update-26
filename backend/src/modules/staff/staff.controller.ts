@@ -11,6 +11,7 @@ import { schema as s } from "../../db/client";
 import { BookingsService } from "../bookings/bookings.service";
 import { StaffDecisionBody } from "../bookings/bookings.schemas";
 import { CompletionService } from "../bookings/completion.service";
+import { ReminderService } from "../bookings/reminder.service";
 import { ServicesService } from "../services/services.service";
 
 const Uuid = z.string().uuid();
@@ -27,6 +28,7 @@ export class StaffController {
     private readonly bookings: BookingsService,
     private readonly services: ServicesService,
     private readonly completion: CompletionService,
+    private readonly reminders: ReminderService,
   ) {}
 
   /** Everything waiting for a decision, oldest first. Contains references and dates, not clinical detail. */
@@ -56,6 +58,12 @@ export class StaffController {
   @Post("completion-sweep")
   sweep() { return this.completion.sweep(); }
 
+  /** Sends tomorrow's booking reminders now instead of waiting for the next interval. */
+  @Roles("staff", "admin")
+  @HttpCode(200)
+  @Post("reminder-sweep")
+  remind() { return this.reminders.sweep(); }
+
   @Roles("staff", "admin")
   @HttpCode(200)
   @Post("transport/:id/:decision")
@@ -79,4 +87,5 @@ export class StaffController {
 apiRoute({ method: "get", path: "/v1/staff/queue", tag: "staff", summary: "Requests waiting for a decision (staff/admin)", auth: true });
 apiRoute({ method: "post", path: "/v1/staff/transport/{id}/{decision}", tag: "staff", summary: "Confirm, decline or complete a transport request (staff/admin)", auth: true, body: StaffDecisionBody, status: 200 });
 apiRoute({ method: "post", path: "/v1/staff/service-requests/{id}/{decision}", tag: "staff", summary: "Confirm, decline or complete a pet/specialist request (staff/admin)", auth: true, body: StaffDecisionBody, status: 200 });
+apiRoute({ method: "post", path: "/v1/staff/reminder-sweep", tag: "staff", summary: "Send day-before reminders for tomorrow's confirmed bookings (staff/admin)", auth: true, status: 200 });
 apiRoute({ method: "post", path: "/v1/staff/completion-sweep", tag: "staff", summary: "Complete every confirmed booking whose date has passed (staff/admin)", auth: true, status: 200 });
