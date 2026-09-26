@@ -5,6 +5,7 @@ import type { Db } from "../../db/client";
 import { schema as s } from "../../db/client";
 import { loadEnv } from "../../config/env";
 import { log } from "../../common/logger";
+import { EmailService } from "../email/email.service";
 
 /**
  * In-app inbox + push dispatch. Push payloads must never contain PHI —
@@ -14,14 +15,30 @@ import { log } from "../../common/logger";
 @Injectable()
 export class NotificationsService {
   private readonly env = loadEnv();
-  constructor(@Inject("DB") private readonly db: Db) {}
+  constructor(@Inject("DB") private readonly db: Db, private readonly email: EmailService) {}
 
-  async notify(userId: string, n: { type: string; title: string; body: string; deepLink?: string }) {
+  /**
+   * `email: true` also emails the member (booking confirmations and cancellations), if their
+   * address is verified and they haven't turned "Email updates" off. Delivery failures of either
+   * push or email never fail the action that triggered the notification.
+   */
+  async notify(userId: string, n: { type: string; title: string; body: string; deepLink?: string; email?: boolean }) {
     await this.db.insert(s.notifications).values({
       id: uuidv7(), userId, type: n.type, title: n.title, body: n.body,
       data: n.deepLink ? JSON.stringify({ url: n.deepLink }) : null,
     });
     await this.push(userId, n).catch((e) => log.warn("push_failed", { userId, type: n.type, err: String(e) }));
+    if (n.email) await this.mail(userId, n).catch((e) => log.warn("email_notify_failed", { userId, type: n.type, err: String(e) }));
+  }
+
+  private async mail(userId: string, n: { title: string; body: string }) {
+    const [row] = await this.db.select({ email: s.users.email, verifiedAt: s.users.emailVerifiedAt, wants: s.userPreferences.emailUpdates })
+      .from(s.users).leftJoin(s.userPreferences, eq(s.userPreferences.userId, s.users.id))
+      .where(and(eq(s.users.id, userId), isNull(s.users.deletedAt))).limit(1);
+    // An unverified address may be a typo belonging to someone else.
+    if (!row || !row.verifiedAt || row.wants === false) return;
+    // The body is the same generic copy as the push: no clinic or hospital names in an inbox.
+    await this.email.send({ to: row.email, subject: n.title, text: n.body });
   }
 
   /** The inbox always records the notification; the member's "Push notifications" setting only governs the device alert. */

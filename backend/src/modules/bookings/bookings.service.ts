@@ -259,7 +259,7 @@ export class BookingsService {
       await this.notifications.notify(a.userId, {
         type: "appointment.confirmed", title: "Appointment confirmed",
         body: "Your appointment has been confirmed. Open the app for details.",
-        deepLink: `medpilot://appointments/${id}`,
+        deepLink: `medpilot://appointments/${id}`, email: true,
       });
     } else {
       await this.db.update(s.appointmentRequests).set({
@@ -269,7 +269,7 @@ export class BookingsService {
       await this.notifications.notify(a.userId, {
         type: "appointment.cancelled", title: "Appointment update",
         body: "We couldn't confirm your appointment request. Open the app for details.",
-        deepLink: `medpilot://appointments/${id}`,
+        deepLink: `medpilot://appointments/${id}`, email: true,
       });
     }
     await this.db.insert(s.activities).values({
@@ -483,7 +483,7 @@ export class BookingsService {
       body: decision === "confirm"
         ? "Your medical transport has been confirmed. Open the app for the details."
         : "We couldn't confirm your transport request. Open the app for details.",
-      deepLink: `medpilot://transport/${id}`,
+      deepLink: `medpilot://transport/${id}`, email: true,
     });
     await this.db.insert(s.activities).values({
       id: uuidv7(), userId: row.t.userId, type: "transport",

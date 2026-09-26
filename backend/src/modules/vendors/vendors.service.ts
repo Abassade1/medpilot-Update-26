@@ -720,7 +720,8 @@ export class VendorsService {
       complete: ["service.completed", "Booking completed", `Your booking with ${provider.name} is complete.`],
       cancel: ["service.cancelled", "Booking cancelled", `${provider.name} cancelled your booking. Open the app for details.`],
     }[action];
-    await this.notifications.notify(booking.userId, { type: copy[0]!, title: copy[1]!, body: copy[2]!, deepLink: `medpilot://requests/${id}` });
+    // Confirmations and cancellations are emailed too; "completed" is followed by a rate-your-visit prompt instead.
+    await this.notifications.notify(booking.userId, { type: copy[0]!, title: copy[1]!, body: copy[2]!, deepLink: `medpilot://requests/${id}`, email: action !== "complete" });
     await this.db.insert(s.activities).values({
       id: uuidv7(), userId: booking.userId, type: "service", title: copy[1]!, subtitle: `Reference #${booking.reference}`,
       status: next === "confirmed" ? "booked" : next === "completed" ? "completed" : "cancelled", targetType: "service_request", targetId: id,

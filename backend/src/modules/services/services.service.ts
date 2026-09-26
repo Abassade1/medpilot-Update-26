@@ -316,7 +316,7 @@ export class ServicesService {
       body: decision === "confirm"
         ? "The provider has confirmed your request. Open the app for the details."
         : "The provider couldn't take your request. Open the app for details.",
-      deepLink: `medpilot://requests/${id}`,
+      deepLink: `medpilot://requests/${id}`, email: true,
     });
     await this.db.insert(s.activities).values({
       id: uuidv7(), userId: r.userId, type: "service",
