@@ -26,9 +26,8 @@ export class QuotaService {
       : this.env.QUOTA_EVACUATION;
   }
 
-  private periodStart(): string {
-    const d = new Date();
-    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
+  private periodStart(at = new Date()): string {
+    return `${at.getUTCFullYear()}-${String(at.getUTCMonth() + 1).padStart(2, "0")}-01`;
   }
 
   async usage(userId: string, metric: Metric): Promise<{ used: number; limit: number; unlimited: boolean }> {
@@ -45,6 +44,11 @@ export class QuotaService {
   async consume(userId: string, metric: Metric): Promise<void> {
     const u = await this.usage(userId, metric);
     if (u.unlimited) return;
+    const spent = () => new AppError("quota_exceeded", "You've used all of this on the free plan", {
+      meta: { metric, limit: u.limit, used: u.limit },
+    });
+    // The upsert below always lets the month's first unit through, so a limit of 0 is checked here.
+    if (u.limit <= 0) throw spent();
     const rows = (await this.db.execute(sql`
       insert into usage_counters (user_id, metric, period_start, used)
       values (${userId}, ${metric}, ${this.periodStart()}, 1)
@@ -53,17 +57,17 @@ export class QuotaService {
         where usage_counters.used < ${u.limit}
       returning used
     `)).rows;
-    if (rows.length === 0) {
-      throw new AppError("quota_exceeded", "You've used all of this on the free plan", {
-        meta: { metric, limit: u.limit, used: u.limit },
-      });
-    }
+    if (rows.length === 0) throw spent();
   }
 
-  async refund(userId: string, metric: Metric): Promise<void> {
+  /**
+   * Returns one unit to the month it was consumed in. `consumedAt` is the time of the original
+   * use (e.g. the booking's creation); cancelling last month's booking must not free up this month.
+   */
+  async refund(userId: string, metric: Metric, consumedAt = new Date()): Promise<void> {
     await this.db.execute(sql`
       update usage_counters set used = greatest(used - 1, 0)
-      where user_id = ${userId} and metric = ${metric} and period_start = ${this.periodStart()}
+      where user_id = ${userId} and metric = ${metric} and period_start = ${this.periodStart(consumedAt)}
     `).catch(() => {});
   }
 }

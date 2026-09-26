@@ -182,7 +182,7 @@ export class BookingsService {
       subtitle: `Reference #${a.reference}`, status: "cancelled",
       targetType: "appointment", targetId: id,
     });
-    await this.quota.refund(userId, "clinic_access");
+    await this.quota.refund(userId, "clinic_access", a.createdAt);
     await this.audit.write({ actorUserId: userId, action: "booking.appointment_cancelled", resourceType: "appointment", resourceId: id });
     return this.getAppointment(userId, id);
   }
@@ -265,7 +265,7 @@ export class BookingsService {
       await this.db.update(s.appointmentRequests).set({
         status: "cancelled", cancelledReason: input.reason ?? "Declined by operations", updatedAt: new Date(),
       }).where(eq(s.appointmentRequests.id, id));
-      await this.quota.refund(a.userId, "clinic_access");
+      await this.quota.refund(a.userId, "clinic_access", a.createdAt);
       await this.notifications.notify(a.userId, {
         type: "appointment.cancelled", title: "Appointment update",
         body: "We couldn't confirm your appointment request. Open the app for details.",
@@ -457,7 +457,7 @@ export class BookingsService {
       id: uuidv7(), userId, type: "transport", title: "Transport cancelled",
       subtitle: `Reference #${row.t.reference}`, status: "cancelled", targetType: "transport", targetId: id,
     });
-    await this.quota.refund(userId, "evacuation");
+    await this.quota.refund(userId, "evacuation", row.t.createdAt);
     await this.audit.write({ actorUserId: userId, action: "booking.transport_cancelled", resourceType: "transport", resourceId: id });
     return this.getTransport(userId, id);
   }
@@ -475,7 +475,7 @@ export class BookingsService {
       await this.db.update(s.transportRequests).set({
         status: "cancelled", cancelledReason: input.reason ?? "Declined by operations", updatedAt: new Date(),
       }).where(eq(s.transportRequests.id, id));
-      await this.quota.refund(row.t.userId, "evacuation");
+      await this.quota.refund(row.t.userId, "evacuation", row.t.createdAt);
     }
     await this.notifications.notify(row.t.userId, {
       type: decision === "confirm" ? "transport.confirmed" : "transport.cancelled",
