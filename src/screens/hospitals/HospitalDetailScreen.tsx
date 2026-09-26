@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import ScreenContainer from "../../components/ScreenContainer";
 import AppHeader from "../../components/AppHeader";
 import Chip from "../../components/Chip";
@@ -16,7 +16,6 @@ import Rating from "../../components/Rating";
 import { useHospital, useSpecialist } from "../../api/queries";
 import { assetSource } from "../../api/assets";
 import ListStateView from "../../components/ListStateView";
-import type { SpecialistCardDto } from "../../api/types";
 import { images } from "../../data/assets";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
@@ -110,19 +109,15 @@ export default function HospitalDetailScreen({ navigation, route }: RootScreenPr
                 </Text>
               </View>
             </View>
-            <View style={styles.chipRow}>
-              <Chip
-                label="Certified"
-                elevated
-                icon={<MaterialCommunityIcons name="shield-check" size={16} color={colors.success} />}
-              />
-              <Chip
-                label={String(selectedSpecialist.rating)}
-                elevated
-                style={{ marginLeft: 10 }}
-                icon={<Ionicons name="star" size={14} color={colors.warning} />}
-              />
-            </View>
+            {selectedSpecialist.certified ? (
+              <View style={styles.chipRow}>
+                <Chip
+                  label="Certified"
+                  elevated
+                  icon={<MaterialCommunityIcons name="shield-check" size={16} color={colors.success} />}
+                />
+              </View>
+            ) : null}
             <View style={{ marginTop: 8 }}>
               <InfoRow
                 label="Specialization:"

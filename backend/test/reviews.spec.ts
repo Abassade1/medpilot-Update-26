@@ -81,6 +81,20 @@ describe("reviews", () => {
     expect(page.body.total).toBe(ratings.length);
   });
 
+  it("packages show their hospital's live rating, and hospital specialists carry none", async () => {
+    const s = await registerUser();
+    const { id, hospitalId } = await completedAppointment(s);
+    await (await http()).post("/v1/reviews").set(...auth(s)).send({ targetType: "hospital", requestId: id, rating: 1 }).expect(201);
+
+    const hospital = await (await http()).get(`/v1/hospitals/${hospitalId}`).set(...auth(s)).expect(200);
+    const packages = await (await http()).get("/v1/packages").set(...auth(s)).expect(200);
+    const mine = packages.body.filter((p: { hospital: { id: string } }) => p.hospital.id === hospitalId);
+    for (const p of mine) expect(p.rating).toBe(hospital.body.rating);
+
+    expect(hospital.body.specialists.length).toBeGreaterThan(0);
+    for (const sp of hospital.body.specialists) expect(sp).not.toHaveProperty("rating");
+  });
+
   it("blocks reviewing before the appointment is confirmed or completed", async () => {
     const s = await registerUser();
     const hospitalId = await firstHospitalId(s);

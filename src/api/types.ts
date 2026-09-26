@@ -27,11 +27,12 @@ export interface HospitalCard {
   id: string; slug: string; name: string; specialty: string;
   country: string; specialistCount: number; logoAsset: string | null; rating: number;
 }
-export interface SpecialistCardDto {
+/** A specialist listed inside a hospital. Not bookable on their own, so they carry no rating. */
+export interface HospitalSpecialistDto {
   id: string; name: string; cardName: string; role: string;
-  rating: number; photoAsset: string | null; available: boolean;
+  photoAsset: string | null; available: boolean;
 }
-export interface SpecialistDetail extends SpecialistCardDto {
+export interface SpecialistDetail extends HospitalSpecialistDto {
   certified: boolean; specialization: string | null; experience: string | null;
   operationCountry: string | null; operationCountryNote: string | null;
   languages: string | null; expertise: string[];
@@ -40,7 +41,7 @@ export interface HospitalDetail extends HospitalCard {
   about: string; careSystem: string; openHours: string; openHoursNote: string | null;
   helipadCode: string | null; accredited: boolean; bookable: boolean;
   latitude: number | null; longitude: number | null;
-  specialists: SpecialistCardDto[];
+  specialists: HospitalSpecialistDto[];
 }
 
 export interface PackageCard {

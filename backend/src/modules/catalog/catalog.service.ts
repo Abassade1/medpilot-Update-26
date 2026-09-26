@@ -52,9 +52,10 @@ export class CatalogService {
     };
   }
 
+  // No rating: members book the hospital, never these specialists directly, so nothing could ever rate them.
   private specialistCard = (sp: typeof s.specialists.$inferSelect) => ({
     id: sp.id, name: sp.fullName, cardName: sp.shortName, role: sp.role,
-    rating: Number(sp.rating), photoAsset: sp.photoAsset, available: sp.available,
+    photoAsset: sp.photoAsset, available: sp.available,
   });
 
   async specialistDetail(id: string) {
@@ -94,7 +95,8 @@ export class CatalogService {
     inclusions: string[],
   ) => ({
     id: p.id, slug: p.slug, title: p.title,
-    priceLabel: p.priceLabel, location: p.locationLabel, rating: Number(p.rating),
+    // A package is booked as an appointment at its hospital, so it carries the hospital's rating.
+    priceLabel: p.priceLabel, location: p.locationLabel, rating: Number(h.rating),
     description: p.description, heroAsset: p.heroAsset,
     packageInclude: inclusions,
     hospital: this.hospitalCard(h),
