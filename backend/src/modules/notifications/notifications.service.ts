@@ -24,7 +24,11 @@ export class NotificationsService {
     await this.push(userId, n).catch((e) => log.warn("push_failed", { userId, type: n.type, err: String(e) }));
   }
 
+  /** The inbox always records the notification; the member's "Push notifications" setting only governs the device alert. */
   private async push(userId: string, n: { title: string; body: string; deepLink?: string }) {
+    const [prefs] = await this.db.select({ pushEnabled: s.userPreferences.pushEnabled })
+      .from(s.userPreferences).where(eq(s.userPreferences.userId, userId)).limit(1);
+    if (prefs && !prefs.pushEnabled) return;
     const devices = await this.db.select().from(s.devices).where(eq(s.devices.userId, userId));
     const tokens = devices.map((d) => d.pushToken).filter((t): t is string => !!t);
     if (!tokens.length) return;
@@ -34,16 +38,20 @@ export class NotificationsService {
     }
     const res = await fetch("https://exp.host/--/api/v2/push/send", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      // Required once "enhanced push security" is on for the Expo project; harmless otherwise.
+      headers: {
+        "content-type": "application/json",
+        ...(this.env.EXPO_ACCESS_TOKEN ? { authorization: `Bearer ${this.env.EXPO_ACCESS_TOKEN}` } : {}),
+      },
       body: JSON.stringify(tokens.map((to) => ({ to, title: n.title, body: n.body, data: { url: n.deepLink } }))),
     });
     const out = (await res.json()) as { data?: { status: string; details?: { error?: string } }[] };
-    // invalid-token receipts null the stored token so the queue self-heals
-    out.data?.forEach((r, i) => {
-      if (r.details?.error === "DeviceNotRegistered") {
-        void this.db.update(s.devices).set({ pushToken: null }).where(eq(s.devices.pushToken, tokens[i]!));
-      }
-    });
+    // Forget tokens Expo says are dead so we stop sending to them. Drizzle queries are lazy:
+    // they only run when awaited, so these must be awaited, not discarded.
+    const dead = (out.data ?? [])
+      .map((r, i) => (r.details?.error === "DeviceNotRegistered" ? tokens[i] : undefined))
+      .filter((t): t is string => !!t);
+    if (dead.length) await this.db.update(s.devices).set({ pushToken: null }).where(inArray(s.devices.pushToken, dead));
   }
 
   async list(userId: string) {
