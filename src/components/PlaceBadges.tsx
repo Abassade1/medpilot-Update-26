@@ -7,7 +7,7 @@ import { colors } from "../theme";
 /** Directions (opens Maps), an optional Verified badge, and the rating. Only real data is shown. */
 export default function PlaceBadges({
   name, location, rating, verified,
-}: { name: string; location?: string; rating: number; verified?: boolean }) {
+}: { name: string; location?: string; rating: number | null; verified?: boolean }) {
   const query = encodeURIComponent([name, location].filter(Boolean).join(" "));
   return (
     <View style={{ flexDirection: "row", marginTop: 14 }}>
@@ -20,7 +20,12 @@ export default function PlaceBadges({
       {verified ? (
         <Chip label="Verified" elevated style={{ marginLeft: 10 }} icon={<MaterialCommunityIcons name="shield-check" size={16} color={colors.success} />} />
       ) : null}
-      <Chip label={rating.toFixed(1)} elevated style={{ marginLeft: 10 }} icon={<Ionicons name="star" size={14} color={colors.warning} />} />
+      <Chip
+        label={rating == null ? "No reviews yet" : rating.toFixed(1)}
+        elevated
+        style={{ marginLeft: 10 }}
+        icon={<Ionicons name={rating == null ? "star-outline" : "star"} size={14} color={rating == null ? colors.tertiaryText : colors.warning} />}
+      />
     </View>
   );
 }

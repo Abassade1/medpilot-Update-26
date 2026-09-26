@@ -25,7 +25,8 @@ export interface MeResponse {
 
 export interface HospitalCard {
   id: string; slug: string; name: string; specialty: string;
-  country: string; specialistCount: number; logoAsset: string | null; rating: number;
+  country: string; specialistCount: number; logoAsset: string | null; rating: number | null;
+  accredited: boolean;
 }
 /** A specialist listed inside a hospital. Not bookable on their own, so they carry no rating. */
 export interface HospitalSpecialistDto {
@@ -39,14 +40,14 @@ export interface SpecialistDetail extends HospitalSpecialistDto {
 }
 export interface HospitalDetail extends HospitalCard {
   about: string; careSystem: string; openHours: string; openHoursNote: string | null;
-  helipadCode: string | null; accredited: boolean; bookable: boolean;
+  helipadCode: string | null; bookable: boolean;
   latitude: number | null; longitude: number | null;
   specialists: HospitalSpecialistDto[];
 }
 
 export interface PackageCard {
   id: string; slug: string; title: string; priceLabel: string;
-  location: string; rating: number; description: string;
+  location: string; rating: number | null; description: string;
   heroAsset: string | null; packageInclude: string[]; hospital: HospitalCard;
 }
 export interface PackageDetail extends PackageCard {
@@ -60,7 +61,7 @@ export interface PackageDetail extends PackageCard {
 
 export interface ProviderCardDto {
   id: string; name: string; category: "jet" | "ambulance" | "boat";
-  location: string; rating: number; verified: boolean;
+  location: string; rating: number | null; verified: boolean;
   priceFromLabel: string | null; description: string; routes: string; tags: string;
   heroAsset: string | null; logoAsset: string | null;
 }
@@ -74,7 +75,7 @@ export interface ProviderDetail extends ProviderCardDto { aircraft: AircraftDto[
 
 export interface PetClinicDto {
   id: string; name: string; category: "vet" | "pedicure" | "sitters";
-  location: string; rating: number; verified: boolean; priceFromLabel: string | null;
+  location: string; rating: number | null; verified: boolean; priceFromLabel: string | null;
   description: string; openTo: string; logoEmoji: string | null; heroAsset: string | null;
 }
 export interface ServiceDto {
@@ -209,7 +210,7 @@ export interface ResolveDto {
   country: LocationDto | null; region: LocationDto | null; city: LocationDto | null;
 }
 export interface AvailableProviderDto {
-  id: string; name: string; rating: number; verified: boolean; priceFromLabel: string | null;
+  id: string; name: string; rating: number | null; verified: boolean; priceFromLabel: string | null;
   logoAsset: string | null; heroAsset: string | null; tags: string;
   coverage: "full" | "partial"; servedVia: string;
 }
@@ -232,7 +233,7 @@ export interface PetClinicDetail extends PetClinicDto {
 export type PetType = "dog" | "cat" | "horse" | "bird" | "small_animal" | "other";
 export interface SpecialistCategoryDto { id: string; title: string; countLabel: string; imageAsset: string | null }
 export interface SpecialistCardDto {
-  id: string; name: string; role: string; rating: number; verified: boolean;
+  id: string; name: string; role: string; rating: number | null; verified: boolean;
   locationLabel: string; photoAsset: string | null; availabilityLabel: string;
   acceptingRequests: boolean; categoryId: string; categoryTitle?: string;
 }

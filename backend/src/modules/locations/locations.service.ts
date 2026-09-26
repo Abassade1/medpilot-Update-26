@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import type { Db } from "../../db/client";
 import { schema as s } from "../../db/client";
 import { AppError } from "../../common/errors";
+import { displayRating } from "../../common/rating";
 
 type Loc = typeof s.locations.$inferSelect;
 type Coverage = "full" | "partial";
@@ -165,12 +166,12 @@ export class LocationsService {
         .map((p) => {
           const b = best.get(p.id)!;
           return {
-            id: p.id, name: p.name, rating: Number(p.rating), verified: p.verified,
+            id: p.id, name: p.name, rating: displayRating(p.rating), verified: p.verified,
             priceFromLabel: priceLabel(p.priceFromAmount), logoAsset: p.logoAsset, heroAsset: p.heroAsset,
             tags: p.tags, coverage: b.how, servedVia: b.via.name,
           };
         })
-        .sort((a, b) => (a.coverage === b.coverage ? b.rating - a.rating : a.coverage === "full" ? -1 : 1));
+        .sort((a, b) => (a.coverage === b.coverage ? (b.rating ?? 0) - (a.rating ?? 0) : a.coverage === "full" ? -1 : 1));
       const anyFull = list.some((p) => p.coverage === "full");
       return {
         category, label: CATEGORY_LABEL[category], available: list.length > 0,

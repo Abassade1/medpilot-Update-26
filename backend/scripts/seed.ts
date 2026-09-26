@@ -95,18 +95,18 @@ async function main() {
     burjeel: "Burjeel International Hospital delivers premium tertiary care with an emphasis on cardiology and surgical excellence.",
     nyp: "NewYork-Presbyterian is one of the nation's most comprehensive, integrated academic health care delivery systems, dedicated to providing the highest quality, most compassionate care.",
   };
-  const hosp = (hid: string, slug: string, name: string, specialty: string, cc: string, country: string, n: number, logo: string, rating: string, ab: string, helipad: string) => ({
+  const hosp = (hid: string, slug: string, name: string, specialty: string, cc: string, country: string, n: number, logo: string, ab: string, helipad: string) => ({
     id: hid, slug, name, specialty, countryCode: cc, countryLabel: country, specialistCount: n,
-    logoAsset: logo, rating, about: ab, careSystem: "Special health service",
+    logoAsset: logo, about: ab, careSystem: "Special health service",
     openHours: "Open 24 hours", openHoursNote: "Emergency room", helipadCode: helipad,
     accredited: true, bookable: true, status: "published" as const,
   });
   await db.insert(s.hospitals).values([
-    hosp(H.kingSalman, "king-salman", "King Salman Heart Center", "Cardiology services", "SA", "Saudi Arabia", 15, "logoKingFahad", "4.5", about.kingSalman, "TC LID:KSA1"),
-    hosp(H.ernGuard, "ern-guard", "ERN GUARD-Heart", "Cardiothoracic hospital", "FR", "France", 7, "logoErn", "4.4", about.ernGuard, "TC LID:FRA2"),
-    hosp(H.seoul, "seoul-national", "Seoul National University Hospital", "Cancer and Cardiology Services", "KR", "South Korea", 23, "logoSnuh", "4.7", about.seoul, "TC LID:KOR3"),
-    hosp(H.burjeel, "burjeel", "Burjeel International Hospital", "Cardiology services", "SA", "Saudi Arabia", 15, "logoBurjeel", "4.5", about.burjeel, "TC LID:UAE4"),
-    hosp(H.nyp, "ny-presbyterian", "New York-Presbyterian Hospital", "Neurology", "US", "USA", 5, "logoNyp", "4.6", about.nyp, "TC LID:CEM2"),
+    hosp(H.kingSalman, "king-salman", "King Salman Heart Center", "Cardiology services", "SA", "Saudi Arabia", 15, "logoKingFahad", about.kingSalman, "TC LID:KSA1"),
+    hosp(H.ernGuard, "ern-guard", "ERN GUARD-Heart", "Cardiothoracic hospital", "FR", "France", 7, "logoErn", about.ernGuard, "TC LID:FRA2"),
+    hosp(H.seoul, "seoul-national", "Seoul National University Hospital", "Cancer and Cardiology Services", "KR", "South Korea", 23, "logoSnuh", about.seoul, "TC LID:KOR3"),
+    hosp(H.burjeel, "burjeel", "Burjeel International Hospital", "Cardiology services", "SA", "Saudi Arabia", 15, "logoBurjeel", about.burjeel, "TC LID:UAE4"),
+    hosp(H.nyp, "ny-presbyterian", "New York-Presbyterian Hospital", "Neurology", "US", "USA", 5, "logoNyp", about.nyp, "TC LID:CEM2"),
   ]);
 
   const SP = { friska: id(), lidya: id(), lidya2: id() };
@@ -122,7 +122,7 @@ async function main() {
         "Women’s health",
         "Telehealth consultations and remote monitoring",
       ],
-      rating: "4.5", photoAsset: "doctor1", available: true, certified: true,
+      photoAsset: "doctor1", available: true, certified: true,
     },
     {
       id: SP.lidya, fullName: "Lidya Bey", shortName: "Lidya Bey",
@@ -130,7 +130,7 @@ async function main() {
       experienceLabel: "8+ Years of Experience", operationCountry: "United States",
       otherCountries: "Canada", languages: "English, French",
       expertise: ["Critical care nursing", "Patient advocacy", "Care team coordination"],
-      rating: "4.5", photoAsset: "doctor2", available: true, certified: true,
+      photoAsset: "doctor2", available: true, certified: true,
     },
     {
       id: SP.lidya2, fullName: "Dr. Lidya Nour", shortName: "Dr. Lidya",
@@ -138,7 +138,7 @@ async function main() {
       experienceLabel: "6+ Years of Experience", operationCountry: "Canada",
       otherCountries: "UAE", languages: "English, Arabic",
       expertise: ["Clinical nutrition", "Diet planning for chronic conditions"],
-      rating: "4.5", photoAsset: "doctor3", available: true, certified: true,
+      photoAsset: "doctor3", available: true, certified: true,
     },
   ]);
   const links = Object.values(H).flatMap((hid) =>
@@ -152,35 +152,35 @@ async function main() {
   await db.insert(s.transportProviders).values([
     {
       id: P.emsAir, name: "Air Ambulance & Medical Repatriation", category: "ambulance",
-      location: "London, ON", rating: "4.3", verified: false,
+      location: "London, ON", verified: false,
       priceFromAmount: 150000, description: "EMS is a medical repatriation company that specialises in worldwide patient transportation.",
       routes: "Worldwide aid  +136 countries", tags: "AIR Ambulance | Canada",
       heroAsset: "emirates", logoAsset: "logoEms", status: "published",
     },
     {
       id: P.pacific, name: "Pacific Western EMS", category: "ambulance",
-      location: "Richmond, ON", rating: "4.5", verified: true,
+      location: "Richmond, ON", verified: true,
       priceFromAmount: 245000, description: trusted,
       routes: "USA | Mexico | UK | India | Italy", tags: "AIR Ambulance | Canada",
       heroAsset: "medevac", logoAsset: "logoPacific", status: "published",
     },
     {
       id: P.uber, name: "Uber at YYC International Airport", category: "jet",
-      location: "Calgary, CA", rating: "4.5", verified: true,
+      location: "Calgary, CA", verified: true,
       priceFromAmount: 245000, description: trusted,
       routes: "USA | Mexico | UK | India | Italy", tags: "AIR Ambulance | Canada",
       heroAsset: "airportAerial", logoAsset: "logoUber", status: "published",
     },
     {
       id: P.harbour, name: "Harbour Medevac Marine", category: "boat",
-      location: "Vancouver, CA", rating: "4.4", verified: true,
+      location: "Vancouver, CA", verified: true,
       priceFromAmount: 85000, description: "Fast medical rescue boats for coastal and harbour transfers, crewed by paramedics.",
       routes: "Vancouver | Victoria | New York | Los Angeles | Dubai | Seoul", tags: "Speed Boat | Coastal",
       heroAsset: "medevac", logoAsset: "logoEms", status: "published",
     },
     {
       id: P.gulf, name: "Gulf Air Rescue", category: "jet",
-      location: "Dubai, AE", rating: "4.6", verified: true,
+      location: "Dubai, AE", verified: true,
       priceFromAmount: 320000, description: "Long-range medical jets based in Dubai, serving the Gulf and East Asia.",
       routes: "UAE | Saudi Arabia | South Korea | India", tags: "Private Jet | Middle East",
       heroAsset: "emirates", logoAsset: "logoPacific", status: "published",
@@ -218,7 +218,7 @@ async function main() {
   const PK = { uae: id(), asia: id(), special: id(), ksa: id(), uaeFree: id() };
   const pkg = (pid: string, slug: string, title: string, hid: string, amount: number, label: string, loc: string, hero: string, desc: string) => ({
     id: pid, slug, title, hospitalId: hid, transportProviderId: P.uber,
-    priceAmount: amount, priceLabel: label, locationLabel: loc, rating: "4.5",
+    priceAmount: amount, priceLabel: label, locationLabel: loc,
     description: desc, heroAsset: hero, status: "published" as const,
   });
   const pdesc = "Your trusted partner in Emergency Medical Services and Medical Repatriation. Bringing you world class care.";

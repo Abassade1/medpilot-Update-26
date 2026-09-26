@@ -57,7 +57,7 @@ export default function MedicalPackagesScreen({ navigation }: RootScreenProps<"M
                   <Text style={styles.hospitalName} numberOfLines={1}>
                     {hospital.name}
                   </Text>
-                  <MaterialIcons name="verified" size={14} color={colors.success} />
+                  {hospital.accredited ? <MaterialIcons name="verified" size={14} color={colors.success} /> : null}
                   <View style={{ marginLeft: 8 }}>
                     <Rating value={item.rating} size={12} />
                   </View>

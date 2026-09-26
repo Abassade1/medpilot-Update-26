@@ -64,6 +64,13 @@
       "when": 1790401572011,
       "tag": "0008_curious_wrecking_crew",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790402074387,
+      "tag": "0009_reset_unreviewed_ratings",
+      "breakpoints": true
     }
   ]
 }

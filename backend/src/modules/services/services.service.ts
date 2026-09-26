@@ -10,6 +10,7 @@ import { containsPattern } from "../../common/like";
 import { AuditService } from "../auth/audit.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import type { PetRequestBody, SpecialistListQuery, SpecialistRequestBody } from "./services.schemas";
+import { displayRating } from "../../common/rating";
 
 const money = (amount: number | null, currency = "USD") =>
   amount == null ? null : `${currency === "USD" ? "$" : `${currency} `}${(amount / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
@@ -48,7 +49,7 @@ export class ServicesService {
       .where(and(eq(s.petServices.clinicId, id), eq(s.petServices.active, true)))
       .orderBy(asc(s.petServices.sortOrder));
     return {
-      id: c.id, name: c.name, category: c.category, location: c.location, rating: Number(c.rating),
+      id: c.id, name: c.name, category: c.category, location: c.location, rating: displayRating(c.rating),
       verified: c.verified, description: c.description, openTo: c.openTo, logoEmoji: c.logoEmoji, heroAsset: c.heroAsset,
       priceFromLabel: money(c.priceFromAmount, c.priceFromCurrency),
       services: services.map(this.serviceView),
@@ -59,7 +60,7 @@ export class ServicesService {
 
   // ---- independent specialists ---------------------------------------------------
   private specialistCard = (x: typeof s.independentSpecialists.$inferSelect, categoryTitle?: string) => ({
-    id: x.id, name: x.name, role: x.role, rating: Number(x.rating), verified: x.verified,
+    id: x.id, name: x.name, role: x.role, rating: displayRating(x.rating), verified: x.verified,
     locationLabel: x.locationLabel, photoAsset: x.photoAsset, availabilityLabel: x.availabilityLabel,
     acceptingRequests: x.acceptingRequests, categoryId: x.categoryId, ...(categoryTitle ? { categoryTitle } : {}),
   });

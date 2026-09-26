@@ -4,6 +4,7 @@ import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import type { Db } from "../../db/client";
 import { schema as s } from "../../db/client";
 import { AppError } from "../../common/errors";
+import { displayRating } from "../../common/rating";
 
 const published = <T extends { status: any }>(t: T) => eq(t.status, "published" as never);
 
@@ -29,7 +30,7 @@ export class CatalogService {
   private hospitalCard = (h: typeof s.hospitals.$inferSelect) => ({
     id: h.id, slug: h.slug, name: h.name, specialty: h.specialty,
     country: h.countryLabel, specialistCount: h.specialistCount,
-    logoAsset: h.logoAsset, rating: Number(h.rating),
+    logoAsset: h.logoAsset, rating: displayRating(h.rating), accredited: h.accredited,
   });
 
   async hospitalDetail(id: string) {
@@ -45,7 +46,7 @@ export class CatalogService {
       ...this.hospitalCard(h),
       about: h.about, careSystem: h.careSystem,
       openHours: h.openHours, openHoursNote: h.openHoursNote,
-      helipadCode: h.helipadCode, accredited: h.accredited, bookable: h.bookable,
+      helipadCode: h.helipadCode, bookable: h.bookable,
       latitude: h.latitude ? Number(h.latitude) : null,
       longitude: h.longitude ? Number(h.longitude) : null,
       specialists: specs.map(({ sp }) => this.specialistCard(sp)),
@@ -96,7 +97,7 @@ export class CatalogService {
   ) => ({
     id: p.id, slug: p.slug, title: p.title,
     // A package is booked as an appointment at its hospital, so it carries the hospital's rating.
-    priceLabel: p.priceLabel, location: p.locationLabel, rating: Number(h.rating),
+    priceLabel: p.priceLabel, location: p.locationLabel, rating: displayRating(h.rating),
     description: p.description, heroAsset: p.heroAsset,
     packageInclude: inclusions,
     hospital: this.hospitalCard(h),
@@ -140,7 +141,7 @@ export class CatalogService {
 
   private providerCard = (p: typeof s.transportProviders.$inferSelect) => ({
     id: p.id, name: p.name, category: p.category, location: p.location,
-    rating: Number(p.rating), verified: p.verified,
+    rating: displayRating(p.rating), verified: p.verified,
     priceFromLabel: p.priceFromAmount != null
       ? `$${(p.priceFromAmount / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`
       : null,
@@ -189,7 +190,7 @@ export class CatalogService {
       .orderBy(asc(s.petClinics.createdAt)).limit(50);
     return rows.map((c) => ({
       id: c.id, name: c.name, category: c.category, location: c.location,
-      rating: Number(c.rating), verified: c.verified,
+      rating: displayRating(c.rating), verified: c.verified,
       priceFromLabel: c.priceFromAmount != null
         ? `$${(c.priceFromAmount / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`
         : null,

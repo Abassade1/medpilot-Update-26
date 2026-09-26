@@ -11,7 +11,7 @@ interface Props {
   logo: React.ReactNode;
   name: string;
   location: string;
-  rating: number;
+  rating: number | null;
   verified?: boolean;
   description: string;
   routesLabel: string;
@@ -39,7 +39,7 @@ export default function ProviderCard({
       activeOpacity={0.85}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${name}, ${location}, rated ${rating}, from ${price}`}
+      accessibilityLabel={`${name}, ${location}, ${rating == null ? "no reviews yet" : `rated ${rating.toFixed(1)}`}, from ${price}`}
     >
       <View style={styles.imageWrap}>
         <Image source={image} style={styles.image} />

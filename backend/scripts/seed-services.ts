@@ -132,7 +132,7 @@ export async function seedServices(db: Db, P: ProviderIds): Promise<void> {
   // ---- pet clinics: spread across all three tabs, each with real services ----
   const clinic = (name: string, category: "vet" | "pedicure" | "sitters", location: string, description: string,
     emoji: string, hero: string, openTo: string, price: number) =>
-    ({ id: id(), name, category, location, rating: "4.5", priceFromAmount: price, description, openTo, logoEmoji: emoji, heroAsset: hero, verified: true });
+    ({ id: id(), name, category, location, priceFromAmount: price, description, openTo, logoEmoji: emoji, heroAsset: hero, verified: true });
 
   const C = {
     petLife: clinic("Pet+Life Veterinary Clinic", "vet", "Tokyo, Japan", "We provide assistance for exporting and importing pets as well as pet hotel services", "🦊", "petVet", "USA | Mexico | UK | India | Italy", 44900),
@@ -175,7 +175,7 @@ export async function seedServices(db: Db, P: ProviderIds): Promise<void> {
   };
   const spec = (categoryTitle: string, name: string, role: string, bio: string, location: string,
     years: number, availability: string, photo: string, languages = "English") =>
-    ({ id: id(), categoryId: cat(categoryTitle), name, role, bio, rating: "4.6", locationLabel: location, languages,
+    ({ id: id(), categoryId: cat(categoryTitle), name, role, bio, locationLabel: location, languages,
        yearsExperience: years, availabilityLabel: availability, photoAsset: photo, verified: true });
   const S = {
     amara: spec("Private Nurses", "Amara Okafor", "Registered Nurse · Post-operative care", "Twelve years in surgical recovery and wound care, now providing one-to-one nursing at home for patients returning from treatment abroad.", "Toronto, Canada", 12, "Mon–Fri · 08:00–18:00", "nurseDoctor", "English, Igbo"),

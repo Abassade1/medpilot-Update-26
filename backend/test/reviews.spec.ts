@@ -81,6 +81,15 @@ describe("reviews", () => {
     expect(page.body.total).toBe(ratings.length);
   });
 
+  it("a listing nobody has reviewed reports no rating rather than a made-up one", async () => {
+    const s = await registerUser();
+    const reviewed = new Set((await pool.query("select distinct target_id from reviews")).rows.map((r) => r.target_id));
+    const clinics = (await (await http()).get("/v1/pet-clinics").set(...auth(s)).expect(200)).body as { id: string; rating: number | null }[];
+    const unreviewed = clinics.filter((c) => !reviewed.has(c.id));
+    expect(unreviewed.length).toBeGreaterThan(0);
+    for (const c of unreviewed) expect(c.rating).toBeNull();
+  });
+
   it("packages show their hospital's live rating, and hospital specialists carry none", async () => {
     const s = await registerUser();
     const { id, hospitalId } = await completedAppointment(s);
