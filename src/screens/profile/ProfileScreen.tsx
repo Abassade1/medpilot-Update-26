@@ -57,7 +57,7 @@ export default function ProfileScreen({ navigation }: RootScreenProps<"Profile">
   const toggle = (key: "pushEnabled" | "emailUpdates" | "appointmentReminders", label: string, hint: string) => (
     <View style={styles.toggleRow}>
       <View style={{ flex: 1, paddingRight: 12 }}>
-        <Text style={styles.rowLabel}>{label}</Text>
+        <Text style={styles.toggleLabel}>{label}</Text>
         <Text style={styles.hint}>{hint}</Text>
       </View>
       <Switch
@@ -127,7 +127,7 @@ export default function ProfileScreen({ navigation }: RootScreenProps<"Profile">
             {LANGUAGES.map((l) => (
               <TouchableOpacity key={l.code} style={styles.linkRow} accessibilityRole="radio" accessibilityState={{ selected: language === l.code }}
                 onPress={() => { setLanguage(l.code); patchPrefs.mutate({ language: l.code }); }}>
-                <Text style={styles.linkText}>{l.native}</Text>
+                <Text style={[styles.linkText, { marginLeft: 0 }]}>{l.native}</Text>
                 {language === l.code ? <Ionicons name="checkmark" size={18} color={colors.primary} /> : null}
               </TouchableOpacity>
             ))}
@@ -204,6 +204,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: "#fff", borderRadius: radii.md, borderWidth: 1, borderColor: colors.borderLight, paddingHorizontal: 14, paddingVertical: 6 },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingVertical: 9 },
   rowLabel: { fontSize: 13.5, color: colors.text, width: 118 },
+  toggleLabel: { fontSize: 13.5, color: colors.text },
   rowValue: { fontSize: 13.5, fontWeight: "600", color: colors.text, textAlign: "right" },
   hint: { fontSize: 11.5, color: colors.secondaryText, marginTop: 1 },
   empty: { fontSize: 13, color: colors.secondaryText, paddingVertical: 10 },

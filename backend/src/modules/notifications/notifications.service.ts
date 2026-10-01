@@ -6,6 +6,7 @@ import { schema as s } from "../../db/client";
 import { loadEnv } from "../../config/env";
 import { log } from "../../common/logger";
 import { EmailService } from "../email/email.service";
+import { localizeText, normalizeLang, type Lang } from "./localize";
 
 /**
  * In-app inbox + push dispatch. Push payloads must never contain PHI —
@@ -31,21 +32,30 @@ export class NotificationsService {
     if (n.email) await this.mail(userId, n).catch((e) => log.warn("email_notify_failed", { userId, type: n.type, err: String(e) }));
   }
 
+  private async languageOf(userId: string): Promise<Lang> {
+    const [row] = await this.db.select({ language: s.userPreferences.language })
+      .from(s.userPreferences).where(eq(s.userPreferences.userId, userId)).limit(1);
+    return normalizeLang(row?.language);
+  }
+
   private async mail(userId: string, n: { title: string; body: string }) {
+    const lang = await this.languageOf(userId);
     const [row] = await this.db.select({ email: s.users.email, verifiedAt: s.users.emailVerifiedAt, wants: s.userPreferences.emailUpdates })
       .from(s.users).leftJoin(s.userPreferences, eq(s.userPreferences.userId, s.users.id))
       .where(and(eq(s.users.id, userId), isNull(s.users.deletedAt))).limit(1);
     // An unverified address may be a typo belonging to someone else.
     if (!row || !row.verifiedAt || row.wants === false) return;
     // The body is the same generic copy as the push: no clinic or hospital names in an inbox.
-    await this.email.send({ to: row.email, subject: n.title, text: n.body });
+    await this.email.send({ to: row.email, subject: localizeText(lang, n.title), text: localizeText(lang, n.body) });
   }
 
   /** The inbox always records the notification; the member's "Push notifications" setting only governs the device alert. */
   private async push(userId: string, n: { title: string; body: string; deepLink?: string }) {
-    const [prefs] = await this.db.select({ pushEnabled: s.userPreferences.pushEnabled })
+    const [prefs] = await this.db.select({ pushEnabled: s.userPreferences.pushEnabled, language: s.userPreferences.language })
       .from(s.userPreferences).where(eq(s.userPreferences.userId, userId)).limit(1);
     if (prefs && !prefs.pushEnabled) return;
+    const lang = normalizeLang(prefs?.language);
+    n = { ...n, title: localizeText(lang, n.title), body: localizeText(lang, n.body) };
     const devices = await this.db.select().from(s.devices).where(eq(s.devices.userId, userId));
     const tokens = devices.map((d) => d.pushToken).filter((t): t is string => !!t);
     if (!tokens.length) return;
@@ -80,10 +90,11 @@ export class NotificationsService {
     const [{ n: unread }] = (await this.db.execute(
       sql`select count(*)::int n from notifications where user_id = ${userId} and read_at is null`,
     )).rows as [{ n: number }];
+    const lang = await this.languageOf(userId);
     return {
       unreadCount: unread,
       items: rows.map((r) => ({
-        id: r.id, type: r.type, title: r.title, body: r.body,
+        id: r.id, type: r.type, title: localizeText(lang, r.title), body: localizeText(lang, r.body),
         data: r.data ? JSON.parse(r.data) : null,
         read: !!r.readAt, createdAt: r.createdAt,
       })),

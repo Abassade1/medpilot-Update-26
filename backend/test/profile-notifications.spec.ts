@@ -132,6 +132,18 @@ describe("notifications", () => {
     expect(n.items[0]!.data?.url).toBe(`medpilot://appointments/${appt.id}`);
   });
 
+  it("shows the inbox in the member's language, and keeps English for other members", async () => {
+    const fr = await registerUser();
+    const ar = await registerUser();
+    const en = await registerUser();
+    await patch(fr, "/v1/me/preferences", { language: "fr" }).then((r) => expect(r.status).toBe(200));
+    await patch(ar, "/v1/me/preferences", { language: "ar" }).then((r) => expect(r.status).toBe(200));
+    for (const m of [fr, ar, en]) await trigger(m);
+    expect((await list(fr)).items[0]!.title).toBe("Demande reçue");
+    expect((await list(ar)).items[0]!.title).toBe("تم استلام الطلب");
+    expect((await list(en)).items[0]!.title).toBe("Request received");
+  });
+
   it("marks one read and lowers the unread count", async () => {
     const s = await registerUser();
     await trigger(s);
