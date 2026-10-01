@@ -91,6 +91,13 @@ describe("preferences", () => {
     expect((await patch(s, "/v1/me/preferences", {})).status).toBe(422);
   });
 
+  it("accepts Arabic as a language", async () => {
+    const s = await registerUser();
+    const res = await patch(s, "/v1/me/preferences", { language: "ar" });
+    expect(res.status).toBe(200);
+    expect(res.body.language).toBe("ar");
+  });
+
   it("keeps each member's preferences separate", async () => {
     const a = await registerUser();
     const b = await registerUser();

@@ -3,6 +3,7 @@ import { TouchableOpacity, StyleSheet, View, ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useVoiceInput } from "../hooks/useVoiceInput";
 import { colors } from "../theme";
+import { useT } from "../i18n";
 
 interface Props {
   size?: number;
@@ -12,6 +13,7 @@ interface Props {
 
 /** Mic affordance that actually records via the device microphone. */
 export default function MicButton({ size = 18, style, onCaptured }: Props) {
+  const tr = useT();
   const { recording, busy, toggle } = useVoiceInput(onCaptured);
 
   return (
@@ -21,7 +23,7 @@ export default function MicButton({ size = 18, style, onCaptured }: Props) {
       hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
       style={style}
       accessibilityRole="button"
-      accessibilityLabel={recording ? "Stop recording" : "Record voice input"}
+      accessibilityLabel={recording ? tr("Stop recording") : tr("Record voice input")}
       accessibilityState={{ selected: recording, disabled: busy }}
     >
       {recording ? (

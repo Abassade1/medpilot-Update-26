@@ -31,6 +31,7 @@ import { BOOKING_WINDOW_DAYS } from "../../utils/validation";
 import { addDays, utcTodayIso } from "../../utils/dates";
 import { useMultiStepBack } from "../../hooks/useMultiStepBack";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -38,6 +39,7 @@ export default function TravelBookingScreen({
   navigation,
   route,
 }: RootScreenProps<"TravelBooking">) {
+  const tr = useT();
   const [step, setStep] = useState(1);
   const reference = useReference();
   const providerQuery = useProvider(route.params.providerId);
@@ -209,9 +211,9 @@ export default function TravelBookingScreen({
 
   const radioPair = (value: "Airport" | "Helipad", set: (v: "Airport" | "Helipad") => void) => (
     <View style={styles.radioPair}>
-      <RadioRow label="Airport" selected={value === "Airport"} onPress={() => set("Airport")} />
+      <RadioRow label={tr("Airport")} selected={value === "Airport"} onPress={() => set("Airport")} />
       <RadioRow
-        label="Helipad"
+        label={tr("Helipad")}
         selected={value === "Helipad"}
         onPress={() => set("Helipad")}
         style={{ marginLeft: 28 }}
@@ -222,7 +224,7 @@ export default function TravelBookingScreen({
   return (
     <ScreenContainer>
       <AppHeader
-        title="Book Appointment"
+        title={tr("Book Appointment")}
         onBack={() => (step > 1 ? setStep((s) => s - 1) : navigation.goBack())}
       />
       <KeyboardAvoidingView
@@ -236,15 +238,15 @@ export default function TravelBookingScreen({
         contentContainerStyle={styles.content}
       >
         <Text style={styles.step}>
-          <Text style={styles.stepCurrent}>{step}</Text> of 6
+          <Text style={styles.stepCurrent}>{step}</Text> {tr("of 6")}
         </Text>
         <Text style={styles.title}>{titles[step - 1]}</Text>
 
         {step === 1 && (
           <View>
-            <Text style={styles.groupLabel}>Pickup details</Text>
+            <Text style={styles.groupLabel}>{tr("Pickup details")}</Text>
             <DateField
-              label="Pickup Date"
+              label={tr("Pickup Date")}
               value={pickupDate}
               onChange={(v) => { setPickupDate(v); setServerErrors((e) => ({ ...e, pickupDate: undefined })); }}
               min={addDays(utcTodayIso(), 1)}
@@ -255,7 +257,7 @@ export default function TravelBookingScreen({
               error={serverErrors.pickupDate}
             />
             <DateField
-              label="Pickup Time"
+              label={tr("Pickup Time")}
               optional
               mode="time"
               value={pickupTime}
@@ -263,7 +265,7 @@ export default function TravelBookingScreen({
               clearable
               error={serverErrors.pickupTime}
             />
-            <Text style={styles.groupLabel}>Pickup location</Text>
+            <Text style={styles.groupLabel}>{tr("Pickup location")}</Text>
             <LocationPicker
               value={pickup}
               onChange={(v) => { setPickup(v); setServerErrors((e) => ({ ...e, pickupCountry: undefined })); }}
@@ -283,15 +285,15 @@ export default function TravelBookingScreen({
             ) : null}
             {providerReaches === false ? (
               <Text style={styles.blockedNote} accessibilityLiveRegion="polite">
-                {providerQuery.data?.name ?? "This provider"} doesn't serve {describeLocation(pickup)}. Choose a different pickup location, or go back and pick another provider.
+                {tr("{provider} doesn't serve {place}. Choose a different pickup location, or go back and pick another provider.", { provider: providerQuery.data?.name ?? tr("This provider"), place: describeLocation(pickup) })}
               </Text>
             ) : null}
-            <Text style={styles.groupLabel}>Takeoff Location</Text>
+            <Text style={styles.groupLabel}>{tr("Takeoff Location")}</Text>
             {radioPair(takeoff, setTakeoff)}
             <TextField
-              label={takeoff === "Airport" ? "Airport code" : "Helipad code"}
+              label={takeoff === "Airport" ? tr("Airport code") : tr("Helipad code")}
               optional
-              placeholder={takeoff === "Airport" ? "e.g. YYZ" : "Coordinates"}
+              placeholder={takeoff === "Airport" ? tr("e.g. YYZ") : tr("Coordinates")}
               value={pickupHelipad}
               onChangeText={setPickupHelipad}
               autoCapitalize="characters"
@@ -305,18 +307,18 @@ export default function TravelBookingScreen({
 
         {step === 2 && (
           <View>
-            <Text style={styles.groupLabel}>Drop-off details</Text>
+            <Text style={styles.groupLabel}>{tr("Drop-off details")}</Text>
             <LocationPicker
               value={drop}
               onChange={(v) => { setDrop(v); setServerErrors((e) => ({ ...e, dropoffCountry: undefined })); }}
               countryError={serverErrors.dropoffCountry ?? (sameAsPickup ? "Drop-off must be different from pickup" : undefined)}
             />
-            <Text style={styles.groupLabel}>Landing Location</Text>
+            <Text style={styles.groupLabel}>{tr("Landing Location")}</Text>
             {radioPair(landing, setLanding)}
             <TextField
-              label={landing === "Airport" ? "Airport code" : "Helipad code"}
+              label={landing === "Airport" ? tr("Airport code") : tr("Helipad code")}
               optional
-              placeholder={landing === "Airport" ? "e.g. YYZ" : "Coordinates"}
+              placeholder={landing === "Airport" ? tr("e.g. YYZ") : tr("Coordinates")}
               value={dropHelipad}
               onChangeText={setDropHelipad}
               autoCapitalize="characters"
@@ -329,14 +331,14 @@ export default function TravelBookingScreen({
               <View style={[styles.checkbox, returnTrip && styles.checkboxChecked]}>
                 {returnTrip && <Ionicons name="checkmark" size={12} color="#fff" />}
               </View>
-              <Text style={styles.checkboxText}>Return Trip Needed</Text>
+              <Text style={styles.checkboxText}>{tr("Return Trip Needed")}</Text>
             </TouchableOpacity>
           </View>
         )}
 
         {step === 3 && (
           <View>
-            <Text style={styles.groupLabel}>Purpose of Transportation</Text>
+            <Text style={styles.groupLabel}>{tr("Purpose of Transportation")}</Text>
             {transportPurposes.map((p) => (
               <CheckRow
                 key={p.id}
@@ -346,15 +348,15 @@ export default function TravelBookingScreen({
                 selectedStyle="filled"
               />
             ))}
-            <Text style={[styles.groupLabel, { marginTop: 8 }]}>Others(Please Specify)</Text>
+            <Text style={[styles.groupLabel, { marginTop: 8 }]}>{tr("Others(Please Specify)")}</Text>
             <TextField
-              placeholder="Other purpose"
+              placeholder={tr("Other purpose")}
               value={otherPurpose}
               onChangeText={setOtherPurpose}
               autoCapitalize="sentences"
               maxLength={200}
               returnKeyType="done"
-              accessibilityLabel="Other purpose of transportation"
+              accessibilityLabel={tr("Other purpose of transportation")}
             />
           </View>
         )}
@@ -370,15 +372,15 @@ export default function TravelBookingScreen({
                 selectedStyle="filled"
               />
             ))}
-            <Text style={[styles.groupLabel, { marginTop: 8 }]}>Others(Please Specify)</Text>
+            <Text style={[styles.groupLabel, { marginTop: 8 }]}>{tr("Others(Please Specify)")}</Text>
             <TextField
-              placeholder="Other need"
+              placeholder={tr("Other need")}
               value={otherNeed}
               onChangeText={setOtherNeed}
               autoCapitalize="sentences"
               maxLength={200}
               returnKeyType="done"
-              accessibilityLabel="Other special medical need"
+              accessibilityLabel={tr("Other special medical need")}
             />
           </View>
         )}
@@ -386,14 +388,14 @@ export default function TravelBookingScreen({
         {step === 5 && (
           <View>
             {providerQuery.isPending ? (
-              <ListStateView kind="loading" message="Loading aircraft…" />
+              <ListStateView kind="loading" message={tr("Loading aircraft…")} />
             ) : providerQuery.isError ? (
               <ListStateView kind="error" onRetry={() => void providerQuery.refetch()} />
             ) : aircrafts.length === 0 ? (
               <ListStateView
                 kind="empty"
-                title="No aircraft listed"
-                message="This provider will assign an aircraft after reviewing your request."
+                title={tr("No aircraft listed")}
+                message={tr("This provider will assign an aircraft after reviewing your request.")}
               />
             ) : (
               aircrafts.map((a) => (
@@ -414,8 +416,8 @@ export default function TravelBookingScreen({
           <View>
             <View style={styles.row}>
               <TextField
-                label="Firstname"
-                placeholder="Firstname"
+                label={tr("Firstname")}
+                placeholder={tr("Firstname")}
                 value={firstname}
                 onChangeText={setFirstname}
                 autoCapitalize="words"
@@ -425,8 +427,8 @@ export default function TravelBookingScreen({
                 containerStyle={styles.rowField}
               />
               <TextField
-                label="Lastname"
-                placeholder="Lastname"
+                label={tr("Lastname")}
+                placeholder={tr("Lastname")}
                 value={lastname}
                 onChangeText={setLastname}
                 autoCapitalize="words"
@@ -437,8 +439,8 @@ export default function TravelBookingScreen({
               />
             </View>
             <TextField
-              label="Phone number"
-              placeholder="Phone number"
+              label={tr("Phone number")}
+              placeholder={tr("Phone number")}
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
@@ -449,7 +451,7 @@ export default function TravelBookingScreen({
               left={<PhonePrefix />}
             />
             <SelectField
-              label="Relationship"
+              label={tr("Relationship")}
               value={relationship}
               options={relationships.map(titleCase)}
               onSelect={setRelationship}
@@ -458,7 +460,7 @@ export default function TravelBookingScreen({
               <View style={[styles.checkbox, accompany && styles.checkboxChecked]}>
                 {accompany && <Ionicons name="checkmark" size={12} color="#fff" />}
               </View>
-              <Text style={styles.checkboxText}>My Emergency Contact will accompany me</Text>
+              <Text style={styles.checkboxText}>{tr("My Emergency Contact will accompany me")}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -466,7 +468,7 @@ export default function TravelBookingScreen({
         <View style={styles.bottom}>
           {submitError ? <Text style={styles.error}>{submitError}</Text> : null}
           <Button
-            label={step === 6 ? "Submit" : "Next"}
+            label={step === 6 ? tr("Submit") : tr("Next")}
             variant="pill"
             disabled={!canNext || createTransport.isPending}
             loading={createTransport.isPending}

@@ -6,6 +6,7 @@ import TextField from "./TextField";
 import BottomSheet from "./BottomSheet";
 import Button from "./Button";
 import { colors } from "../theme";
+import { useT } from "../i18n";
 import {
   fromIso, toIso, maskDate, maskTime, validateIso, validateTime, timeToDate, toHHMM, formatDate, formatTime,
 } from "../utils/dates";
@@ -47,6 +48,7 @@ export default function DateField({
   label, optional, mode = "date", value, onChange, min, max, minMessage, maxMessage,
   clearable, placeholder, error, pickerStart, requiredMessage, containerStyle,
 }: Props) {
+  const tr = useT();
   const isDate = mode === "date";
   const length = isDate ? 10 : 5;
   const [text, setText] = useState(value ?? "");
@@ -135,7 +137,7 @@ export default function DateField({
       <TextField
         label={label}
         optional={optional}
-        placeholder={placeholder ?? (isDate ? "YYYY-MM-DD" : "HH:MM")}
+        placeholder={placeholder ?? (isDate ? tr("YYYY-MM-DD") : tr("HH:MM"))}
         value={text}
         onChangeText={onType}
         onBlur={() => setTouched(true)}
@@ -162,7 +164,7 @@ export default function DateField({
               onPress={open}
               hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
               accessibilityRole="button"
-              accessibilityLabel={isDate ? "Open calendar" : "Open time picker"}
+              accessibilityLabel={isDate ? tr("Open calendar") : tr("Open time picker")}
             >
               <Ionicons
                 name={isDate ? "calendar-outline" : "time-outline"}
@@ -176,7 +178,7 @@ export default function DateField({
 
       {Platform.OS === "ios" ? (
         <BottomSheet visible={sheet} onClose={() => setSheet(false)} maxHeightRatio={0.8}>
-          <Text style={styles.sheetTitle}>{label ?? (isDate ? "Select a date" : "Select a time")}</Text>
+          <Text style={styles.sheetTitle}>{label ?? (isDate ? tr("Select a date") : tr("Select a time"))}</Text>
           <DateTimePicker
             value={draft}
             mode={mode}
@@ -189,13 +191,13 @@ export default function DateField({
             onValueChange={(_e, d) => setDraft(d)}
           />
           <Button
-            label="Done"
+            label={tr("Done")}
             onPress={() => { pick(draft); setSheet(false); }}
             style={styles.done}
           />
           {clearable && value ? (
             <TouchableOpacity style={styles.clearLink} onPress={() => { clear(); setSheet(false); }}>
-              <Text style={styles.clearText}>Clear</Text>
+              <Text style={styles.clearText}>{tr("Clear")}</Text>
             </TouchableOpacity>
           ) : null}
         </BottomSheet>

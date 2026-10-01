@@ -10,8 +10,10 @@ import { useHospitals } from "../../api/queries";
 
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function HospitalsScreen({ navigation }: RootScreenProps<"Hospitals">) {
+  const tr = useT();
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
 
@@ -34,7 +36,7 @@ export default function HospitalsScreen({ navigation }: RootScreenProps<"Hospita
       <AppHeader
       />
       <View style={styles.headerBlock}>
-        <Text style={styles.title}>Hospitals</Text>
+        <Text style={styles.title}>{tr("Hospitals")}</Text>
         <SearchBar value={query} onChangeText={setQuery} style={{ marginTop: 14 }} />
       </View>
       <FlatList
@@ -50,14 +52,14 @@ export default function HospitalsScreen({ navigation }: RootScreenProps<"Hospita
         )}
         ListEmptyComponent={
           hospitalsQuery.isPending ? (
-            <ListStateView kind="loading" message="Loading hospitals…" />
+            <ListStateView kind="loading" message={tr("Loading hospitals…")} />
           ) : hospitalsQuery.isError ? (
             <ListStateView kind="error" onRetry={() => void hospitalsQuery.refetch()} />
           ) : (
             <ListStateView
               kind="empty"
-              title="No hospitals found"
-              message={debounced ? `Nothing matched “${debounced}”. Try a different search.` : "No hospitals are available right now."}
+              title={tr("No hospitals found")}
+              message={debounced ? tr("Nothing matched “{query}”. Try a different search.", { query: debounced }) : tr("No hospitals are available right now.")}
             />
           )
         }

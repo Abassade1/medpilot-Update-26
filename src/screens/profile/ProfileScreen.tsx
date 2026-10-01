@@ -13,10 +13,13 @@ import { images } from "../../data/assets";
 import { formatDate } from "../../utils/dates";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { LANGUAGES, t, useLanguage, useT, rtlFlip } from "../../i18n";
 
-const cap = (s: string | null | undefined) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "Not set");
+const cap = (s: string | null | undefined) => (s ? t(s.charAt(0).toUpperCase() + s.slice(1)) : t("Not set"));
 
 export default function ProfileScreen({ navigation }: RootScreenProps<"Profile">) {
+  const tr = useT();
+  const { language, setLanguage } = useLanguage();
   const me = useMe();
   const prefs = usePreferences();
   const contact = useEmergencyContact();
@@ -25,26 +28,26 @@ export default function ProfileScreen({ navigation }: RootScreenProps<"Profile">
   const p = me.data?.profile;
 
   const confirmSignOut = () =>
-    Alert.alert("Sign out?", "You'll need to sign in again to see your bookings.", [
-      { text: "Stay signed in", style: "cancel" },
-      { text: "Sign out", style: "destructive", onPress: () => void signOut() },
+    Alert.alert(tr("Sign out?"), tr("You'll need to sign in again to see your bookings."), [
+      { text: tr("Stay signed in"), style: "cancel" },
+      { text: tr("Sign out"), style: "destructive", onPress: () => void signOut() },
     ]);
 
   const confirmDelete = () =>
     Alert.alert(
-      "Delete your account?",
-      "This permanently removes your profile, bookings and records. This can't be undone.",
+      tr("Delete your account?"),
+      tr("This permanently removes your profile, bookings and records. This can't be undone."),
       [
-        { text: "Keep my account", style: "cancel" },
+        { text: tr("Keep my account"), style: "cancel" },
         {
-          text: "Delete account",
+          text: tr("Delete account"),
           style: "destructive",
           onPress: async () => {
             try {
               await endpoints.me.deleteAccount();
               await signOut();
             } catch (e) {
-              Alert.alert("Couldn't delete your account", e instanceof ApiError ? e.message : "Please try again.");
+              Alert.alert(tr("Couldn't delete your account"), e instanceof ApiError ? e.message : tr("Please try again."));
             }
           },
         },
@@ -69,78 +72,88 @@ export default function ProfileScreen({ navigation }: RootScreenProps<"Profile">
 
   return (
     <ScreenContainer>
-      <AppHeader title="Profile" />
+      <AppHeader title={tr("Profile")} />
       {me.isPending ? (
-        <ListStateView kind="loading" message="Loading your profile…" />
+        <ListStateView kind="loading" message={tr("Loading your profile…")} />
       ) : me.isError || !p ? (
-        <ListStateView kind="error" message="We couldn't load your profile." onRetry={() => void me.refetch()} />
+        <ListStateView kind="error" message={tr("We couldn't load your profile.")} onRetry={() => void me.refetch()} />
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.hero}>
             <Image source={assetSource(p.avatarAsset, images.avatar)} style={styles.avatar} />
             <Text style={styles.name}>{p.fullName}</Text>
             <Text style={styles.email}>{me.data?.email}</Text>
-            <View style={styles.plan}><Text style={styles.planText}>{me.data?.plan === "pro" ? "Pro member" : "Basic plan"}</Text></View>
+            <View style={styles.plan}><Text style={styles.planText}>{me.data?.plan === "pro" ? tr("Pro member") : tr("Basic plan")}</Text></View>
           </View>
 
-          <Section title="Personal information" action="Edit" onAction={() => navigation.navigate("EditProfile")}>
-            <Row label="Name" value={p.fullName} />
-            <Row label="Date of birth" value={formatDate(p.dateOfBirth) || "Not set"} />
-            <Row label="Gender" value={cap(p.gender)} />
-            <Row label="Marital status" value={cap(p.maritalStatus)} />
-            <Row label="Location" value={p.locationLabel || "Not set"} />
+          <Section title={tr("Personal information")} action={tr("Edit")} onAction={() => navigation.navigate("EditProfile")}>
+            <Row label={tr("Name")} value={p.fullName} />
+            <Row label={tr("Date of birth")} value={formatDate(p.dateOfBirth) || tr("Not set")} />
+            <Row label={tr("Gender")} value={cap(p.gender)} />
+            <Row label={tr("Marital status")} value={cap(p.maritalStatus)} />
+            <Row label={tr("Location")} value={p.locationLabel || tr("Not set")} />
           </Section>
 
-          <Section title="Contact" action="Edit" onAction={() => navigation.navigate("EditProfile")}>
-            <Row label="Email" value={me.data?.email ?? ""} hint={me.data?.emailVerified ? "Verified" : "Not verified"} />
-            <Row label="Phone" value={p.phone || "Not set"} />
+          <Section title={tr("Contact")} action={tr("Edit")} onAction={() => navigation.navigate("EditProfile")}>
+            <Row label={tr("Email")} value={me.data?.email ?? ""} hint={me.data?.emailVerified ? tr("Verified") : tr("Not verified")} />
+            <Row label={tr("Phone")} value={p.phone || tr("Not set")} />
           </Section>
 
-          <Section title="Emergency contact" action={contact.data?.contact ? "Edit" : "Add"} onAction={() => navigation.navigate("EmergencyContact")}>
+          <Section title={tr("Emergency contact")} action={contact.data?.contact ? tr("Edit") : tr("Add")} onAction={() => navigation.navigate("EmergencyContact")}>
             {contact.data?.contact ? (
               <>
-                <Row label="Name" value={`${contact.data.contact.firstName} ${contact.data.contact.lastName}`} />
-                <Row label="Phone" value={contact.data.contact.phone} />
-                <Row label="Relationship" value={cap(contact.data.contact.relationship)} />
+                <Row label={tr("Name")} value={`${contact.data.contact.firstName} ${contact.data.contact.lastName}`} />
+                <Row label={tr("Phone")} value={contact.data.contact.phone} />
+                <Row label={tr("Relationship")} value={cap(contact.data.contact.relationship)} />
               </>
             ) : (
-              <Text style={styles.empty}>{contact.isPending ? "Loading…" : "No emergency contact yet."}</Text>
+              <Text style={styles.empty}>{contact.isPending ? tr("Loading…") : tr("No emergency contact yet.")}</Text>
             )}
           </Section>
 
-          <Section title="Preferences">
+          <Section title={tr("Preferences")}>
             {prefs.isError ? (
-              <Text style={styles.empty}>Couldn't load preferences. Pull back and try again.</Text>
+              <Text style={styles.empty}>{tr("Couldn't load preferences. Pull back and try again.")}</Text>
             ) : (
               <>
-                {toggle("pushEnabled", "Push notifications", "Booking updates on this device")}
-                {toggle("emailUpdates", "Email updates", "Confirmations and receipts by email")}
-                {toggle("appointmentReminders", "Appointment reminders", "A reminder before each confirmed visit")}
+                {toggle("pushEnabled", tr("Push notifications"), tr("Booking updates on this device"))}
+                {toggle("emailUpdates", tr("Email updates"), tr("Confirmations and receipts by email"))}
+                {toggle("appointmentReminders", tr("Appointment reminders"), tr("A reminder before each confirmed visit"))}
               </>
             )}
           </Section>
 
-          <Section title="Provider">
+          <Section title={tr("Language")}>
+            {LANGUAGES.map((l) => (
+              <TouchableOpacity key={l.code} style={styles.linkRow} accessibilityRole="radio" accessibilityState={{ selected: language === l.code }}
+                onPress={() => { setLanguage(l.code); patchPrefs.mutate({ language: l.code }); }}>
+                <Text style={styles.linkText}>{l.native}</Text>
+                {language === l.code ? <Ionicons name="checkmark" size={18} color={colors.primary} /> : null}
+              </TouchableOpacity>
+            ))}
+          </Section>
+
+          <Section title={tr("Provider")}>
             <TouchableOpacity style={styles.linkRow} onPress={() => navigation.navigate("ProviderHome")} accessibilityRole="button">
               <Ionicons name="storefront-outline" size={18} color={colors.primary} />
-              <Text style={styles.linkText}>Provider portal</Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.tertiaryText} />
+              <Text style={styles.linkText}>{tr("Provider portal")}</Text>
+              <Ionicons style={rtlFlip()} name="chevron-forward" size={16} color={colors.tertiaryText} />
             </TouchableOpacity>
           </Section>
 
-          <Section title="Security">
+          <Section title={tr("Security")}>
             <TouchableOpacity style={styles.linkRow} onPress={() => navigation.navigate("ChangePassword")} accessibilityRole="button">
               <Ionicons name="key-outline" size={18} color={colors.primary} />
-              <Text style={styles.linkText}>Change password</Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.tertiaryText} />
+              <Text style={styles.linkText}>{tr("Change password")}</Text>
+              <Ionicons style={rtlFlip()} name="chevron-forward" size={16} color={colors.tertiaryText} />
             </TouchableOpacity>
           </Section>
 
           <TouchableOpacity style={styles.signOut} onPress={confirmSignOut} accessibilityRole="button">
-            <Text style={styles.signOutText}>Sign out</Text>
+            <Text style={styles.signOutText}>{tr("Sign out")}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.delete} onPress={confirmDelete} accessibilityRole="button">
-            <Text style={styles.deleteText}>Delete account</Text>
+            <Text style={styles.deleteText}>{tr("Delete account")}</Text>
           </TouchableOpacity>
         </ScrollView>
       )}
@@ -149,12 +162,13 @@ export default function ProfileScreen({ navigation }: RootScreenProps<"Profile">
 }
 
 function Section({ title, action, onAction, children }: { title: string; action?: string; onAction?: () => void; children: React.ReactNode }) {
+  const tr = useT();
   return (
     <View style={{ marginTop: 18 }}>
       <View style={styles.sectionHead}>
         <Text style={styles.section}>{title}</Text>
         {action ? (
-          <TouchableOpacity onPress={onAction} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityRole="button" accessibilityLabel={`${action} ${title.toLowerCase()}`}>
+          <TouchableOpacity onPress={onAction} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityRole="button" accessibilityLabel={tr("{action} {section}", { action, section: title.toLowerCase() })}>
             <Text style={styles.action}>{action}</Text>
           </TouchableOpacity>
         ) : null}

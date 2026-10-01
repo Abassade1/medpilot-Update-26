@@ -3,6 +3,7 @@ import { View, TextInput, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import MicButton from "./MicButton";
 import { colors, radii, spacing } from "../theme";
+import { useT } from "../i18n";
 
 interface Props {
   placeholder?: string;
@@ -17,6 +18,7 @@ export default function AssistantInputBar({
   onSend,
   tone = "filled",
 }: Props) {
+  const tr = useT();
   const [text, setText] = useState("");
   const canSend = text.trim().length > 0;
 
@@ -39,7 +41,7 @@ export default function AssistantInputBar({
           returnKeyType="send"
           maxLength={500}
           autoCapitalize="sentences"
-          accessibilityLabel="Message the assistant"
+          accessibilityLabel={tr("Message the assistant")}
         />
         <MicButton size={18} />
       </View>
@@ -49,7 +51,7 @@ export default function AssistantInputBar({
         onPress={send}
         disabled={!canSend}
         accessibilityRole="button"
-        accessibilityLabel="Send message"
+        accessibilityLabel={tr("Send message")}
         accessibilityState={{ disabled: !canSend }}
       >
         <Ionicons name="send" size={16} color="#fff" />

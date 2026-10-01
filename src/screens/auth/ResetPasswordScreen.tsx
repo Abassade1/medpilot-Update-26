@@ -9,9 +9,11 @@ import { ApiError } from "../../api/errors";
 import { validatePassword } from "../../utils/validation";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 /** Finishes a password reset: the emailed link opens this with the token filled in, or the code can be pasted. */
 export default function ResetPasswordScreen({ navigation, route }: RootScreenProps<"ResetPassword">) {
+  const tr = useT();
   const [token, setToken] = useState(route.params?.token ?? "");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -33,8 +35,8 @@ export default function ResetPasswordScreen({ navigation, route }: RootScreenPro
     setBusy(true);
     try {
       await endpoints.auth.resetPassword(token.trim(), password);
-      Alert.alert("Password updated", "Sign in with your new password.", [
-        { text: "Sign in", onPress: () => navigation.reset({ index: 0, routes: [{ name: "SignIn" }] }) },
+      Alert.alert(tr("Password updated"), tr("Sign in with your new password."), [
+        { text: tr("Sign in"), onPress: () => navigation.reset({ index: 0, routes: [{ name: "SignIn" }] }) },
       ]);
     } catch (e) {
       const err = e as ApiError;
@@ -42,8 +44,8 @@ export default function ResetPasswordScreen({ navigation, route }: RootScreenPro
         err.isOffline
           ? err.message
           : err.status === 400 || err.status === 401 || err.status === 422
-          ? "This reset link is invalid or has expired. Go back and request a new one."
-          : err.message || "We couldn't reset your password. Please try again.",
+          ? tr("This reset link is invalid or has expired. Go back and request a new one.")
+          : err.message || tr("We couldn't reset your password. Please try again."),
       );
     } finally {
       setBusy(false);
@@ -52,20 +54,20 @@ export default function ResetPasswordScreen({ navigation, route }: RootScreenPro
 
   return (
     <ScreenContainer>
-      <AppHeader title="Reset password" />
+      <AppHeader title={tr("Reset password")} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Text style={styles.intro}>
-            {route.params?.email ? `We emailed a reset link to ${route.params.email}. ` : ""}
-            Open the link, or paste the code from the email below. The link works once and expires in an hour.
+            {route.params?.email ? `${tr("We emailed a reset link to {email}.", { email: route.params.email })} ` : ""}
+            {tr("Open the link, or paste the code from the email below. The link works once and expires in an hour.")}
           </Text>
-          <TextField label="Code from your email" value={token} onChangeText={setToken} autoCapitalize="none" autoCorrect={false} error={show("token")} />
-          <TextField label="New password" secure value={password} onChangeText={setPassword} textContentType="newPassword" error={show("password")} />
-          <TextField label="Confirm new password" secure value={confirm} onChangeText={setConfirm} textContentType="newPassword" error={show("confirm")} onSubmitEditing={() => void submit()} returnKeyType="done" />
+          <TextField label={tr("Code from your email")} value={token} onChangeText={setToken} autoCapitalize="none" autoCorrect={false} error={show("token")} />
+          <TextField label={tr("New password")} secure value={password} onChangeText={setPassword} textContentType="newPassword" error={show("password")} />
+          <TextField label={tr("Confirm new password")} secure value={confirm} onChangeText={setConfirm} textContentType="newPassword" error={show("confirm")} onSubmitEditing={() => void submit()} returnKeyType="done" />
           {error ? <Text style={styles.error} accessibilityLiveRegion="polite">{error}</Text> : null}
           <View style={{ marginTop: 18 }}>
-            <Button label="Update password" variant="pill" onPress={() => void submit()} loading={busy} disabled={busy} />
-            <Button label="Back to sign in" variant="outlinePill" onPress={() => navigation.reset({ index: 0, routes: [{ name: "SignIn" }] })} style={{ marginTop: 10 }} />
+            <Button label={tr("Update password")} variant="pill" onPress={() => void submit()} loading={busy} disabled={busy} />
+            <Button label={tr("Back to sign in")} variant="outlinePill" onPress={() => navigation.reset({ index: 0, routes: [{ name: "SignIn" }] })} style={{ marginTop: 10 }} />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

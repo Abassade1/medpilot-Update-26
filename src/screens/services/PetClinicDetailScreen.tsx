@@ -12,8 +12,10 @@ import { assetSource } from "../../api/assets";
 import { ApiError } from "../../api/errors";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT, rtlFlip } from "../../i18n";
 
 export default function PetClinicDetailScreen({ navigation, route }: RootScreenProps<"PetClinicDetail">) {
+  const tr = useT();
   const { clinicId } = route.params;
   const query = usePetClinic(clinicId);
   const c = query.data;
@@ -22,10 +24,10 @@ export default function PetClinicDetailScreen({ navigation, route }: RootScreenP
     const notFound = (query.error as ApiError | null)?.status === 404;
     return (
       <ScreenContainer>
-        <AppHeader title="Pet Specialist" />
+        <AppHeader title={tr("Pet Specialist")} />
         {query.isError ? (
-          <ListStateView kind="error" title={notFound ? "Provider not found" : undefined}
-            message={notFound ? "This provider is no longer listed." : "We couldn't load this provider."}
+          <ListStateView kind="error" title={notFound ? tr("Provider not found") : undefined}
+            message={notFound ? tr("This provider is no longer listed.") : tr("We couldn't load this provider.")}
             onRetry={notFound ? undefined : () => void query.refetch()} />
         ) : <ListStateView kind="loading" />}
       </ScreenContainer>
@@ -37,7 +39,7 @@ export default function PetClinicDetailScreen({ navigation, route }: RootScreenP
 
   return (
     <ScreenContainer>
-      <AppHeader title="Pet Specialist" />
+      <AppHeader title={tr("Pet Specialist")} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {c.heroAsset ? <Image source={assetSource(c.heroAsset)} style={styles.hero} /> : null}
         <View style={styles.headRow}>
@@ -49,11 +51,11 @@ export default function PetClinicDetailScreen({ navigation, route }: RootScreenP
           <Rating value={c.rating} />
         </View>
         <Text style={styles.desc}>{c.description}</Text>
-        <Text style={styles.meta}>Open to: {c.openTo}</Text>
+        <Text style={styles.meta}>{tr("Open to: {value}", { value: c.openTo })}</Text>
 
-        <Text style={styles.section}>Services</Text>
+        <Text style={styles.section}>{tr("Services")}</Text>
         {c.services.length === 0 ? (
-          <Text style={styles.empty}>This provider hasn't listed any services yet.</Text>
+          <Text style={styles.empty}>{tr("This provider hasn't listed any services yet.")}</Text>
         ) : (
           c.services.map((sv) => {
             const kind = sv.kind ?? "appointment";
@@ -73,24 +75,24 @@ export default function PetClinicDetailScreen({ navigation, route }: RootScreenP
                   <Text style={styles.svcMeta}>{sv.durationLabel}{kind === "sitting" ? " · Sitting request" : ""}</Text>
                 </View>
                 <View style={{ alignItems: "flex-end" }}>
-                  <Text style={styles.price}>{sv.priceLabel ?? "On request"}</Text>
-                  <Ionicons name="chevron-forward" size={16} color={colors.tertiaryText} />
+                  <Text style={styles.price}>{sv.priceLabel ?? tr("On request")}</Text>
+                  <Ionicons style={rtlFlip()} name="chevron-forward" size={16} color={colors.tertiaryText} />
                 </View>
               </TouchableOpacity>
             );
           })
         )}
 
-        <Text style={styles.section}>Reviews</Text>
+        <Text style={styles.section}>{tr("Reviews")}</Text>
         <ReviewsList targetType="pet_clinic" targetId={c.id} />
 
         <View style={{ marginTop: 20 }}>
-          {c.canBookAppointment ? <Button label="Book appointment" variant="pill" onPress={() => go("appointment")} /> : null}
+          {c.canBookAppointment ? <Button label={tr("Book appointment")} variant="pill" onPress={() => go("appointment")} /> : null}
           {c.canRequestSitting ? (
-            <Button label="Request pet sitting" variant={c.canBookAppointment ? "outlinePill" : "pill"} onPress={() => go("sitting")} style={{ marginTop: 10 }} />
+            <Button label={tr("Request pet sitting")} variant={c.canBookAppointment ? "outlinePill" : "pill"} onPress={() => go("sitting")} style={{ marginTop: 10 }} />
           ) : null}
           {!c.canBookAppointment && !c.canRequestSitting ? (
-            <Text style={styles.empty}>This provider isn't accepting requests right now.</Text>
+            <Text style={styles.empty}>{tr("This provider isn't accepting requests right now.")}</Text>
           ) : null}
         </View>
       </ScrollView>

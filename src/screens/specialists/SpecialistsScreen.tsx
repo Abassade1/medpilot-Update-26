@@ -10,8 +10,10 @@ import { useSpecialistCategories, useSpecialists } from "../../api/queries";
 import { assetSource } from "../../api/assets";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function SpecialistsScreen({ navigation, route }: RootScreenProps<"Specialists">) {
+  const tr = useT();
   const [categoryId, setCategoryId] = useState<string | undefined>(route.params?.categoryId);
   const [q, setQ] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -24,9 +26,9 @@ export default function SpecialistsScreen({ navigation, route }: RootScreenProps
 
   return (
     <ScreenContainer>
-      <AppHeader title="Independent Specialists" />
+      <AppHeader title={tr("Independent Specialists")} />
       <View style={styles.searchWrap}>
-        <SearchBar placeholder="Search by name or specialty" value={q} onChangeText={setQ} />
+        <SearchBar placeholder={tr("Search by name or specialty")} value={q} onChangeText={setQ} />
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chips} contentContainerStyle={{ paddingHorizontal: spacing.lg }}>
         {[{ id: undefined as string | undefined, title: "All" }, ...(categories.data ?? [])].map((c) => {
@@ -47,7 +49,7 @@ export default function SpecialistsScreen({ navigation, route }: RootScreenProps
         ListEmptyComponent={
           list.isPending ? <ListStateView kind="loading" /> :
           list.isError ? <ListStateView kind="error" onRetry={() => void list.refetch()} /> :
-          <ListStateView kind="empty" title="No specialists found" message={debounced || categoryId ? "Try a different search or category." : "No specialists are listed yet."} />
+          <ListStateView kind="empty" title={tr("No specialists found")} message={debounced || categoryId ? tr("Try a different search or category.") : tr("No specialists are listed yet.")} />
         }
         renderItem={({ item }) => (
           <TouchableOpacity style={styles.card} activeOpacity={0.85}
@@ -64,7 +66,7 @@ export default function SpecialistsScreen({ navigation, route }: RootScreenProps
               <View style={styles.footer}>
                 <Rating value={item.rating} />
                 <Text style={[styles.avail, !item.acceptingRequests && { color: colors.secondaryText }]}>
-                  {item.acceptingRequests ? item.availabilityLabel : "Not accepting requests"}
+                  {item.acceptingRequests ? item.availabilityLabel : tr("Not accepting requests")}
                 </Text>
               </View>
             </View>

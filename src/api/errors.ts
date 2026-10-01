@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 /** Error codes the API returns in its envelope (backend §10). */
 export type ApiErrorCode =
   | "bad_request" | "unauthenticated" | "forbidden" | "not_found"
@@ -36,13 +37,13 @@ export class ApiError extends Error {
   static network(): ApiError {
     return new ApiError({
       code: "network", status: 0,
-      message: "You appear to be offline. Check your connection and try again.",
+      message: t("You appear to be offline. Check your connection and try again."),
     });
   }
   static timeout(): ApiError {
     return new ApiError({
       code: "timeout", status: 0,
-      message: "That took too long. Please try again.",
+      message: t("That took too long. Please try again."),
     });
   }
 }

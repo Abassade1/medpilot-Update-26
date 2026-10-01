@@ -11,6 +11,7 @@ import { useSaveProvider, useSubmitVerification, useTaxonomy } from "../../api/q
 import { ApiError } from "../../api/errors";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 /**
  * Providers only go through this once, when the account has no provider profile yet. It walks
@@ -29,6 +30,7 @@ interface Form {
 const blank: Form = { type: "", name: "", description: "", phone: "", email: "", website: "", address: "", country: "", region: "", city: "", serviceAreas: "", licenseInfo: "" };
 
 export default function ProviderOnboardingScreen({ navigation }: RootScreenProps<"ProviderOnboarding">) {
+  const tr = useT();
   const tax = useTaxonomy();
   const save = useSaveProvider();
   const verify = useSubmitVerification();
@@ -37,8 +39,8 @@ export default function ProviderOnboardingScreen({ navigation }: RootScreenProps
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
 
-  if (tax.isLoading) return <Shell><ListStateView kind="loading" message="Loading…" /></Shell>;
-  if (tax.isError) return <Shell><ListStateView kind="error" message="We couldn't load provider types." onRetry={() => void tax.refetch()} /></Shell>;
+  if (tax.isLoading) return <Shell><ListStateView kind="loading" message={tr("Loading…")} /></Shell>;
+  if (tax.isError) return <Shell><ListStateView kind="error" message={tr("We couldn't load provider types.")} onRetry={() => void tax.refetch()} /></Shell>;
 
   const types = tax.data!.providerTypes;
   const typeLabel = types.find((t) => t.code === form.type)?.label ?? null;
@@ -80,7 +82,7 @@ export default function ProviderOnboardingScreen({ navigation }: RootScreenProps
           else if (e.fields.phone || e.fields.email || e.fields.website) setStep(2);
           else if (e.fields.country || e.fields.city || e.fields.address) setStep(3);
         }
-        setFormError(e.isOffline ? "You appear to be offline." : e.fields ? "Check the highlighted field." : e.message || "We couldn't save your profile.");
+        setFormError(e.isOffline ? tr("You appear to be offline.") : e.fields ? tr("Check the highlighted field.") : e.message || tr("We couldn't save your profile."));
       },
     });
   };
@@ -103,49 +105,49 @@ export default function ProviderOnboardingScreen({ navigation }: RootScreenProps
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {step === 0 ? (
             <>
-              <Text style={styles.hint}>What kind of provider are you? This shapes the rest of your setup and the fields on your services.</Text>
-              <SelectField label="Provider type" placeholder="Select your type" value={typeLabel} options={types.map((t) => t.label)}
+              <Text style={styles.hint}>{tr("What kind of provider are you? This shapes the rest of your setup and the fields on your services.")}</Text>
+              <SelectField label={tr("Provider type")} placeholder={tr("Select your type")} value={typeLabel} options={types.map((t) => t.label)}
                 onSelect={(l) => set("type")(types.find((t) => t.label === l)!.code)} />
               {errors.type ? <Text style={styles.err}>{errors.type}</Text> : null}
             </>
           ) : null}
           {step === 1 ? (
             <>
-              <TextField label="Business or provider name" value={form.name} onChangeText={set("name")} maxLength={120} error={errors.name} />
-              <TextField label="About" optional value={form.description} onChangeText={set("description")} multiline maxLength={1000} error={errors.description} />
+              <TextField label={tr("Business or provider name")} value={form.name} onChangeText={set("name")} maxLength={120} error={errors.name} />
+              <TextField label={tr("About")} optional value={form.description} onChangeText={set("description")} multiline maxLength={1000} error={errors.description} />
             </>
           ) : null}
           {step === 2 ? (
             <>
-              <TextField label="Phone" optional value={form.phone} onChangeText={set("phone")} keyboardType="phone-pad" error={errors.phone} />
-              <TextField label="Public email" optional value={form.email} onChangeText={set("email")} keyboardType="email-address" autoCapitalize="none" error={errors.email} />
-              <TextField label="Website" optional value={form.website} onChangeText={set("website")} autoCapitalize="none" keyboardType="url" error={errors.website} />
+              <TextField label={tr("Phone")} optional value={form.phone} onChangeText={set("phone")} keyboardType="phone-pad" error={errors.phone} />
+              <TextField label={tr("Public email")} optional value={form.email} onChangeText={set("email")} keyboardType="email-address" autoCapitalize="none" error={errors.email} />
+              <TextField label={tr("Website")} optional value={form.website} onChangeText={set("website")} autoCapitalize="none" keyboardType="url" error={errors.website} />
             </>
           ) : null}
           {step === 3 ? (
             <>
-              <TextField label="Address" optional value={form.address} onChangeText={set("address")} error={errors.address} />
-              <TextField label="Country" optional value={form.country} onChangeText={set("country")} error={errors.country} />
-              <TextField label="Region or state" optional value={form.region} onChangeText={set("region")} />
-              <TextField label="City" optional value={form.city} onChangeText={set("city")} error={errors.city} />
-              <TextField label="Service areas" optional value={form.serviceAreas} onChangeText={set("serviceAreas")} multiline placeholder="Neighbourhoods, cities or a radius you cover" />
+              <TextField label={tr("Address")} optional value={form.address} onChangeText={set("address")} error={errors.address} />
+              <TextField label={tr("Country")} optional value={form.country} onChangeText={set("country")} error={errors.country} />
+              <TextField label={tr("Region or state")} optional value={form.region} onChangeText={set("region")} />
+              <TextField label={tr("City")} optional value={form.city} onChangeText={set("city")} error={errors.city} />
+              <TextField label={tr("Service areas")} optional value={form.serviceAreas} onChangeText={set("serviceAreas")} multiline placeholder={tr("Neighbourhoods, cities or a radius you cover")} />
             </>
           ) : null}
           {step === 4 ? (
             <>
-              <Text style={styles.hint}>Give your licence, registration or accreditation details. Until this is reviewed, your services publish for review instead of going live immediately. You can also add this later from your profile.</Text>
-              <TextField label="Licence or registration details" optional value={form.licenseInfo} onChangeText={set("licenseInfo")} multiline maxLength={1000} />
+              <Text style={styles.hint}>{tr("Give your licence, registration or accreditation details. Until this is reviewed, your services publish for review instead of going live immediately. You can also add this later from your profile.")}</Text>
+              <TextField label={tr("Licence or registration details")} optional value={form.licenseInfo} onChangeText={set("licenseInfo")} multiline maxLength={1000} />
             </>
           ) : null}
 
           {formError ? <Text style={styles.err} accessibilityLiveRegion="polite">{formError}</Text> : null}
 
           <View style={styles.nav}>
-            <Button label={step === 0 ? "Cancel" : "Back"} variant="outlinePill" onPress={back} style={{ flex: 1, marginRight: 10 }} disabled={save.isPending} />
+            <Button label={step === 0 ? tr("Cancel") : tr("Back")} variant="outlinePill" onPress={back} style={{ flex: 1, marginRight: 10 }} disabled={save.isPending} />
             {step < STEPS.length - 1 ? (
-              <Button label="Continue" variant="pill" onPress={next} disabled={!validStep()} style={{ flex: 1 }} />
+              <Button label={tr("Continue")} variant="pill" onPress={next} disabled={!validStep()} style={{ flex: 1 }} />
             ) : (
-              <Button label="Finish setup" variant="pill" onPress={finish} loading={save.isPending || verify.isPending} disabled={save.isPending || verify.isPending} style={{ flex: 1 }} />
+              <Button label={tr("Finish setup")} variant="pill" onPress={finish} loading={save.isPending || verify.isPending} disabled={save.isPending || verify.isPending} style={{ flex: 1 }} />
             )}
           </View>
         </ScrollView>
@@ -155,7 +157,8 @@ export default function ProviderOnboardingScreen({ navigation }: RootScreenProps
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return <ScreenContainer><AppHeader title="Become a provider" showBack={false} /><View style={{ flex: 1 }}>{children}</View></ScreenContainer>;
+  const tr = useT();
+  return <ScreenContainer><AppHeader title={tr("Become a provider")} showBack={false} /><View style={{ flex: 1 }}>{children}</View></ScreenContainer>;
 }
 
 const styles = StyleSheet.create({

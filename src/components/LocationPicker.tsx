@@ -9,6 +9,7 @@ import { endpoints } from "../api/endpoints";
 import { ensurePermission } from "../utils/permissions";
 import { colors, radii } from "../theme";
 import type { LocationDto } from "../api/types";
+import { useT } from "../i18n";
 
 export interface LocationSel {
   country: LocationDto | null;
@@ -47,6 +48,7 @@ interface Props {
 export default function LocationPicker({
   value, onChange, coveredBy, detect, countryLabel = "Country", onAddressChange, address, countryError,
 }: Props) {
+  const tr = useT();
   const countries = useLocations(undefined, coveredBy);
   const regions = useLocations(value.country?.id, coveredBy, !!value.country);
   const cities = useLocations(value.region?.id, coveredBy, !!value.region);
@@ -91,7 +93,7 @@ export default function LocationPicker({
       });
       if (!ok) return;
       if (!(await Location.hasServicesEnabledAsync())) {
-        Alert.alert("Location is off", "Turn on location services, or choose your location below.");
+        Alert.alert(tr("Location is off"), tr("Turn on location services, or choose your location below."));
         return;
       }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -128,21 +130,21 @@ export default function LocationPicker({
     <View>
       {detect ? (
         <>
-          <TouchableOpacity style={styles.gps} onPress={useMyLocation} disabled={!!busy} accessibilityRole="button" accessibilityLabel="Use my current location">
+          <TouchableOpacity style={styles.gps} onPress={useMyLocation} disabled={!!busy} accessibilityRole="button" accessibilityLabel={tr("Use my current location")}>
             {busy === "gps" ? <ActivityIndicator size="small" color={colors.primary} /> : <Ionicons name="locate" size={17} color={colors.primary} />}
-            <Text style={styles.gpsText}>Use my current location</Text>
+            <Text style={styles.gpsText}>{tr("Use my current location")}</Text>
           </TouchableOpacity>
           <TextField
-            label="Address"
+            label={tr("Address")}
             optional
-            placeholder="Street address, city"
+            placeholder={tr("Street address, city")}
             value={addrText}
             onChangeText={(t) => { setAddrText(t); onAddressChange?.(t); }}
             onSubmitEditing={searchAddress}
             returnKeyType="search"
             maxLength={160}
             right={
-              <TouchableOpacity onPress={searchAddress} disabled={!!busy || addrText.trim().length < 3} accessibilityRole="button" accessibilityLabel="Search address">
+              <TouchableOpacity onPress={searchAddress} disabled={!!busy || addrText.trim().length < 3} accessibilityRole="button" accessibilityLabel={tr("Search address")}>
                 {busy === "search" ? <ActivityIndicator size="small" color={colors.primary} /> : <Ionicons name="search" size={18} color={addrText.trim().length < 3 ? colors.tertiaryText : colors.primary} />}
               </TouchableOpacity>
             }
@@ -158,7 +160,7 @@ export default function LocationPicker({
 
       <SelectField
         label={countryLabel}
-        placeholder={countries.isPending ? "Loading…" : "Select country"}
+        placeholder={countries.isPending ? tr("Loading…") : tr("Select country")}
         value={value.country?.name ?? null}
         options={(countries.data ?? []).map((l) => l.name)}
         onSelect={(n) => {
@@ -167,13 +169,13 @@ export default function LocationPicker({
         }}
       />
       {countryError ? <Text style={styles.error}>{countryError}</Text> : null}
-      {countries.isError ? <Text style={styles.error}>Couldn't load locations. Check your connection.</Text> : null}
+      {countries.isError ? <Text style={styles.error}>{tr("Couldn't load locations. Check your connection.")}</Text> : null}
       {value.country ? (
         (regions.data?.length ?? 0) > 0 || regions.isPending ? (
           <SelectField
-            label="Province / State"
+            label={tr("Province / State")}
             optional
-            placeholder={regions.isPending ? "Loading…" : "Select"}
+            placeholder={regions.isPending ? tr("Loading…") : tr("Select")}
             value={value.region?.name ?? null}
             options={(regions.data ?? []).map((l) => l.name)}
             onSelect={(n) => {
@@ -185,9 +187,9 @@ export default function LocationPicker({
       ) : null}
       {value.region && ((cities.data?.length ?? 0) > 0 || cities.isPending) ? (
         <SelectField
-          label="City / Location"
+          label={tr("City / Location")}
           optional
-          placeholder={cities.isPending ? "Loading…" : "Select"}
+          placeholder={cities.isPending ? tr("Loading…") : tr("Select")}
           value={value.city?.name ?? null}
           options={(cities.data ?? []).map((l) => l.name)}
           onSelect={(n) => onChange({ ...value, city: byName(cities.data, n) })}

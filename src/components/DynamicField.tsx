@@ -5,6 +5,7 @@ import SelectField from "./SelectField";
 import CheckRow from "./CheckRow";
 import { colors } from "../theme";
 import type { FieldDef } from "../api/types";
+import { useT } from "../i18n";
 
 interface Props {
   def: FieldDef;
@@ -19,6 +20,7 @@ interface Props {
  * field appears in the app without a code change here.
  */
 export default function DynamicField({ def, value, onChange, error }: Props) {
+  const tr = useT();
   const label = def.label;
   switch (def.input) {
     case "textarea":
@@ -38,7 +40,7 @@ export default function DynamicField({ def, value, onChange, error }: Props) {
       const current = opts.find((o) => o.value === value)?.label ?? null;
       return (
         <SelectField
-          label={label} optional={!def.required} placeholder="Select" value={current} options={opts.map((o) => o.label)}
+          label={label} optional={!def.required} placeholder={tr("Select")} value={current} options={opts.map((o) => o.label)}
           onSelect={(l) => onChange(opts.find((o) => o.label === l)?.value)}
         />
       );

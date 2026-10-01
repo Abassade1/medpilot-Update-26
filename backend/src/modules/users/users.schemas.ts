@@ -61,5 +61,5 @@ export const PatchPreferencesBody = z.object({
   pushEnabled: z.boolean().optional(),
   emailUpdates: z.boolean().optional(),
   appointmentReminders: z.boolean().optional(),
-  language: z.enum(["en", "fr"]).optional(),
+  language: z.enum(["en", "fr", "ar"]).optional(),
 }).refine((o) => Object.keys(o).length > 0, "Nothing to update");

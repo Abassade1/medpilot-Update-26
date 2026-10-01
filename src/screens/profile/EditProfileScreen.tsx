@@ -13,6 +13,7 @@ import { ApiError } from "../../api/errors";
 import { MAX_NAME, validateName, validatePhone } from "../../utils/validation";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 const GENDERS: Record<string, string> = { Male: "male", Female: "female", "Prefer not to say": "undisclosed" };
 const MARITAL: Record<string, string> = { Single: "single", Married: "married", Divorced: "divorced", Widowed: "widowed" };
@@ -20,6 +21,7 @@ const labelOf = (map: Record<string, string>, code: string | null | undefined) =
   Object.keys(map).find((k) => map[k] === code) ?? null;
 
 export default function EditProfileScreen({ navigation }: RootScreenProps<"EditProfile">) {
+  const tr = useT();
   const me = useMe();
   const save = usePatchProfile();
   const p = me.data?.profile;
@@ -48,7 +50,7 @@ export default function EditProfileScreen({ navigation }: RootScreenProps<"EditP
   if (!p) {
     return (
       <ScreenContainer>
-        <AppHeader title="Edit profile" />
+        <AppHeader title={tr("Edit profile")} />
         {me.isError ? <ListStateView kind="error" onRetry={() => void me.refetch()} /> : <ListStateView kind="loading" />}
       </ScreenContainer>
     );
@@ -78,38 +80,38 @@ export default function EditProfileScreen({ navigation }: RootScreenProps<"EditP
     if (errors.firstName || errors.lastName || errors.phone || !changed) return;
     save.mutate(body, {
       onSuccess: () => {
-        setToast("Profile updated");
+        setToast(tr("Profile updated"));
         setTimeout(() => navigation.goBack(), 900);
       },
       onError: (err) => {
         const e = err as ApiError;
         if (e.fields && Object.keys(e.fields).length) setServerFields(e.fields);
-        else setFormError(e.isOffline ? e.message : e.message || "We couldn't save your changes. Please try again.");
+        else setFormError(e.isOffline ? e.message : e.message || tr("We couldn't save your changes. Please try again."));
       },
     });
   };
 
   return (
     <ScreenContainer>
-      <AppHeader title="Edit profile" />
+      <AppHeader title={tr("Edit profile")} />
       <ToastBanner visible={!!toast} message={toast ?? ""} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <TextField label="Firstname" value={first} onChangeText={(t) => { setFirst(t); clearServer("firstName"); }}
+          <TextField label={tr("Firstname")} value={first} onChangeText={(t) => { setFirst(t); clearServer("firstName"); }}
             onBlur={() => touch("firstName")} error={shown("firstName")} maxLength={MAX_NAME} autoCapitalize="words" />
-          <TextField label="Lastname" value={last} onChangeText={(t) => { setLast(t); clearServer("lastName"); }}
+          <TextField label={tr("Lastname")} value={last} onChangeText={(t) => { setLast(t); clearServer("lastName"); }}
             onBlur={() => touch("lastName")} error={shown("lastName")} maxLength={MAX_NAME} autoCapitalize="words" />
-          <TextField label="Phone number" value={phone} onChangeText={(t) => { setPhone(t); clearServer("phone"); }}
+          <TextField label={tr("Phone number")} value={phone} onChangeText={(t) => { setPhone(t); clearServer("phone"); }}
             onBlur={() => touch("phone")} error={shown("phone")} keyboardType="phone-pad" maxLength={20} left={<PhonePrefix />} />
-          <SelectField label="Gender" optional value={gender} options={Object.keys(GENDERS)} onSelect={setGender} />
-          <SelectField label="Marital Status" optional value={marital} options={Object.keys(MARITAL)} onSelect={setMarital} />
-          <TextField label="Location" optional placeholder="City, Country" value={location} onChangeText={setLocation} maxLength={80} />
-          <Text style={styles.note}>Your email and date of birth can't be changed here. Contact support if they need correcting.</Text>
+          <SelectField label={tr("Gender")} optional value={gender} options={Object.keys(GENDERS)} onSelect={setGender} />
+          <SelectField label={tr("Marital Status")} optional value={marital} options={Object.keys(MARITAL)} onSelect={setMarital} />
+          <TextField label={tr("Location")} optional placeholder={tr("City, Country")} value={location} onChangeText={setLocation} maxLength={80} />
+          <Text style={styles.note}>{tr("Your email and date of birth can't be changed here. Contact support if they need correcting.")}</Text>
 
           {formError ? <Text style={styles.error} accessibilityLiveRegion="polite">{formError}</Text> : null}
           <View style={{ marginTop: 18 }}>
-            <Button label="Save changes" variant="pill" onPress={submit} loading={save.isPending} disabled={!changed || save.isPending} />
-            <Button label="Cancel" variant="outlinePill" onPress={() => navigation.goBack()} style={{ marginTop: 10 }} />
+            <Button label={tr("Save changes")} variant="pill" onPress={submit} loading={save.isPending} disabled={!changed || save.isPending} />
+            <Button label={tr("Cancel")} variant="outlinePill" onPress={() => navigation.goBack()} style={{ marginTop: 10 }} />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

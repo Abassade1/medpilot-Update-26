@@ -11,10 +11,12 @@ import { useMe, usePetClinics } from "../../api/queries";
 import { assetSource } from "../../api/assets";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 const TABS = ["Vet Doctors", "Pet Pedicure", "Pet Sitters"];
 
 export default function PetSpecialistScreen({ navigation }: RootScreenProps<"PetSpecialist">) {
+  const tr = useT();
   const [tab, setTab] = useState(1);
   const category = (["vet", "pedicure", "sitters"] as const)[tab] ?? "pedicure";
   const clinicsQuery = usePetClinics(category);
@@ -29,13 +31,13 @@ export default function PetSpecialistScreen({ navigation }: RootScreenProps<"Pet
   return (
     <ScreenContainer>
       <AppHeader
-        title="Pet Specialist"
+        title={tr("Pet Specialist")}
         right={
           <TouchableOpacity
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             onPress={() => { setShowSearch((v) => !v); setQ(""); }}
             accessibilityRole="button"
-            accessibilityLabel={showSearch ? "Close search" : "Search pet services"}
+            accessibilityLabel={showSearch ? tr("Close search") : tr("Search pet services")}
           >
             <Ionicons name={showSearch ? "close" : "search"} size={20} color={colors.primary} />
           </TouchableOpacity>
@@ -43,11 +45,11 @@ export default function PetSpecialistScreen({ navigation }: RootScreenProps<"Pet
       />
       <View style={styles.locationWrap}>
         {showSearch ? (
-          <SearchBar placeholder="Search vets, groomers, sitters" value={q} onChangeText={setQ} />
+          <SearchBar placeholder={tr("Search vets, groomers, sitters")} value={q} onChangeText={setQ} />
         ) : (
           <View style={styles.locationPill}>
             <Ionicons name="location-sharp" size={15} color={colors.text} />
-            <Text style={styles.locationText}>{me.data?.profile?.locationLabel ?? "Your location"}</Text>
+            <Text style={styles.locationText}>{me.data?.profile?.locationLabel ?? tr("Your location")}</Text>
           </View>
         )}
       </View>
@@ -60,7 +62,7 @@ export default function PetSpecialistScreen({ navigation }: RootScreenProps<"Pet
         ListEmptyComponent={
           clinicsQuery.isPending ? <ListStateView kind="loading" /> :
           clinicsQuery.isError ? <ListStateView kind="error" onRetry={() => void clinicsQuery.refetch()} /> :
-          <ListStateView kind="empty" title="Nothing to show" message={needle ? "No providers match your search." : "No pet services are available in this category."} />
+          <ListStateView kind="empty" title={tr("Nothing to show")} message={needle ? tr("No providers match your search.") : tr("No pet services are available in this category.")} />
         }
         renderItem={({ item }) => (
           <ProviderCard

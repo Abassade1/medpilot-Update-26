@@ -13,8 +13,10 @@ import { addDays, formatDate, formatTime, utcTodayIso } from "../../utils/dates"
 import { BOOKING_WINDOW_DAYS } from "../../utils/validation";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function RescheduleAppointmentScreen({ navigation, route }: RootScreenProps<"RescheduleAppointment">) {
+  const tr = useT();
   const { appointmentId } = route.params;
   const query = useAppointment(appointmentId);
   const reference = useReference();
@@ -44,11 +46,11 @@ export default function RescheduleAppointmentScreen({ navigation, route }: RootS
   if (!a) {
     return (
       <ScreenContainer>
-        <AppHeader title="Reschedule" />
+        <AppHeader title={tr("Reschedule")} />
         {query.isError ? (
-          <ListStateView kind="error" message="We couldn't load this appointment." onRetry={() => void query.refetch()} />
+          <ListStateView kind="error" message={tr("We couldn't load this appointment.")} onRetry={() => void query.refetch()} />
         ) : (
-          <ListStateView kind="loading" message="Loading appointment…" />
+          <ListStateView kind="loading" message={tr("Loading appointment…")} />
         )}
       </ScreenContainer>
     );
@@ -57,16 +59,16 @@ export default function RescheduleAppointmentScreen({ navigation, route }: RootS
   if (!a.canReschedule) {
     return (
       <ScreenContainer>
-        <AppHeader title="Reschedule" />
+        <AppHeader title={tr("Reschedule")} />
         <View style={styles.blocked}>
           <Ionicons name="lock-closed-outline" size={40} color={colors.tertiaryText} />
-          <Text style={styles.blockedTitle}>This appointment can't be changed</Text>
+          <Text style={styles.blockedTitle}>{tr("This appointment can't be changed")}</Text>
           <Text style={styles.blockedText}>
             {a.status === "cancelled"
-              ? "It was cancelled. You can book a new appointment instead."
-              : "It has already been completed."}
+              ? tr("It was cancelled. You can book a new appointment instead.")
+              : tr("It has already been completed.")}
           </Text>
-          <Button label="Back to appointment" variant="pill" onPress={() => navigation.goBack()} style={{ marginTop: 20 }} />
+          <Button label={tr("Back to appointment")} variant="pill" onPress={() => navigation.goBack()} style={{ marginTop: 20 }} />
         </View>
       </ScreenContainer>
     );
@@ -106,8 +108,8 @@ export default function RescheduleAppointmentScreen({ navigation, route }: RootS
           if (e.fields?.requestedTime) return setTimeError(e.fields.requestedTime);
           setFormError(
             e.isOffline
-              ? "You appear to be offline. Check your connection and try again."
-              : e.message || "We couldn't save your changes. Please try again.",
+              ? tr("You appear to be offline. Check your connection and try again.")
+              : e.message || tr("We couldn't save your changes. Please try again."),
           );
         },
       },
@@ -116,32 +118,31 @@ export default function RescheduleAppointmentScreen({ navigation, route }: RootS
 
   return (
     <ScreenContainer>
-      <AppHeader title="Reschedule" />
+      <AppHeader title={tr("Reschedule")} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <Text style={styles.hospital}>{a.hospital.name}</Text>
           <Text style={styles.current}>
-            Currently {formatDate(a.requestedDate)}
-            {a.requestedTime ? ` at ${formatTime(a.requestedTime)}` : ""} · {a.appointmentTypeLabel}
+            {tr("Currently {date}", { date: formatDate(a.requestedDate) })}
+            {a.requestedTime ? ` ${tr("at {time}", { time: formatTime(a.requestedTime) })}` : ""} · {a.appointmentTypeLabel}
           </Text>
 
           {a.status === "confirmed" ? (
             <View style={styles.warn}>
               <Ionicons name="information-circle-outline" size={18} color="#9A5B00" />
               <Text style={styles.warnText}>
-                The hospital has confirmed your current slot. If you change it, your slot is released and the new time
-                goes back to the hospital for confirmation.
+                {tr("The hospital has confirmed your current slot. If you change it, your slot is released and the new time goes back to the hospital for confirmation.")}
               </Text>
             </View>
           ) : null}
 
-          <Text style={styles.label}>Type of appointment</Text>
+          <Text style={styles.label}>{tr("Type of appointment")}</Text>
           {(reference.data?.appointmentTypes ?? []).map((t) => (
             <RadioRow key={t.code} label={t.label} selected={type === t.code} onPress={() => setType(t.code)} bordered />
           ))}
 
           <DateField
-            label="New date"
+            label={tr("New date")}
             value={date}
             onChange={(v) => { setDate(v); setDateError(null); }}
             min={minDate}
@@ -153,7 +154,7 @@ export default function RescheduleAppointmentScreen({ navigation, route }: RootS
             containerStyle={{ marginTop: 12 }}
           />
           <DateField
-            label="Preferred time"
+            label={tr("Preferred time")}
             optional
             mode="time"
             value={time}
@@ -163,17 +164,17 @@ export default function RescheduleAppointmentScreen({ navigation, route }: RootS
           />
 
           {formError ? <Text style={styles.error} accessibilityLiveRegion="polite">{formError}</Text> : null}
-          {!changed ? <Text style={styles.hint}>Change the date, time or type to save.</Text> : null}
+          {!changed ? <Text style={styles.hint}>{tr("Change the date, time or type to save.")}</Text> : null}
 
           <Button
-            label="Save changes"
+            label={tr("Save changes")}
             variant="pill"
             onPress={submit}
             disabled={!canSave}
             loading={save.isPending}
             style={{ marginTop: 22 }}
           />
-          <Button label="Cancel" variant="outlinePill" onPress={() => navigation.goBack()} style={{ marginTop: 10 }} />
+          <Button label={tr("Cancel")} variant="outlinePill" onPress={() => navigation.goBack()} style={{ marginTop: 10 }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </ScreenContainer>

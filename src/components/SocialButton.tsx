@@ -2,6 +2,7 @@ import React from "react";
 import { Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radii } from "../theme";
+import { useT } from "../i18n";
 
 interface Props {
   provider: "google" | "amazon" | "apple";
@@ -16,12 +17,13 @@ const config = {
 };
 
 export default function SocialButton({ provider, mode, onPress }: Props) {
+  const tr = useT();
   const c = config[provider];
   return (
     <TouchableOpacity style={styles.btn} activeOpacity={0.75} onPress={onPress}>
       <Ionicons name={c.icon} size={17} color={c.color} />
       <Text style={styles.label}>
-        Sign {mode} with {c.label}
+        {tr(mode === "in" ? "Sign in with {provider}" : "Sign up with {provider}", { provider: c.label })}
       </Text>
     </TouchableOpacity>
   );

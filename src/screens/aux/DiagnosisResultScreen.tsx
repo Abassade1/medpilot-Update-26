@@ -9,11 +9,13 @@ import ListStateView from "../../components/ListStateView";
 import { useQuery } from "@tanstack/react-query";
 import { endpoints } from "../../api/endpoints";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function DiagnosisResultScreen({
   navigation,
   route,
 }: RootScreenProps<"DiagnosisResult">) {
+  const tr = useT();
   const { sessionId } = route.params;
   const query = useQuery({
     queryKey: ["auxSession", sessionId],
@@ -42,7 +44,7 @@ export default function DiagnosisResultScreen({
     try {
       setTranslation(await endpoints.aux.translate(sessionId, "fr"));
     } catch {
-      Alert.alert("Translation unavailable", "Please try again in a moment.");
+      Alert.alert(tr("Translation unavailable"), tr("Please try again in a moment."));
     } finally {
       setTranslating(false);
     }
@@ -51,11 +53,11 @@ export default function DiagnosisResultScreen({
   if (!result) {
     return (
       <ScreenContainer>
-        <AppHeader title="Diagnosis" />
+        <AppHeader title={tr("Diagnosis")} />
         {query.isError ? (
           <ListStateView kind="error" onRetry={() => void query.refetch()} />
         ) : (
-          <ListStateView kind="loading" message="Preparing your assessment…" />
+          <ListStateView kind="loading" message={tr("Preparing your assessment…")} />
         )}
       </ScreenContainer>
     );
@@ -66,11 +68,11 @@ export default function DiagnosisResultScreen({
 
   return (
     <ScreenContainer>
-      <AppHeader title="Diagnosis" />
+      <AppHeader title={tr("Diagnosis")} />
       <View style={styles.emergencyBanner}>
         <Ionicons name="warning" size={13} color="#fff" />
         <Text style={styles.emergencyText}>
-          For medical emergency call 911 or your local emergency
+          {tr("For medical emergency call 911 or your local emergency")}
         </Text>
       </View>
 
@@ -79,16 +81,16 @@ export default function DiagnosisResultScreen({
           <Text style={styles.title}>{field("title")}</Text>
           <TouchableOpacity onPress={() => void toggleTranslation()} disabled={translating}>
             <Text style={styles.translate}>
-              {translating ? "Translating…" : translation ? "Original" : "Translation"}
+              {translating ? tr("Translating…") : translation ? tr("Original") : tr("Translation")}
             </Text>
           </TouchableOpacity>
         </View>
         <Text style={styles.paragraph}>{field("summary")}</Text>
 
-        <Text style={styles.sectionTitle}>Possible Causes</Text>
+        <Text style={styles.sectionTitle}>{tr("Possible Causes")}</Text>
         <Text style={styles.paragraph}>{field("possibleCauses")}</Text>
 
-        <Text style={[styles.sectionTitle, { color: colors.warning }]}>Recommended Treatment</Text>
+        <Text style={[styles.sectionTitle, { color: colors.warning }]}>{tr("Recommended Treatment")}</Text>
         <View style={styles.treatmentBox}>
           <Text style={styles.paragraph}>{field("recommendedTreatment")}</Text>
         </View>
@@ -96,15 +98,15 @@ export default function DiagnosisResultScreen({
         <View style={styles.chipsWrap}>
           <TouchableOpacity style={styles.chip} onPress={() => void escalate("doctor", () => navigation.navigate("Hospitals"))}>
             <MaterialCommunityIcons name="doctor" size={13} color={colors.error} />
-            <Text style={styles.chipLabel}>Connect my Doctor</Text>
+            <Text style={styles.chipLabel}>{tr("Connect my Doctor")}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.chip} onPress={() => void escalate("hospital", () => navigation.navigate("Hospitals"))}>
             <MaterialCommunityIcons name="hospital-building" size={13} color={colors.primary} />
-            <Text style={styles.chipLabel}>Connect to Hospital</Text>
+            <Text style={styles.chipLabel}>{tr("Connect to Hospital")}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.chip} onPress={() => void escalate("evacuation", () => navigation.navigate("MedicalTransport"))}>
             <MaterialCommunityIcons name="helicopter" size={13} color={colors.text} />
-            <Text style={styles.chipLabel}>Request Emergency Evac</Text>
+            <Text style={styles.chipLabel}>{tr("Request Emergency Evac")}</Text>
           </TouchableOpacity>
         </View>
 

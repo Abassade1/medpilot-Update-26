@@ -14,11 +14,13 @@ import { useAvailability } from "../../api/queries";
 import { assetSource } from "../../api/assets";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 const TABS = ["Private Jet", "Medical Ambulance", "Speed Boat"];
 const CATEGORIES = ["jet", "ambulance", "boat"] as const;
 
 export default function MedicalTransportScreen({ navigation }: RootScreenProps<"MedicalTransport">) {
+  const tr = useT();
   const [tab, setTab] = useState(1);
   const [sel, setSel] = useState<LocationSel>(EMPTY_LOCATION);
   const place = deepest(sel);
@@ -42,25 +44,25 @@ export default function MedicalTransportScreen({ navigation }: RootScreenProps<"
 
   return (
     <ScreenContainer>
-      <AppHeader title="Medical Transportation" />
+      <AppHeader title={tr("Medical Transportation")} />
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-        <Text style={styles.lead}>Tell us where you are and we'll show the transport that can reach you.</Text>
+        <Text style={styles.lead}>{tr("Tell us where you are and we'll show the transport that can reach you.")}</Text>
         <LocationPicker value={sel} onChange={setSel} detect />
         {place ? (
           <AvailabilityPanel place={placeName} loading={availability.isPending && availability.isFetching} error={availability.isError} data={data} onRetry={() => void availability.refetch()} />
         ) : null}
 
         {!place ? (
-          <ListStateView kind="empty" title="Choose your location" message="Pick a country (and a province or city if you can) to see which services are available." />
+          <ListStateView kind="empty" title={tr("Choose your location")} message={tr("Pick a country (and a province or city if you can) to see which services are available.")} />
         ) : data ? (
           <>
-            <SegmentTabs tabs={TABS} active={tab} onChange={setTab} style={{ marginHorizontal: -spacing.lg }} />
+            <SegmentTabs tabs={TABS.map((x) => tr(x))} active={tab} onChange={setTab} style={{ marginHorizontal: -spacing.lg }} />
             {current && current.available ? (
               <View style={{ marginTop: 14 }}>
                 {current.coverage === "partial" ? (
                   <View style={styles.hint}>
                     <Ionicons name="information-circle" size={16} color="#9A5B00" />
-                    <Text style={styles.hintText}>Only covers part of {placeName}. Add your city to confirm it reaches you.</Text>
+                    <Text style={styles.hintText}>{tr("Only covers part of {place}. Add your city to confirm it reaches you.", { place: placeName })}</Text>
                   </View>
                 ) : null}
                 {current.providers.map((p) => (
@@ -83,9 +85,9 @@ export default function MedicalTransportScreen({ navigation }: RootScreenProps<"
             ) : (
               <View style={styles.unavailable}>
                 <Ionicons name="close-circle-outline" size={30} color={colors.tertiaryText} />
-                <Text style={styles.unTitle}>{TABS[tab]} isn't available in {placeName}</Text>
+                <Text style={styles.unTitle}>{tr("{service} isn't available in {place}", { service: tr(TABS[tab]), place: placeName })}</Text>
                 <Text style={styles.unText}>
-                  {alternatives.length ? "These services can reach you instead:" : "No transport service covers this place yet. Try a nearby city or another province/state."}
+                  {alternatives.length ? tr("These services can reach you instead:") : tr("No transport service covers this place yet. Try a nearby city or another province/state.")}
                 </Text>
                 {alternatives.map((s) => (
                   <Button key={s.category} label={s.label} variant="outlinePill" onPress={() => setTab(CATEGORIES.indexOf(s.category))} style={{ marginTop: 10, alignSelf: "stretch" }} />

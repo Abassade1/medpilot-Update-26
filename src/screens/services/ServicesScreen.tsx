@@ -10,8 +10,10 @@ import ListStateView from "../../components/ListStateView";
 import { openService } from "../../utils/serviceRoutes";
 import type { ServiceDto } from "../../api/types";
 import { colors, radii, spacing } from "../../theme";
+import { useT } from "../../i18n";
 
 export default function ServicesScreen() {
+  const tr = useT();
   const navigation = useNavigation();
   const servicesQuery = useServices();
 
@@ -25,16 +27,16 @@ export default function ServicesScreen() {
     <ScreenContainer>
       <AppHeader />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Services</Text>
-        <SearchBar placeholder="Search services" value={q} onChangeText={setQ} style={{ marginTop: 14, marginBottom: 18 }} />
-        {servicesQuery.isPending && <ListStateView kind="loading" message="Loading services…" />}
+        <Text style={styles.title}>{tr("Services")}</Text>
+        <SearchBar placeholder={tr("Search services")} value={q} onChangeText={setQ} style={{ marginTop: 14, marginBottom: 18 }} />
+        {servicesQuery.isPending && <ListStateView kind="loading" message={tr("Loading services…")} />}
         {servicesQuery.isError && <ListStateView kind="error" onRetry={() => void servicesQuery.refetch()} />}
         {!servicesQuery.isPending && !servicesQuery.isError && shown.length === 0 ? (
-          <ListStateView kind="empty" title="No matching services" message="Try a different search." />
+          <ListStateView kind="empty" title={tr("No matching services")} message={tr("Try a different search.")} />
         ) : null}
-        <TouchableOpacity style={styles.discover} onPress={() => navigation.navigate("Discover")} accessibilityRole="button" accessibilityLabel="Browse services from independent providers">
-          <Text style={styles.cardTitle}>Browse provider services</Text>
-          <Text style={styles.cardDesc}>Search clinics, nurses, transport, vets and specialists, then book directly.</Text>
+        <TouchableOpacity style={styles.discover} onPress={() => navigation.navigate("Discover")} accessibilityRole="button" accessibilityLabel={tr("Browse services from independent providers")}>
+          <Text style={styles.cardTitle}>{tr("Browse provider services")}</Text>
+          <Text style={styles.cardDesc}>{tr("Search clinics, nurses, transport, vets and specialists, then book directly.")}</Text>
         </TouchableOpacity>
         <View style={styles.grid}>
           {shown.map((service) => (

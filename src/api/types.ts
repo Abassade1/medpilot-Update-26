@@ -255,7 +255,7 @@ export interface ServiceRequestDto {
 
 // ---- preferences & chat -----------------------------------------------------
 export interface PreferencesDto {
-  pushEnabled: boolean; emailUpdates: boolean; appointmentReminders: boolean; language: "en" | "fr";
+  pushEnabled: boolean; emailUpdates: boolean; appointmentReminders: boolean; language: "en" | "fr" | "ar";
 }
 export type ChatAction =
   | "triage" | "meal" | "hospitals" | "appointments" | "transport"

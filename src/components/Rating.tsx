@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme";
+import { useT } from "../i18n";
 
 interface Props {
   /** The review average, or null when nobody has reviewed this yet. */
@@ -10,11 +11,12 @@ interface Props {
 }
 
 export default function Rating({ value, size = 13 }: Props) {
+  const tr = useT();
   if (value == null) {
     return (
-      <View style={styles.row} accessibilityLabel="No reviews yet">
+      <View style={styles.row} accessibilityLabel={tr("No reviews yet")}>
         <Ionicons name="star-outline" size={size} color={colors.tertiaryText} />
-        <Text style={[styles.none, { fontSize: size - 1 }]}>No reviews yet</Text>
+        <Text style={[styles.none, { fontSize: size - 1 }]}>{tr("No reviews yet")}</Text>
       </View>
     );
   }

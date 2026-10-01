@@ -8,6 +8,7 @@ import { useMarkNotificationsRead, useNotifications } from "../../api/queries";
 import { formatDate, formatTime, toHHMM, toIso } from "../../utils/dates";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT, rtlFlip } from "../../i18n";
 
 type Item = NonNullable<ReturnType<typeof useNotifications>["data"]>["items"][number];
 
@@ -49,6 +50,7 @@ function destination(url?: string): Dest | null {
 }
 
 export default function NotificationsScreen({ navigation }: RootScreenProps<"Notifications">) {
+  const tr = useT();
   const query = useNotifications();
   const markRead = useMarkNotificationsRead();
   const items = query.data?.items ?? [];
@@ -68,22 +70,22 @@ export default function NotificationsScreen({ navigation }: RootScreenProps<"Not
   return (
     <ScreenContainer>
       <AppHeader
-        title="Notifications"
+        title={tr("Notifications")}
         right={
           unread > 0 ? (
             <TouchableOpacity
               onPress={() => markRead.mutate("all")}
               disabled={markRead.isPending}
               accessibilityRole="button"
-              accessibilityLabel="Mark all notifications as read"
+              accessibilityLabel={tr("Mark all notifications as read")}
             >
-              <Text style={styles.markAll} numberOfLines={1}>Read all</Text>
+              <Text style={styles.markAll} numberOfLines={1}>{tr("Read all")}</Text>
             </TouchableOpacity>
           ) : undefined
         }
       />
       {query.isPending ? (
-        <ListStateView kind="loading" message="Loading notifications…" />
+        <ListStateView kind="loading" message={tr("Loading notifications…")} />
       ) : query.isError ? (
         <ListStateView kind="error" onRetry={() => void query.refetch()} />
       ) : (
@@ -93,7 +95,7 @@ export default function NotificationsScreen({ navigation }: RootScreenProps<"Not
           contentContainerStyle={items.length ? styles.list : { flexGrow: 1 }}
           refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} />}
           ListEmptyComponent={
-            <ListStateView kind="empty" title="You're all caught up" message="Updates about your bookings will appear here." />
+            <ListStateView kind="empty" title={tr("You're all caught up")} message={tr("Updates about your bookings will appear here.")} />
           }
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
           renderItem={({ item }) => {
@@ -105,7 +107,7 @@ export default function NotificationsScreen({ navigation }: RootScreenProps<"Not
                 activeOpacity={0.8}
                 style={[styles.card, !item.read && styles.unread]}
                 accessibilityRole={dest || !item.read ? "button" : undefined}
-                accessibilityLabel={`${item.read ? "" : "Unread. "}${item.title}. ${item.body}`}
+                accessibilityLabel={`${item.read ? "" : `${tr("Unread.")} `}${item.title}. ${item.body}`}
               >
                 <View style={styles.iconWrap}>
                   <Ionicons name={ICON[item.type] ?? "notifications-outline"} size={18} color={colors.primary} />
@@ -116,7 +118,7 @@ export default function NotificationsScreen({ navigation }: RootScreenProps<"Not
                   <Text style={styles.time}>{when(item.createdAt)}</Text>
                 </View>
                 {!item.read ? <View style={styles.dot} /> : null}
-                {dest ? <Ionicons name="chevron-forward" size={16} color={colors.tertiaryText} style={{ marginLeft: 6 }} /> : null}
+                {dest ? <Ionicons style={rtlFlip()} name="chevron-forward" size={16} color={colors.tertiaryText} /> : null}
               </Wrapper>
             );
           }}

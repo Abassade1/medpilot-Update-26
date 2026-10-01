@@ -12,12 +12,14 @@ import { useMyProvider, useSaveProvider, useSubmitVerification, useTaxonomy } fr
 import { ApiError } from "../../api/errors";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 const TEXT_KEYS = ["name", "description", "phone", "email", "website", "address", "country", "region", "city", "serviceAreas", "operatingHours", "languages", "certifications", "logoUrl", "coverUrl"] as const;
 type Form = Record<(typeof TEXT_KEYS)[number], string> & { type: string };
 const blank = (): Form => ({ ...(Object.fromEntries(TEXT_KEYS.map((k) => [k, ""])) as Form), type: "" });
 
 export default function ProviderProfileScreen({ navigation }: RootScreenProps<"ProviderProfile">) {
+  const tr = useT();
   const me = useMyProvider();
   const tax = useTaxonomy();
   const save = useSaveProvider();
@@ -43,8 +45,8 @@ export default function ProviderProfileScreen({ navigation }: RootScreenProps<"P
     }
   }, [me.isSuccess, provider]);
 
-  if (me.isLoading || tax.isLoading) return <Shell><ListStateView kind="loading" message="Loading…" /></Shell>;
-  if (me.isError || tax.isError) return <Shell><ListStateView kind="error" message="We couldn't load this page." onRetry={() => { void me.refetch(); void tax.refetch(); }} /></Shell>;
+  if (me.isLoading || tax.isLoading) return <Shell><ListStateView kind="loading" message={tr("Loading…")} /></Shell>;
+  if (me.isError || tax.isError) return <Shell><ListStateView kind="error" message={tr("We couldn't load this page.")} onRetry={() => { void me.refetch(); void tax.refetch(); }} /></Shell>;
 
   const types = tax.data!.providerTypes;
   const set = (k: keyof Form) => (v: string) => { setForm((f) => ({ ...f, [k]: v })); setErrors((e) => ({ ...e, [k]: "" })); setMsg(null); };
@@ -64,7 +66,7 @@ export default function ProviderProfileScreen({ navigation }: RootScreenProps<"P
       onError: (err) => {
         const e = err as ApiError;
         if (e.fields) setErrors(e.fields);
-        setFormError(e.isOffline ? "You appear to be offline." : e.fields ? "Check the highlighted fields." : e.message || "We couldn't save your profile.");
+        setFormError(e.isOffline ? tr("You appear to be offline.") : e.fields ? tr("Check the highlighted fields.") : e.message || tr("We couldn't save your profile."));
       },
     });
   };
@@ -87,9 +89,9 @@ export default function ProviderProfileScreen({ navigation }: RootScreenProps<"P
     <Shell>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {provider ? <View style={styles.status}><Text style={styles.statusLabel}>Verification</Text><StatusPill status={provider.verificationStatus} /></View> : null}
+          {provider ? <View style={styles.status}><Text style={styles.statusLabel}>{tr("Verification")}</Text><StatusPill status={provider.verificationStatus} /></View> : null}
           {isNew ? (
-            <SelectField label="Provider type" placeholder="Select your type" value={typeLabel} options={types.map((t) => t.label)}
+            <SelectField label={tr("Provider type")} placeholder={tr("Select your type")} value={typeLabel} options={types.map((t) => t.label)}
               onSelect={(l) => set("type")(types.find((t) => t.label === l)!.code)} />
           ) : (
             <Text style={styles.fixedType}>{provider!.typeLabel}</Text>
@@ -108,18 +110,18 @@ export default function ProviderProfileScreen({ navigation }: RootScreenProps<"P
           {f("operatingHours", "Operating hours")}
           {f("languages", "Languages (comma separated)")}
           {f("certifications", "Certifications", { multiline: true })}
-          <ImagePickerSlot label="Logo" value={form.logoUrl || null} onChange={(url) => set("logoUrl")(url ?? "")} onError={setFormError} />
-          <ImagePickerSlot label="Cover photo" value={form.coverUrl || null} onChange={(url) => set("coverUrl")(url ?? "")} onError={setFormError} />
+          <ImagePickerSlot label={tr("Logo")} value={form.logoUrl || null} onChange={(url) => set("logoUrl")(url ?? "")} onError={setFormError} />
+          <ImagePickerSlot label={tr("Cover photo")} value={form.coverUrl || null} onChange={(url) => set("coverUrl")(url ?? "")} onError={setFormError} />
           {formError ? <Text style={styles.err} accessibilityLiveRegion="polite">{formError}</Text> : null}
           {msg ? <Text style={styles.ok} accessibilityLiveRegion="polite">{msg}</Text> : null}
-          <Button label={isNew ? "Create provider profile" : "Save profile"} variant="pill" onPress={onSave} loading={save.isPending} disabled={save.isPending || (isNew && !form.type)} style={{ marginTop: 10 }} />
+          <Button label={isNew ? tr("Create provider profile") : tr("Save profile")} variant="pill" onPress={onSave} loading={save.isPending} disabled={save.isPending || (isNew && !form.type)} style={{ marginTop: 10 }} />
 
           {provider && provider.verificationStatus !== "verified" ? (
             <View style={styles.verify}>
-              <Text style={styles.h}>Verification</Text>
-              <Text style={styles.hint}>Give your licence, registration or accreditation details. Our team reviews them before your services go live.</Text>
-              <TextField label="Licence or registration details" value={licence} onChangeText={setLicence} multiline maxLength={1000} error={errors.licenseInfo || undefined} />
-              <Button label={provider.verificationStatus === "pending" ? "Update submission" : "Submit for verification"} variant="outlinePill" onPress={onVerify} loading={verify.isPending} disabled={verify.isPending || !licence.trim()} />
+              <Text style={styles.h}>{tr("Verification")}</Text>
+              <Text style={styles.hint}>{tr("Give your licence, registration or accreditation details. Our team reviews them before your services go live.")}</Text>
+              <TextField label={tr("Licence or registration details")} value={licence} onChangeText={setLicence} multiline maxLength={1000} error={errors.licenseInfo || undefined} />
+              <Button label={provider.verificationStatus === "pending" ? tr("Update submission") : tr("Submit for verification")} variant="outlinePill" onPress={onVerify} loading={verify.isPending} disabled={verify.isPending || !licence.trim()} />
             </View>
           ) : null}
         </ScrollView>
@@ -129,7 +131,8 @@ export default function ProviderProfileScreen({ navigation }: RootScreenProps<"P
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return <ScreenContainer><AppHeader title="Business profile" />{children}</ScreenContainer>;
+  const tr = useT();
+  return <ScreenContainer><AppHeader title={tr("Business profile")} />{children}</ScreenContainer>;
 }
 
 const styles = StyleSheet.create({

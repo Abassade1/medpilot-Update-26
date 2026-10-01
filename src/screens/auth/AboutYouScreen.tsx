@@ -23,6 +23,7 @@ import { endpoints } from "../../api/endpoints";
 import { ApiError } from "../../api/errors";
 import { useSession } from "../../state/Session";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 type Field = "firstname" | "lastname" | "phone" | "dob";
 
@@ -33,6 +34,7 @@ const oldestBirthDate = () => {
 };
 
 export default function AboutYouScreen({ navigation, route }: RootScreenProps<"AboutYou">) {
+  const tr = useT();
   const { adopt } = useSession();
   const [busy, setBusy] = useState(false);
   const [serverFields, setServerFields] = useState<Record<string, string>>({});
@@ -93,12 +95,12 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
           setServerFields(map);
         }
         if (e.code === "conflict") {
-          Alert.alert("Account exists", "An account with this email already exists. Try signing in instead.");
+          Alert.alert(tr("Account exists"), tr("An account with this email already exists. Try signing in instead."));
         } else if (!e.fields) {
-          Alert.alert("Couldn't create your account", e.message);
+          Alert.alert(tr("Couldn't create your account"), e.message);
         }
       } else {
-        Alert.alert("Couldn't create your account", "Please try again.");
+        Alert.alert(tr("Couldn't create your account"), tr("Please try again."));
       }
     } finally {
       setBusy(false);
@@ -107,7 +109,7 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
 
   return (
     <ScreenContainer>
-      <AppHeader title="Create Account" />
+      <AppHeader title={tr("Create Account")} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -119,12 +121,12 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
           contentContainerStyle={styles.body}
         >
           <Text style={styles.hint}>{route.params.email}</Text>
-          <Text style={styles.title}>Tell us about yourself</Text>
+          <Text style={styles.title}>{tr("Tell us about yourself")}</Text>
 
           <View style={styles.nameRow}>
             <TextField
-              label="Firstname"
-              placeholder="Firstname"
+              label={tr("Firstname")}
+              placeholder={tr("Firstname")}
               value={firstname}
               onChangeText={(t) => { setFirstname(t); setServerFields((p) => ({ ...p, firstname: "" })); }}
               onBlur={() => markTouched("firstname")}
@@ -139,8 +141,8 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
             />
             <TextField
               ref={lastnameRef}
-              label="Lastname"
-              placeholder="Lastname"
+              label={tr("Lastname")}
+              placeholder={tr("Lastname")}
               value={lastname}
               onChangeText={(t) => { setLastname(t); setServerFields((p) => ({ ...p, lastname: "" })); }}
               onBlur={() => markTouched("lastname")}
@@ -157,8 +159,8 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
 
           <TextField
             ref={phoneRef}
-            label="Phone number"
-            placeholder="Phone number"
+            label={tr("Phone number")}
+            placeholder={tr("Phone number")}
             value={phone}
             onChangeText={(t) => { setPhone(t); setServerFields((p) => ({ ...p, phone: "" })); }}
             onBlur={() => markTouched("phone")}
@@ -172,7 +174,7 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
           />
 
           <DateField
-            label="Date of Birth"
+            label={tr("Date of Birth")}
             value={dob}
             onChange={(v) => { setDob(v); setServerFields((p) => ({ ...p, dob: "" })); }}
             min={oldestBirthDate()}
@@ -185,7 +187,7 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
           />
 
           <SelectField
-            label="Gender"
+            label={tr("Gender")}
             optional
             value={gender}
             options={["Male", "Female", "Prefer not to say"]}
@@ -193,7 +195,7 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
           />
 
           <SelectField
-            label="Marital Status"
+            label={tr("Marital Status")}
             optional
             value={marital}
             options={["Single", "Married", "Divorced", "Widowed"]}
@@ -201,13 +203,13 @@ export default function AboutYouScreen({ navigation, route }: RootScreenProps<"A
           />
 
           <Text style={styles.terms}>
-            By clicking on Submit, you agree to the EliteCare's{" "}
-            <Text style={styles.link}>Terms & Conditions</Text> and{" "}
-            <Text style={styles.link}>Privacy Policy</Text>
+            {tr("By clicking on Submit, you agree to the EliteCare's")}{" "}
+            <Text style={styles.link}>{tr("Terms & Conditions")}</Text> {tr("and")}{" "}
+            <Text style={styles.link}>{tr("Privacy Policy")}</Text>
           </Text>
 
           <Button
-            label="Submit"
+            label={tr("Submit")}
             variant="pill"
             disabled={!firstname.trim() || !lastname.trim() || !phone.trim() || !dob}
             loading={busy}

@@ -12,8 +12,10 @@ import { useSession } from "../../state/Session";
 import { useQuery } from "@tanstack/react-query";
 
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function MedicalHistoryScreen({ navigation }: RootScreenProps<"MedicalHistory">) {
+  const tr = useT();
   const { refreshSetup } = useSession();
   const reference = useQuery({
     queryKey: ["reference"],
@@ -44,7 +46,7 @@ export default function MedicalHistoryScreen({ navigation }: RootScreenProps<"Me
       await refreshSetup();
       navigation.navigate("UploadRecords");
     } catch (e) {
-      Alert.alert("Couldn't save", e instanceof Error ? e.message : "Please try again.");
+      Alert.alert(tr("Couldn't save"), e instanceof Error ? e.message : tr("Please try again."));
     }
   };
   void conditionsQuery;
@@ -52,15 +54,15 @@ export default function MedicalHistoryScreen({ navigation }: RootScreenProps<"Me
   return (
     <ScreenContainer>
       <StepFlowHeader
-        headerTitle="Medical History"
+        headerTitle={tr("Medical History")}
         step={1}
         totalSteps={2}
-        title={"Select any past or existing\nmedical conditions"}
+        title={tr("Select any past or existing\nmedical conditions")}
       />
       <View style={styles.body}>
         <View style={{ marginTop: 10 }}>
           {reference.isPending ? (
-            <ListStateView kind="loading" message="Loading conditions…" />
+            <ListStateView kind="loading" message={tr("Loading conditions…")} />
           ) : reference.isError ? (
             <ListStateView kind="error" onRetry={() => void reference.refetch()} />
           ) : (
@@ -77,7 +79,7 @@ export default function MedicalHistoryScreen({ navigation }: RootScreenProps<"Me
         </View>
         <View style={styles.bottom}>
           <Button
-            label="Proceed"
+            label={tr("Proceed")}
             variant="pill"
             disabled={selected.length === 0}
             loading={putConditions.isPending}

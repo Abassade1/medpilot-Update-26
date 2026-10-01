@@ -14,8 +14,10 @@ import { newIdempotencyKey } from "../../utils/device";
 import { BOOKING_WINDOW_DAYS } from "../../utils/validation";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function SpecialistRequestScreen({ navigation, route }: RootScreenProps<"SpecialistRequest">) {
+  const tr = useT();
   const { specialistId, kind } = route.params;
   const profile = useSpecialistProfile(specialistId);
   const send = useRequestSpecialist(specialistId);
@@ -34,7 +36,7 @@ export default function SpecialistRequestScreen({ navigation, route }: RootScree
   if (!s) {
     return (
       <ScreenContainer>
-        <AppHeader title={booking ? "Book specialist" : "Connect"} />
+        <AppHeader title={booking ? tr("Book specialist") : tr("Connect")} />
         {profile.isError ? <ListStateView kind="error" onRetry={() => void profile.refetch()} /> : <ListStateView kind="loading" />}
       </ScreenContainer>
     );
@@ -75,7 +77,7 @@ export default function SpecialistRequestScreen({ navigation, route }: RootScree
         onError: (err) => {
           const e = err as ApiError;
           if (e.fields && Object.keys(e.fields).length) setFieldErrors(e.fields);
-          else setFormError(e.isOffline ? e.message : e.message || "We couldn't send your request. Please try again.");
+          else setFormError(e.isOffline ? e.message : e.message || tr("We couldn't send your request. Please try again."));
         },
       },
     );
@@ -83,33 +85,33 @@ export default function SpecialistRequestScreen({ navigation, route }: RootScree
 
   return (
     <ScreenContainer>
-      <AppHeader title={booking ? "Book specialist" : "Connect"} />
+      <AppHeader title={booking ? tr("Book specialist") : tr("Connect")} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <Text style={styles.name}>{s.name}</Text>
           <Text style={styles.role}>{s.role}</Text>
           {booking ? (
             <>
-              <Text style={styles.label}>Service</Text>
+              <Text style={styles.label}>{tr("Service")}</Text>
               {s.services.map((sv) => (
                 <RadioRow key={sv.id} label={sv.name} sublabel={`${sv.priceLabel ?? "Price on request"} · ${sv.durationLabel}`}
                   selected={serviceId === sv.id} onPress={() => setServiceId(sv.id)} bordered />
               ))}
               {show("serviceId") ? <Text style={styles.error}>{show("serviceId")}</Text> : null}
-              <DateField label="Preferred date" value={date} onChange={setDate}
+              <DateField label={tr("Preferred date")} value={date} onChange={setDate}
                 min={addDays(utcTodayIso(), 1)} max={addDays(utcTodayIso(), BOOKING_WINDOW_DAYS)}
                 minMessage="Choose a date after today" maxMessage="Choose a date within the next year"
                 error={show("preferredDate")} containerStyle={{ marginTop: 14 }} />
-              <DateField label="Preferred time" optional mode="time" value={time} onChange={setTime} clearable error={fieldErrors.preferredTime} />
+              <DateField label={tr("Preferred time")} optional mode="time" value={time} onChange={setTime} clearable error={fieldErrors.preferredTime} />
             </>
           ) : (
-            <Text style={styles.intro}>Send a message to introduce yourself and describe what you need. The specialist will reply with availability.</Text>
+            <Text style={styles.intro}>{tr("Send a message to introduce yourself and describe what you need. The specialist will reply with availability.")}</Text>
           )}
-          <TextField label={booking ? "Notes" : "Your message"} optional={booking} value={message} onChangeText={setMessage}
-            multiline maxLength={500} placeholder={booking ? "Anything the specialist should know" : "What do you need help with?"}
+          <TextField label={booking ? tr("Notes") : tr("Your message")} optional={booking} value={message} onChangeText={setMessage}
+            multiline maxLength={500} placeholder={booking ? tr("Anything the specialist should know") : tr("What do you need help with?")}
             error={show("message")} containerStyle={{ marginTop: 14 }} />
           {formError ? <Text style={styles.error} accessibilityLiveRegion="polite">{formError}</Text> : null}
-          <Button label={booking ? "Request booking" : "Send message"} variant="pill" onPress={submit}
+          <Button label={booking ? tr("Request booking") : tr("Send message")} variant="pill" onPress={submit}
             loading={send.isPending} disabled={send.isPending} style={{ marginTop: 18 }} />
         </ScrollView>
       </KeyboardAvoidingView>

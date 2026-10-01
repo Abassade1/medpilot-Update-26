@@ -8,6 +8,7 @@ import { RootScreenProps } from "../../navigation/types";
 import { images } from "../../data/assets";
 import { useSession } from "../../state/Session";
 import { useMe } from "../../api/queries";
+import { useT } from "../../i18n";
 
 interface ChecklistItem {
   index: number;
@@ -18,6 +19,7 @@ interface ChecklistItem {
 }
 
 export default function SetupChecklistScreen({ navigation }: RootScreenProps<"SetupChecklist">) {
+  const tr = useT();
   const { setup, refreshSetup } = useSession();
   const { data: me } = useMe();
   const passwordDone = setup?.passwordSet ?? false;
@@ -27,20 +29,20 @@ export default function SetupChecklistScreen({ navigation }: RootScreenProps<"Se
   useEffect(() => { void refreshSetup(); }, [refreshSetup]);
 
   const items: ChecklistItem[] = [
-    { index: 1, title: "Account created and verified", done: setup?.emailVerified ?? true },
+    { index: 1, title: tr("Account created and verified"), done: setup?.emailVerified ?? true },
     {
       index: 2,
-      title: passwordDone ? "Set Password" : "Create Password",
-      subtitle: "Create a unique password for your account",
+      title: passwordDone ? tr("Set Password") : tr("Create Password"),
+      subtitle: tr("Create a unique password for your account"),
       done: passwordDone,
-      duration: "1 min",
+      duration: tr("1 min"),
     },
     {
       index: 3,
-      title: "Medical History",
-      subtitle: "Compliance with medical privacy regulations",
+      title: tr("Medical History"),
+      subtitle: tr("Compliance with medical privacy regulations"),
       done: historyDone,
-      duration: "1 min",
+      duration: tr("1 min"),
     },
   ];
 
@@ -56,8 +58,8 @@ export default function SetupChecklistScreen({ navigation }: RootScreenProps<"Se
     <ScreenContainer>
       <View style={styles.body}>
         <Image source={images.illusRecords} style={styles.illustration} resizeMode="contain" />
-        <Text style={styles.hello}>Hey, {me?.profile?.firstName ?? "there"} 👋🏽</Text>
-        <Text style={styles.subtitle}>Let's finish setting up your account!</Text>
+        <Text style={styles.hello}>{tr("Hey, {name}", { name: me?.profile?.firstName ?? tr("there") })} 👋🏽</Text>
+        <Text style={styles.subtitle}>{tr("Let's finish setting up your account!")}</Text>
 
         <View style={styles.list}>
           {items.map((item) => (
@@ -83,10 +85,10 @@ export default function SetupChecklistScreen({ navigation }: RootScreenProps<"Se
         </View>
 
         <View style={styles.bottom}>
-          <Button label="Proceed" variant="pill" onPress={proceed} />
+          <Button label={tr("Proceed")} variant="pill" onPress={proceed} />
           {!allDone && passwordDone && (
             <TouchableOpacity style={styles.skip} onPress={() => navigation.replace("MainTabs")}>
-              <Text style={styles.skipText}>Skip</Text>
+              <Text style={styles.skipText}>{tr("Skip")}</Text>
             </TouchableOpacity>
           )}
         </View>

@@ -11,6 +11,7 @@ import { useMe, useReference } from "../../api/queries";
 import { ApiError } from "../../api/errors";
 import { RootNavigation } from "../../navigation/types";
 import type { ChatAction, ChatSuggestion } from "../../api/types";
+import { useT } from "../../i18n";
 
 type Stage = "home" | "symptoms" | "conditions";
 
@@ -24,6 +25,7 @@ const homeChips = [
 ];
 
 export default function AuxChatScreen() {
+  const tr = useT();
   const navigation = useNavigation<RootNavigation>();
   const route = useRoute<any>();
   const [stage, setStage] = useState<Stage>("home");
@@ -174,11 +176,11 @@ export default function AuxChatScreen() {
         <AppHeader onBack={() => setStage(stage === "conditions" ? "symptoms" : "home")} />
       ) : messages.length > 0 ? (
         <AppHeader
-          title="AUX"
+          title={tr("AUX")}
           showBack={false}
           right={
-            <TouchableOpacity onPress={newChat} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityRole="button" accessibilityLabel="Start a new conversation">
-              <Text style={styles.newChat}>New chat</Text>
+            <TouchableOpacity onPress={newChat} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityRole="button" accessibilityLabel={tr("Start a new conversation")}>
+              <Text style={styles.newChat}>{tr("New chat")}</Text>
             </TouchableOpacity>
           }
         />
@@ -201,13 +203,13 @@ export default function AuxChatScreen() {
                 {/* A row (not alignItems) so a long user message wraps inside its bubble instead of clipping. */}
                 <View style={{ flexDirection: "row", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
                   <View style={[styles.bubble, m.role === "user" ? styles.userBubble : styles.botBubble, m.urgent && styles.urgentBubble]}>
-                    {m.urgent ? <Text style={styles.urgentTag}>Urgent</Text> : null}
+                    {m.urgent ? <Text style={styles.urgentTag}>{tr("Urgent")}</Text> : null}
                     <Text style={[styles.bubbleText, m.role === "user" && { color: "#fff" }]}>{m.text}</Text>
                   </View>
                 </View>
                 {m.failed ? (
-                  <TouchableOpacity onPress={() => void send(m.text, m.id)} accessibilityRole="button" accessibilityLabel="Retry sending this message">
-                    <Text style={styles.retry}>Not sent. Tap to retry</Text>
+                  <TouchableOpacity onPress={() => void send(m.text, m.id)} accessibilityRole="button" accessibilityLabel={tr("Retry sending this message")}>
+                    <Text style={styles.retry}>{tr("Not sent. Tap to retry")}</Text>
                   </TouchableOpacity>
                 ) : null}
                 {m.role === "assistant" && m.suggestions?.length && i === messages.length - 1 ? (
@@ -224,11 +226,11 @@ export default function AuxChatScreen() {
             {replying ? (
               <View style={[styles.bubble, styles.botBubble, { flexDirection: "row", alignItems: "center" }]} accessibilityLiveRegion="polite">
                 <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={[styles.bubbleText, { marginLeft: 8, color: colors.secondaryText }]}>AUX is thinking…</Text>
+                <Text style={[styles.bubbleText, { marginLeft: 8, color: colors.secondaryText }]}>{tr("AUX is thinking…")}</Text>
               </View>
             ) : null}
             {error && !messages.some((m) => m.failed) ? <Text style={styles.error}>{error}</Text> : null}
-            <Text style={styles.disclaimer}>AUX gives general guidance, not a diagnosis. In an emergency call your local emergency number.</Text>
+            <Text style={styles.disclaimer}>{tr("AUX gives general guidance, not a diagnosis. In an emergency call your local emergency number.")}</Text>
           </>
         ) : (
         <>
@@ -236,21 +238,21 @@ export default function AuxChatScreen() {
           <LogoMark size={40} />
           {stage === "home" && (
             <>
-              <Text style={styles.title}>Hello {firstName} ,</Text>
-              <Text style={styles.subtitle}>How may I be of help today!</Text>
+              <Text style={styles.title}>{tr("Hello {name},", { name: firstName })}</Text>
+              <Text style={styles.subtitle}>{tr("How may I be of help today!")}</Text>
             </>
           )}
           {stage === "symptoms" && (
             <>
-              <Text style={styles.title}>Diagnosis!</Text>
-              <Text style={styles.subtitle}>What symptoms do you need help with?</Text>
+              <Text style={styles.title}>{tr("Diagnosis!")}</Text>
+              <Text style={styles.subtitle}>{tr("What symptoms do you need help with?")}</Text>
             </>
           )}
           {stage === "conditions" && (
             <>
               <Text style={styles.title}>{symptomLabel}!</Text>
               <Text style={styles.subtitle}>
-                Sorry to hear that! Do you have any of the following?
+                {tr("Sorry to hear that! Do you have any of the following?")}
               </Text>
             </>
           )}
@@ -270,7 +272,7 @@ export default function AuxChatScreen() {
           ].map((c) => (
             <TouchableOpacity key={c.label} style={styles.chip} onPress={() => (c.label === "Find a hospital" ? runAction("hospitals") : onHomeChip(c.label))}>
               <Text style={styles.chipIcon}>{c.icon}</Text>
-              <Text style={styles.chipLabel}>{c.label}</Text>
+              <Text style={styles.chipLabel}>{tr(c.label)}</Text>
             </TouchableOpacity>
           ))}
         {stage === "symptoms" &&
@@ -294,7 +296,7 @@ export default function AuxChatScreen() {
               onPress={() => void onCondition(c.code)}
             >
               <Text style={styles.chipIcon}>{c.emoji ?? "🩺"}</Text>
-              <Text style={styles.chipLabel}>{c.label}</Text>
+              <Text style={styles.chipLabel}>{tr(c.label)}</Text>
             </TouchableOpacity>
           ))}
       </View>

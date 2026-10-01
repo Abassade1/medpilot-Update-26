@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, Image, StyleSheet, StyleProp, ViewStyle } from "react-native";
 import { colors } from "../theme";
 import { images } from "../data/assets";
+import { useT } from "../i18n";
 
 interface Props {
   size?: number;
@@ -11,6 +12,7 @@ interface Props {
 
 /** MedPilot logo mark (blue head with sound bars) exported from the Figma file. */
 export default function LogoMark({ size = 48, showWordmark = false, style }: Props) {
+  const tr = useT();
   return (
     <View style={[{ alignItems: "center" }, style]}>
       <Image
@@ -20,7 +22,7 @@ export default function LogoMark({ size = 48, showWordmark = false, style }: Pro
       />
       {showWordmark && (
         <Text style={[styles.wordmark, { fontSize: size * 0.38, marginTop: size * 0.18 }]}>
-          MedPilot
+          {tr("MedPilot")}
         </Text>
       )}
     </View>

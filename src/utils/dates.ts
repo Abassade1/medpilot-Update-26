@@ -7,7 +7,21 @@
  * for the 12th would silently become the 11th or 13th.
  */
 
+import { currentLanguage, localeTag, t } from "../i18n";
+
 const pad = (n: number) => String(n).padStart(2, "0");
+
+/** Formats with the member's language. English keeps the app's fixed wording; others use the platform's locale data. */
+function intl(d: Date, opts: Intl.DateTimeFormatOptions): string | null {
+  const lang = currentLanguage();
+  if (lang === "en") return null;
+  try {
+    // Latin digits throughout, to match booking references, phone numbers and prices.
+    return new Intl.DateTimeFormat(lang === "ar" ? "ar-u-nu-latn" : localeTag(lang), opts).format(d);
+  } catch {
+    return null;
+  }
+}
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -17,6 +31,11 @@ const MONTHS_LONG = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
+
+/** "October" in the member's language, for month number 1-12. */
+function monthName(month1: number): string {
+  return intl(new Date(2000, month1 - 1, 1), { month: "long" }) ?? MONTHS_LONG[month1 - 1]!;
+}
 
 /** A Date's *local* calendar day as YYYY-MM-DD. */
 export function toIso(d: Date): string {
@@ -47,7 +66,7 @@ export function formatDate(iso: string | null | undefined): string {
   if (!iso) return "";
   const d = fromIso(iso.slice(0, 10));
   if (!d) return iso;
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  return intl(d, { day: "numeric", month: "short", year: "numeric" }) ?? `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 /** "12 October 2026" for places with room. */
@@ -55,7 +74,7 @@ export function formatDateLong(iso: string | null | undefined): string {
   if (!iso) return "";
   const d = fromIso(iso.slice(0, 10));
   if (!d) return iso;
-  return `${d.getDate()} ${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`;
+  return intl(d, { day: "numeric", month: "long", year: "numeric" }) ?? `${d.getDate()} ${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 /** "14:30" -> "2:30 PM". */
@@ -64,7 +83,8 @@ export function formatTime(hhmm: string | null | undefined): string {
   const m = /^(\d{2}):(\d{2})/.exec(hhmm);
   if (!m) return hhmm;
   const h = Number(m[1]);
-  return `${h % 12 === 0 ? 12 : h % 12}:${m[2]} ${h < 12 ? "AM" : "PM"}`;
+  const local = intl(new Date(2000, 0, 1, h, Number(m[2])), { hour: "numeric", minute: "2-digit" });
+  return local ?? `${h % 12 === 0 ? 12 : h % 12}:${m[2]} ${h < 12 ? "AM" : "PM"}`;
 }
 
 /** Today's date in UTC. The API decides "today" in UTC, so windows must too. */
@@ -90,20 +110,20 @@ export interface DateRule {
 /** Explains what is wrong with a complete YYYY-MM-DD, or undefined if it is fine. */
 export function validateIso(iso: string, rule: DateRule = {}): string | undefined {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
-  if (!m) return "Enter the date as YYYY-MM-DD";
+  if (!m) return t("Enter the date as YYYY-MM-DD");
   const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
-  if (mo < 1 || mo > 12) return "Month must be between 01 and 12";
-  if (!fromIso(iso)) return `${MONTHS_LONG[mo - 1]} ${y} doesn't have a day ${d}`;
-  if (rule.min && iso < rule.min) return rule.minMessage ?? `Choose ${formatDate(rule.min)} or later`;
-  if (rule.max && iso > rule.max) return rule.maxMessage ?? `Choose ${formatDate(rule.max)} or earlier`;
+  if (mo < 1 || mo > 12) return t("Month must be between 01 and 12");
+  if (!fromIso(iso)) return t("{month} {year} doesn't have a day {day}", { month: monthName(mo), year: y, day: d });
+  if (rule.min && iso < rule.min) return rule.minMessage ?? t("Choose {date} or later", { date: formatDate(rule.min) });
+  if (rule.max && iso > rule.max) return rule.maxMessage ?? t("Choose {date} or earlier", { date: formatDate(rule.max) });
   return undefined;
 }
 
 /** Explains what is wrong with an HH:MM, or undefined if it is fine (24-hour). */
 export function validateTime(hhmm: string): string | undefined {
   const m = /^(\d{2}):(\d{2})$/.exec(hhmm);
-  if (!m) return "Enter the time as HH:MM (24-hour)";
-  if (Number(m[1]) > 23 || Number(m[2]) > 59) return "That isn't a valid time of day";
+  if (!m) return t("Enter the time as HH:MM (24-hour)");
+  if (Number(m[1]) > 23 || Number(m[2]) > 59) return t("That isn't a valid time of day");
   return undefined;
 }
 
@@ -136,5 +156,5 @@ export function formatInstant(iso: string | null | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return `${formatDate(toIso(d))} at ${formatTime(toHHMM(d))}`;
+  return t("{date} at {time}", { date: formatDate(toIso(d)), time: formatTime(toHHMM(d)) });
 }

@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { rtlFlip, useT } from "../i18n";
 import { colors, spacing } from "../theme";
 
 interface Props {
@@ -13,8 +14,10 @@ interface Props {
   tint?: string;
 }
 
-export default function AppHeader({ title, onBack, right, showBack = true, backLabel = "Back", tint = colors.primary }: Props) {
+export default function AppHeader({ title, onBack, right, showBack = true, backLabel, tint = colors.primary }: Props) {
+  const tr = useT();
   const navigation = useNavigation();
+  const back = backLabel ?? tr("Back");
   return (
     <View style={styles.container}>
       <View style={styles.side}>
@@ -24,10 +27,10 @@ export default function AppHeader({ title, onBack, right, showBack = true, backL
             onPress={onBack ?? (() => navigation.goBack())}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             accessibilityRole="button"
-            accessibilityLabel={backLabel}
+            accessibilityLabel={back}
           >
-            <Ionicons name="chevron-back" size={22} color={tint} />
-            <Text style={[styles.backText, { color: tint }]}>{backLabel}</Text>
+            <Ionicons style={rtlFlip()} name="chevron-back" size={22} color={tint} />
+            <Text style={[styles.backText, { color: tint }]}>{back}</Text>
           </TouchableOpacity>
         )}
       </View>

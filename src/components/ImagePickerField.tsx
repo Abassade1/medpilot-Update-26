@@ -7,6 +7,7 @@ import { uploadToSignedUrl } from "../api/client";
 import { ApiError } from "../api/errors";
 import { ensurePermission } from "../utils/permissions";
 import { colors, radii } from "../theme";
+import { useT } from "../i18n";
 
 const MAX_BYTES = 8 * 1024 * 1024;
 
@@ -40,6 +41,7 @@ async function pickAndUpload(): Promise<string | null> {
 export function ImagePickerSlot({ label, value, onChange, onError }: {
   label: string; value: string | null; onChange: (url: string | null) => void; onError: (msg: string) => void;
 }) {
+  const tr = useT();
   const [busy, setBusy] = useState(false);
 
   const pick = useCallback(async () => {
@@ -57,8 +59,8 @@ export function ImagePickerSlot({ label, value, onChange, onError }: {
 
   return (
     <View style={styles.field}>
-      <Text style={styles.label}>{label} <Text style={styles.optional}>(Optional)</Text></Text>
-      <TouchableOpacity style={styles.slot} onPress={pick} disabled={busy} accessibilityRole="button" accessibilityLabel={value ? `Replace ${label}` : `Add ${label}`}>
+      <Text style={styles.label}>{label} <Text style={styles.optional}>{tr("(Optional)")}</Text></Text>
+      <TouchableOpacity style={styles.slot} onPress={pick} disabled={busy} accessibilityRole="button" accessibilityLabel={value ? tr("Replace {label}", { label }) : tr("Add {label}", { label })}>
         {busy ? (
           <ActivityIndicator color={colors.primary} />
         ) : value ? (
@@ -66,13 +68,13 @@ export function ImagePickerSlot({ label, value, onChange, onError }: {
         ) : (
           <View style={styles.empty}>
             <Ionicons name="image-outline" size={22} color={colors.tertiaryText} />
-            <Text style={styles.emptyText}>Tap to upload</Text>
+            <Text style={styles.emptyText}>{tr("Tap to upload")}</Text>
           </View>
         )}
       </TouchableOpacity>
       {value && !busy ? (
-        <TouchableOpacity onPress={() => onChange(null)} accessibilityRole="button" accessibilityLabel={`Remove ${label}`}>
-          <Text style={styles.remove}>Remove</Text>
+        <TouchableOpacity onPress={() => onChange(null)} accessibilityRole="button" accessibilityLabel={tr("Remove {label}", { label })}>
+          <Text style={styles.remove}>{tr("Remove")}</Text>
         </TouchableOpacity>
       ) : null}
     </View>
@@ -83,6 +85,7 @@ export function ImagePickerSlot({ label, value, onChange, onError }: {
 export function ImagePickerGallery({ label, values, onChange, onError, max = 8 }: {
   label: string; values: string[]; onChange: (urls: string[]) => void; onError: (msg: string) => void; max?: number;
 }) {
+  const tr = useT();
   const [busy, setBusy] = useState(false);
 
   const add = useCallback(async () => {
@@ -100,7 +103,7 @@ export function ImagePickerGallery({ label, values, onChange, onError, max = 8 }
 
   return (
     <View style={styles.field}>
-      <Text style={styles.label}>{label} <Text style={styles.optional}>(Optional, up to {max})</Text></Text>
+      <Text style={styles.label}>{label} <Text style={styles.optional}>{tr("(Optional, up to {max})", { max })}</Text></Text>
       <View style={styles.gallery}>
         {values.map((url) => (
           <View key={url} style={styles.thumbWrap}>
@@ -109,14 +112,14 @@ export function ImagePickerGallery({ label, values, onChange, onError, max = 8 }
               style={styles.thumbRemove}
               onPress={() => onChange(values.filter((v) => v !== url))}
               accessibilityRole="button"
-              accessibilityLabel="Remove this photo"
+              accessibilityLabel={tr("Remove this photo")}
             >
               <Ionicons name="close" size={14} color="#fff" />
             </TouchableOpacity>
           </View>
         ))}
         {values.length < max ? (
-          <TouchableOpacity style={[styles.thumb, styles.addThumb]} onPress={add} disabled={busy} accessibilityRole="button" accessibilityLabel="Add a photo">
+          <TouchableOpacity style={[styles.thumb, styles.addThumb]} onPress={add} disabled={busy} accessibilityRole="button" accessibilityLabel={tr("Add a photo")}>
             {busy ? <ActivityIndicator color={colors.primary} /> : <Ionicons name="add" size={22} color={colors.primary} />}
           </TouchableOpacity>
         ) : null}

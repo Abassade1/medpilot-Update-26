@@ -11,8 +11,10 @@ import { ApiError } from "../../api/errors";
 import { validatePassword } from "../../utils/validation";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function ChangePasswordScreen({ navigation }: RootScreenProps<"ChangePassword">) {
+  const tr = useT();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -37,7 +39,7 @@ export default function ChangePasswordScreen({ navigation }: RootScreenProps<"Ch
       // Changing the password revokes other sessions; the API returns fresh tokens for this one.
       const { tokens } = await endpoints.me.setPassword(next, current);
       await saveTokens(tokens);
-      setToast("Password updated");
+      setToast(tr("Password updated"));
       setTimeout(() => navigation.goBack(), 900);
     } catch (e) {
       const err = e as ApiError;
@@ -50,20 +52,20 @@ export default function ChangePasswordScreen({ navigation }: RootScreenProps<"Ch
 
   return (
     <ScreenContainer>
-      <AppHeader title="Change password" />
+      <AppHeader title={tr("Change password")} />
       <ToastBanner visible={!!toast} message={toast ?? ""} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Text style={styles.intro}>Other devices will be signed out when you change your password.</Text>
-          <TextField label="Current password" secure value={current} onChangeText={(t) => { setCurrent(t); setServerError(null); }}
+          <Text style={styles.intro}>{tr("Other devices will be signed out when you change your password.")}</Text>
+          <TextField label={tr("Current password")} secure value={current} onChangeText={(t) => { setCurrent(t); setServerError(null); }}
             onBlur={() => setTouched((t) => ({ ...t, current: true }))} error={shown("current")} textContentType="password" />
-          <TextField label="New password" secure value={next} onChangeText={setNext}
+          <TextField label={tr("New password")} secure value={next} onChangeText={setNext}
             onBlur={() => setTouched((t) => ({ ...t, next: true }))} error={shown("next")} textContentType="newPassword" />
-          <TextField label="Confirm new password" secure value={confirm} onChangeText={setConfirm}
+          <TextField label={tr("Confirm new password")} secure value={confirm} onChangeText={setConfirm}
             onBlur={() => setTouched((t) => ({ ...t, confirm: true }))} error={shown("confirm")} textContentType="newPassword" />
           <View style={{ marginTop: 18 }}>
-            <Button label="Update password" variant="pill" onPress={() => void submit()} loading={saving} disabled={saving} />
-            <Button label="Cancel" variant="outlinePill" onPress={() => navigation.goBack()} style={{ marginTop: 10 }} />
+            <Button label={tr("Update password")} variant="pill" onPress={() => void submit()} loading={saving} disabled={saving} />
+            <Button label={tr("Cancel")} variant="outlinePill" onPress={() => navigation.goBack()} style={{ marginTop: 10 }} />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

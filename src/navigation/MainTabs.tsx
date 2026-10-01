@@ -7,6 +7,7 @@ import AuxChatScreen from "../screens/aux/AuxChatScreen";
 import AppointmentsScreen from "../screens/appointments/AppointmentsScreen";
 import { images } from "../data/assets";
 import { colors } from "../theme";
+import { useT } from "../i18n";
 
 function TabIcon({ source, color }: { source: ImageSourcePropType; color: string }) {
   return (
@@ -28,6 +29,7 @@ export type MainTabsParamList = {
 const Tab = createBottomTabNavigator<MainTabsParamList>();
 
 export default function MainTabs() {
+  const tr = useT();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -46,7 +48,7 @@ export default function MainTabs() {
         name="HomeTab"
         component={HomeScreen}
         options={{
-          title: "Home",
+          title: tr("Home"),
           tabBarIcon: ({ color }) => <TabIcon source={images.tabHome} color={color} />,
         }}
       />
@@ -54,7 +56,7 @@ export default function MainTabs() {
         name="ActivitiesTab"
         component={ActivitiesScreen}
         options={{
-          title: "Activities",
+          title: tr("Activities"),
           tabBarIcon: ({ color }) => <TabIcon source={images.tabActivities} color={color} />,
         }}
       />
@@ -62,7 +64,7 @@ export default function MainTabs() {
         name="AuxTab"
         component={AuxChatScreen}
         options={{
-          title: "AUX",
+          title: tr("AUX"),
           tabBarIcon: ({ color }) => <TabIcon source={images.tabAux} color={color} />,
         }}
       />
@@ -70,7 +72,7 @@ export default function MainTabs() {
         name="AppointmentsTab"
         component={AppointmentsScreen}
         options={{
-          title: "Appointments",
+          title: tr("Appointments"),
           tabBarIcon: ({ color }) => <TabIcon source={images.tabAppointments} color={color} />,
         }}
       />

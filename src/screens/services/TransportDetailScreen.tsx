@@ -16,8 +16,10 @@ import ListStateView from "../../components/ListStateView";
 import type { AircraftDto } from "../../api/types";
 import { colors, radii, shadows, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function TransportDetailScreen({ navigation, route }: RootScreenProps<"TransportDetail">) {
+  const tr = useT();
   const query = useProvider(route.params.providerId);
   const provider = query.data;
   const [selectedAircraft, setSelectedAircraft] = useState<AircraftDto | null>(null);
@@ -32,7 +34,7 @@ export default function TransportDetailScreen({ navigation, route }: RootScreenP
         query.isError ? (
           <ListStateView kind="error" onRetry={() => void query.refetch()} />
         ) : (
-          <ListStateView kind="loading" message="Loading provider…" />
+          <ListStateView kind="loading" message={tr("Loading provider…")} />
         )
       ) : (
       <>
@@ -48,13 +50,13 @@ export default function TransportDetailScreen({ navigation, route }: RootScreenP
 
           <PlaceBadges name={provider.name} location={provider.location} rating={provider.rating} verified={provider.verified} />
 
-          <Text style={styles.sectionTitle}>About</Text>
+          <Text style={styles.sectionTitle}>{tr("About")}</Text>
           <ExpandableText text={provider.description} style={styles.about} />
 
-          <Text style={styles.sectionTitle}>Route</Text>
+          <Text style={styles.sectionTitle}>{tr("Route")}</Text>
           <Text style={styles.routes}>{provider.routes}</Text>
 
-          <Text style={styles.sectionTitle}>Aircraft in Service</Text>
+          <Text style={styles.sectionTitle}>{tr("Aircraft in Service")}</Text>
         </View>
 
         <ScrollView
@@ -79,7 +81,7 @@ export default function TransportDetailScreen({ navigation, route }: RootScreenP
         </ScrollView>
 
         <View style={styles.body}>
-          <Text style={styles.sectionTitle}>Reviews</Text>
+          <Text style={styles.sectionTitle}>{tr("Reviews")}</Text>
           <View style={{ marginTop: 10 }}>
             <ReviewsList targetType="transport_provider" targetId={provider.id} />
           </View>
@@ -88,7 +90,7 @@ export default function TransportDetailScreen({ navigation, route }: RootScreenP
 
       <View style={styles.footer}>
         <Button
-          label="Book Appointment"
+          label={tr("Book Appointment")}
           variant="pill"
           onPress={() => navigation.navigate("TravelBooking", { providerId: provider.id })}
           style={styles.cta}
@@ -104,29 +106,29 @@ export default function TransportDetailScreen({ navigation, route }: RootScreenP
               <Image source={assetSource(selectedAircraft.heroAsset)} style={styles.sheetThumb} />
               <View style={{ marginLeft: 14 }}>
                 <Text style={styles.sheetName}>{selectedAircraft.name}</Text>
-                <Text style={styles.sheetAvailable}>Available</Text>
+                <Text style={styles.sheetAvailable}>{tr("Available")}</Text>
               </View>
             </View>
 
             <View style={styles.pricePill}>
-              <Text style={styles.priceFrom}>From </Text>
+              <Text style={styles.priceFrom}>{tr("From")} </Text>
               <Text style={styles.priceValue}>{selectedAircraft.priceLabel}</Text>
             </View>
 
-            <InfoRow label="Capacity:" value="1 intensive Care Patient" subValue={selectedAircraft.capacityNote ?? undefined} />
+            <InfoRow label={tr("Capacity:")} value="1 intensive Care Patient" subValue={selectedAircraft.capacityNote ?? undefined} />
             <InfoRow
-              label="Medical Crew:"
+              label={tr("Medical Crew:")}
               value={selectedAircraft.medicalCrew ?? "—"}
               subLabel={selectedAircraft.paramedic ?? undefined}
               subValue={selectedAircraft.medicalCrewNote ?? undefined}
             />
             <InfoRow
-              label="Max Cruising Altitude:"
+              label={tr("Max Cruising Altitude:")}
               value={selectedAircraft.maxAltitude ?? "—"}
               subValue={selectedAircraft.maxAltitudeFt ?? undefined}
             />
 
-            <Text style={styles.facilitiesTitle}>Facilities</Text>
+            <Text style={styles.facilitiesTitle}>{tr("Facilities")}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
               {selectedAircraft.facilities.map((f) => (
                 <View key={f.label} style={styles.facilityCard}>

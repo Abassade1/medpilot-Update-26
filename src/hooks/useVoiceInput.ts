@@ -7,6 +7,7 @@ import {
   useAudioRecorder,
 } from "expo-audio";
 import { ensurePermission } from "../utils/permissions";
+import { t } from "../i18n";
 
 const MIC_REASON = "MedPilot uses the microphone so you can speak to the AUX assistant.";
 
@@ -47,7 +48,7 @@ export function useVoiceInput(onCaptured?: (uri: string) => void) {
       recorder.record();
       if (mounted.current) setRecording(true);
     } catch {
-      Alert.alert("Microphone unavailable", "Recording isn't available on this device.");
+      Alert.alert(t("Microphone unavailable"), t("Recording isn't available on this device."));
     }
   }, [recorder]);
 
@@ -56,7 +57,7 @@ export function useVoiceInput(onCaptured?: (uri: string) => void) {
       await recorder.stop();
       if (recorder.uri) onCaptured?.(recorder.uri);
     } catch {
-      Alert.alert("Recording failed", "We couldn't save that recording. Please try again.");
+      Alert.alert(t("Recording failed"), t("We couldn't save that recording. Please try again."));
     } finally {
       if (mounted.current) setRecording(false);
       await setAudioModeAsync({ allowsRecording: false }).catch(() => {});

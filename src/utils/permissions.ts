@@ -1,4 +1,5 @@
 import { Alert, Linking, Platform } from "react-native";
+import { t } from "../i18n";
 
 /**
  * Shape shared by every Expo permission hook response we use.
@@ -45,24 +46,24 @@ export async function ensurePermission({
     if (next.canAskAgain === false) promptOpenSettings(label, reason);
     else {
       Alert.alert(
-        `${label} access needed`,
-        reason,
-        [{ text: "OK" }],
+        t("{label} access needed", { label: t(label) }),
+        t(reason),
+        [{ text: t("OK") }],
         { cancelable: true }
       );
     }
     return false;
   } catch {
-    Alert.alert(`${label} unavailable`, `${label} isn't available on this device.`);
+    Alert.alert(t("{label} unavailable", { label: t(label) }), t("{label} isn't available on this device.", { label: t(label) }));
     return false;
   }
 }
 
 function promptOpenSettings(label: string, reason: string) {
-  Alert.alert(`${label} access is off`, `${reason}\n\nYou can turn it on in Settings.`, [
-    { text: "Not now", style: "cancel" },
+  Alert.alert(t("{label} access is off", { label: t(label) }), `${t(reason)}\n\n${t("You can turn it on in Settings.")}`, [
+    { text: t("Not now"), style: "cancel" },
     {
-      text: "Open Settings",
+      text: t("Open Settings"),
       onPress: () => {
         if (Platform.OS === "ios") Linking.openURL("app-settings:");
         else Linking.openSettings();

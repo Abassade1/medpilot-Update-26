@@ -19,8 +19,10 @@ import ListStateView from "../../components/ListStateView";
 import { images } from "../../data/assets";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function HospitalDetailScreen({ navigation, route }: RootScreenProps<"HospitalDetail">) {
+  const tr = useT();
   const query = useHospital(route.params.hospitalId);
   const hospital = query.data;
   const [expanded, setExpanded] = useState(false);
@@ -31,13 +33,13 @@ export default function HospitalDetailScreen({ navigation, route }: RootScreenPr
   return (
     <ScreenContainer>
       <AppHeader
-        title="Hospital"
+        title={tr("Hospital")}
       />
       {!hospital ? (
         query.isError ? (
           <ListStateView kind="error" onRetry={() => void query.refetch()} />
         ) : (
-          <ListStateView kind="loading" message="Loading hospital…" />
+          <ListStateView kind="loading" message={tr("Loading hospital…")} />
         )
       ) : (
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
@@ -47,28 +49,28 @@ export default function HospitalDetailScreen({ navigation, route }: RootScreenPr
             <View style={{ flex: 1, marginLeft: 14 }}>
               <Text style={styles.name}>{hospital.name}</Text>
               <Text style={styles.tags}>
-                {hospital.specialty.split(" ")[0]} | {hospital.country === "USA" ? "United States" : hospital.country}
+                {hospital.specialty.split(" ")[0]} | {hospital.country === "USA" ? tr("United States") : hospital.country}
               </Text>
             </View>
           </View>
 
           <PlaceBadges name={hospital.name} location={hospital.country} rating={hospital.rating} />
 
-          <Text style={styles.sectionTitle}>About us</Text>
+          <Text style={styles.sectionTitle}>{tr("About us")}</Text>
           <ExpandableText text={hospital.about} style={styles.about} />
 
           <View style={{ marginTop: 14 }}>
-            <InfoRow label="Care system" value={hospital.careSystem} />
+            <InfoRow label={tr("Care system")} value={hospital.careSystem} />
             <InfoRow
-              label="Open Hours"
+              label={tr("Open Hours")}
               value={hospital.openHours}
               valueColor={colors.success}
               subValue={hospital.openHoursNote ?? undefined}
             />
-            <InfoRow label="Helipad:" value={hospital.helipadCode ?? "—"} />
+            <InfoRow label={tr("Helipad:")} value={hospital.helipadCode ?? "—"} />
           </View>
 
-          <Text style={[styles.sectionTitle, { marginTop: 18 }]}>Specialists</Text>
+          <Text style={[styles.sectionTitle, { marginTop: 18 }]}>{tr("Specialists")}</Text>
         </View>
 
         <ScrollView
@@ -82,14 +84,14 @@ export default function HospitalDetailScreen({ navigation, route }: RootScreenPr
         </ScrollView>
 
         <View style={styles.body}>
-          <Text style={styles.sectionTitle}>Reviews</Text>
+          <Text style={styles.sectionTitle}>{tr("Reviews")}</Text>
           <View style={{ marginTop: 10 }}>
             <ReviewsList targetType="hospital" targetId={hospital.id} />
           </View>
         </View>
 
         <Button
-          label="Book Appointment"
+          label={tr("Book Appointment")}
           disabled={!hospital.bookable}
           onPress={() => navigation.navigate("BookAppointment", { hospitalId: hospital.id })}
           style={styles.cta}
@@ -105,14 +107,14 @@ export default function HospitalDetailScreen({ navigation, route }: RootScreenPr
               <View style={{ marginLeft: 14 }}>
                 <Text style={styles.specName}>{selectedSpecialist.name}</Text>
                 <Text style={styles.specAvailable}>
-                  {selectedSpecialist.available ? "Available" : "Unavailable"}
+                  {selectedSpecialist.available ? tr("Available") : tr("Unavailable")}
                 </Text>
               </View>
             </View>
             {selectedSpecialist.certified ? (
               <View style={styles.chipRow}>
                 <Chip
-                  label="Certified"
+                  label={tr("Certified")}
                   elevated
                   icon={<MaterialCommunityIcons name="shield-check" size={16} color={colors.success} />}
                 />
@@ -120,18 +122,18 @@ export default function HospitalDetailScreen({ navigation, route }: RootScreenPr
             ) : null}
             <View style={{ marginTop: 8 }}>
               <InfoRow
-                label="Specialization:"
+                label={tr("Specialization:")}
                 value={selectedSpecialist.specialization ?? "—"}
                 subValue={selectedSpecialist.experience ?? undefined}
               />
               <InfoRow
-                label="Operation Country:"
+                label={tr("Operation Country:")}
                 value={selectedSpecialist.operationCountry ?? "—"}
                 subValue={selectedSpecialist.operationCountryNote ?? undefined}
               />
-              <InfoRow label="Language Spoken:" value={selectedSpecialist.languages ?? "—"} />
+              <InfoRow label={tr("Language Spoken:")} value={selectedSpecialist.languages ?? "—"} />
             </View>
-            <Text style={styles.expertiseTitle}>Key Areas of Expertise:</Text>
+            <Text style={styles.expertiseTitle}>{tr("Key Areas of Expertise:")}</Text>
             {selectedSpecialist.expertise.map((e) => (
               <View key={e} style={styles.bulletRow}>
                 <Text style={styles.bullet}>•</Text>

@@ -7,8 +7,10 @@ import { endpoints } from "../../api/endpoints";
 import { useSession } from "../../state/Session";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function VerifyEmailScreen({ navigation }: RootScreenProps<"VerifyEmail">) {
+  const tr = useT();
   const { refreshSetup } = useSession();
   const [busy, setBusy] = useState(false);
 
@@ -36,13 +38,12 @@ export default function VerifyEmailScreen({ navigation }: RootScreenProps<"Verif
     <ScreenContainer>
       <View style={styles.body}>
         <Image source={images.illusMailbox} style={styles.illustration} resizeMode="contain" />
-        <Text style={styles.title}>Verify your email</Text>
+        <Text style={styles.title}>{tr("Verify your email")}</Text>
         <Text style={styles.subtitle}>
-          We sent verification mail to your contacts.{"\n"}Please tap the link inside that mail to
-          continue!
+          {tr("We sent verification mail to your contacts.")}{"\n"}{tr("Please tap the link inside that mail to continue!")}
         </Text>
         <Button
-          label="Go to Inbox"
+          label={tr("Go to Inbox")}
           variant="pill"
           loading={busy}
           onPress={proceed}

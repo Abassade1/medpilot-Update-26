@@ -8,6 +8,7 @@ import { uploadToSignedUrl } from "../../api/client";
 import { ApiError } from "../../api/errors";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 /**
  * Uploads the captured meal photo, then polls the analysis until the server
@@ -18,6 +19,7 @@ export default function MealAnalyzingScreen({
   navigation,
   route,
 }: RootScreenProps<"MealAnalyzing">) {
+  const tr = useT();
   const { imageUri, mimeType } = route.params;
   const [progress, setProgress] = useState(0.08);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +56,7 @@ export default function MealAnalyzingScreen({
       if (cancelled.current) return;
 
       if (meal.status !== "complete") {
-        setError(meal.failureReason ?? "We couldn't analyse that photo. Try another shot.");
+        setError(meal.failureReason ?? tr("We couldn't analyse that photo. Try another shot."));
         return;
       }
       setProgress(1);
@@ -66,10 +68,10 @@ export default function MealAnalyzingScreen({
       const e = err as ApiError;
       setError(
         e.isOffline
-          ? "You appear to be offline. Check your connection and try again."
+          ? tr("You appear to be offline. Check your connection and try again.")
           : e.isQuota
-          ? "You've used all the meal analyses on your current plan. Upgrade for unlimited scans."
-          : e.message || "We couldn't analyse that photo. Please try again."
+          ? tr("You've used all the meal analyses on your current plan. Upgrade for unlimited scans.")
+          : e.message || tr("We couldn't analyse that photo. Please try again.")
       );
     }
   }, [imageUri, mimeType, navigation]);
@@ -90,30 +92,30 @@ export default function MealAnalyzingScreen({
         </View>
         {error ? (
           <>
-            <Text style={styles.title}>Analysis failed</Text>
+            <Text style={styles.title}>{tr("Analysis failed")}</Text>
             <Text style={styles.errorText}>{error}</Text>
           </>
         ) : (
           <>
-            <Text style={styles.title}>You got good taste!</Text>
+            <Text style={styles.title}>{tr("You got good taste!")}</Text>
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
             </View>
-            <Text style={styles.progressLabel}>{Math.round(progress * 100)}% Analysing...</Text>
+            <Text style={styles.progressLabel}>{tr("{n}% Analysing...", { n: Math.round(progress * 100) })}</Text>
           </>
         )}
       </View>
       <View style={styles.bottom}>
         {error ? (
           <Button
-            label="Try again"
+            label={tr("Try again")}
             variant="pill"
             onPress={() => setAttempt((a) => a + 1)}
             style={{ marginBottom: 12 }}
           />
         ) : null}
         <Button
-          label="Cancel"
+          label={tr("Cancel")}
           variant="outlinePill"
           onPress={() => {
             cancelled.current = true;

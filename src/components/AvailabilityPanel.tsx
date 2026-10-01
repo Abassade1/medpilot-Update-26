@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radii } from "../theme";
 import type { AvailabilityDto } from "../api/types";
+import { useT } from "../i18n";
 
 interface Props {
   place: string;
@@ -18,11 +19,12 @@ interface Props {
  * would change the answer.
  */
 export default function AvailabilityPanel({ place, loading, error, data, onRetry }: Props) {
+  const tr = useT();
   if (loading) {
     return (
       <View style={[styles.box, styles.neutral]}>
         <ActivityIndicator size="small" color={colors.primary} />
-        <Text style={styles.text}>Checking services near {place}…</Text>
+        <Text style={styles.text}>{tr("Checking services near {place}…", { place })}</Text>
       </View>
     );
   }
@@ -31,7 +33,7 @@ export default function AvailabilityPanel({ place, loading, error, data, onRetry
       <View style={[styles.box, styles.bad]}>
         <Ionicons name="cloud-offline-outline" size={18} color={colors.error} />
         <Text style={[styles.text, { color: colors.error }]} onPress={onRetry}>
-          Couldn't check availability. Tap to try again.
+          {tr("Couldn't check availability. Tap to try again.")}
         </Text>
       </View>
     );
@@ -40,7 +42,7 @@ export default function AvailabilityPanel({ place, loading, error, data, onRetry
   const partial = data.services.some((s) => s.available && s.coverage === "partial");
   return (
     <View style={styles.wrap} accessibilityLiveRegion="polite">
-      <Text style={styles.heading}>Available at {place}</Text>
+      <Text style={styles.heading}>{tr("Available at {place}", { place })}</Text>
       {data.services.map((s) => (
         <View key={s.category} style={styles.row}>
           <Ionicons
@@ -50,14 +52,14 @@ export default function AvailabilityPanel({ place, loading, error, data, onRetry
           />
           <Text style={[styles.label, !s.available && { color: colors.secondaryText }]}>{s.label}</Text>
           <Text style={[styles.state, { color: s.available ? (s.coverage === "partial" ? "#C77700" : "#1B7A46") : colors.secondaryText }]}>
-            {!s.available ? "Not available" : s.coverage === "partial" ? "Part of this area" : "Available"}
+            {!s.available ? tr("Not available") : s.coverage === "partial" ? tr("Part of this area") : tr("Available")}
           </Text>
         </View>
       ))}
       {!data.anyAvailable ? (
-        <Text style={styles.foot}>No transport service covers this place yet. Try a nearby city or a different province/state.</Text>
+        <Text style={styles.foot}>{tr("No transport service covers this place yet. Try a nearby city or a different province/state.")}</Text>
       ) : partial ? (
-        <Text style={styles.foot}>Some services only cover part of this area. Choose a city to confirm availability.</Text>
+        <Text style={styles.foot}>{tr("Some services only cover part of this area. Choose a city to confirm availability.")}</Text>
       ) : null}
     </View>
   );

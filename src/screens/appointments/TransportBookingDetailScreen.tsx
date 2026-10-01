@@ -13,6 +13,7 @@ import { ApiError } from "../../api/errors";
 import { formatDate, formatInstant, formatTime } from "../../utils/dates";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 const NOTE: Record<string, { icon: React.ComponentProps<typeof Ionicons>["name"]; text: string; tone: "info" | "ok" | "bad" }> = {
   pending: { icon: "time-outline", text: "Waiting for the dispatch team to confirm. We'll notify you as soon as they do.", tone: "info" },
@@ -26,6 +27,7 @@ const place = (p: { city?: string | null; region: string | null; country: string
 const site = (type: string, code: string | null) => `${type === "airport" ? "Airport" : "Helipad"}${code ? ` · ${code}` : ""}`;
 
 export default function TransportBookingDetailScreen({ navigation, route }: RootScreenProps<"TransportBookingDetail">) {
+  const tr = useT();
   const { transportId } = route.params;
   const query = useTransportBooking(transportId);
   const cancel = useCancelTransport(transportId);
@@ -35,16 +37,16 @@ export default function TransportBookingDetailScreen({ navigation, route }: Root
     const notFound = (query.error as ApiError | null)?.status === 404;
     return (
       <ScreenContainer>
-        <AppHeader title="Transport" />
+        <AppHeader title={tr("Transport")} />
         {query.isError ? (
           <ListStateView
             kind="error"
-            title={notFound ? "Transport not found" : undefined}
-            message={notFound ? "It may have been removed." : "We couldn't load this transport booking."}
+            title={notFound ? tr("Transport not found") : undefined}
+            message={notFound ? tr("It may have been removed.") : tr("We couldn't load this transport booking.")}
             onRetry={notFound ? undefined : () => void query.refetch()}
           />
         ) : (
-          <ListStateView kind="loading" message="Loading transport…" />
+          <ListStateView kind="loading" message={tr("Loading transport…")} />
         )}
       </ScreenContainer>
     );
@@ -55,23 +57,23 @@ export default function TransportBookingDetailScreen({ navigation, route }: Root
 
   const confirmCancel = () =>
     Alert.alert(
-      "Cancel this transport?",
+      tr("Cancel this transport?"),
       t.status === "confirmed"
-        ? "The dispatch team has already confirmed this transport. Cancelling releases the aircraft or vehicle and can't be undone."
-        : "This withdraws your request. You can request transport again at any time.",
+        ? tr("The dispatch team has already confirmed this transport. Cancelling releases the aircraft or vehicle and can't be undone.")
+        : tr("This withdraws your request. You can request transport again at any time."),
       [
-        { text: "Keep transport", style: "cancel" },
+        { text: tr("Keep transport"), style: "cancel" },
         {
-          text: "Cancel transport",
+          text: tr("Cancel transport"),
           style: "destructive",
           onPress: () =>
             cancel.mutate(undefined, {
               onError: (err) =>
                 Alert.alert(
-                  "Couldn't cancel",
+                  tr("Couldn't cancel"),
                   (err as ApiError).isOffline
-                    ? "You appear to be offline. Check your connection and try again."
-                    : (err as ApiError).message || "Something went wrong. Please try again.",
+                    ? tr("You appear to be offline. Check your connection and try again.")
+                    : (err as ApiError).message || tr("Something went wrong. Please try again."),
                 ),
             }),
         },
@@ -80,7 +82,7 @@ export default function TransportBookingDetailScreen({ navigation, route }: Root
 
   return (
     <ScreenContainer>
-      <AppHeader title="Transport" />
+      <AppHeader title={tr("Transport")} />
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -103,63 +105,63 @@ export default function TransportBookingDetailScreen({ navigation, route }: Root
         <View style={[styles.note, { backgroundColor: note.tone === "ok" ? colors.successBg : note.tone === "bad" ? colors.errorBg : colors.primaryLight }]} accessibilityLiveRegion="polite">
           <Ionicons name={note.icon} size={18} color={tone} />
           <Text style={[styles.noteText, { color: tone }]}>
-            {t.status === "cancelled" && t.cancelledReason ? `${note.text} ${t.cancelledReason}.` : note.text}
+            {t.status === "cancelled" && t.cancelledReason ? `${tr(note.text)} ${t.cancelledReason}.` : tr(note.text)}
           </Text>
         </View>
 
-        <Text style={styles.section}>Route</Text>
+        <Text style={styles.section}>{tr("Route")}</Text>
         <View style={styles.card}>
-          <Row label="Pickup" value={place(t.pickup)} hint={site(t.pickup.siteType, t.pickup.siteCode)} />
-          {t.pickup.address ? <Row label="Address" value={t.pickup.address} /> : null}
-          <Row label="Pickup date" value={formatDate(t.pickup.date)} hint={t.pickup.time ? formatTime(t.pickup.time) : "Time to be arranged"} />
-          <Row label="Drop-off" value={place(t.dropoff)} hint={site(t.dropoff.siteType, t.dropoff.siteCode)} />
-          <Row label="Return trip" value={t.returnTrip ? "Yes" : "No"} />
-          {t.aircraft ? <Row label="Aircraft" value={t.aircraft} /> : null}
-          {t.flightNumber ? <Row label="Flight number" value={t.flightNumber} /> : null}
-          {t.departAt ? <Row label="Departure" value={formatInstant(t.departAt)} /> : null}
+          <Row label={tr("Pickup")} value={place(t.pickup)} hint={site(t.pickup.siteType, t.pickup.siteCode)} />
+          {t.pickup.address ? <Row label={tr("Address")} value={t.pickup.address} /> : null}
+          <Row label={tr("Pickup date")} value={formatDate(t.pickup.date)} hint={t.pickup.time ? formatTime(t.pickup.time) : tr("Time to be arranged")} />
+          <Row label={tr("Drop-off")} value={place(t.dropoff)} hint={site(t.dropoff.siteType, t.dropoff.siteCode)} />
+          <Row label={tr("Return trip")} value={t.returnTrip ? "Yes" : "No"} />
+          {t.aircraft ? <Row label={tr("Aircraft")} value={t.aircraft} /> : null}
+          {t.flightNumber ? <Row label={tr("Flight number")} value={t.flightNumber} /> : null}
+          {t.departAt ? <Row label={tr("Departure")} value={formatInstant(t.departAt)} /> : null}
         </View>
 
         {t.purposes.length ? (
           <>
-            <Text style={styles.section}>Purpose</Text>
+            <Text style={styles.section}>{tr("Purpose")}</Text>
             <View style={styles.card}><Text style={styles.list}>{t.purposes.join(" · ")}</Text></View>
           </>
         ) : null}
         {t.needs.length ? (
           <>
-            <Text style={styles.section}>Special medical needs</Text>
+            <Text style={styles.section}>{tr("Special medical needs")}</Text>
             <View style={styles.card}><Text style={styles.list}>{t.needs.join(" · ")}</Text></View>
           </>
         ) : null}
         {t.emergencyContact ? (
           <>
-            <Text style={styles.section}>Emergency contact</Text>
+            <Text style={styles.section}>{tr("Emergency contact")}</Text>
             <View style={styles.card}>
-              <Row label="Name" value={t.emergencyContact.name} hint={t.emergencyContact.relationship.charAt(0).toUpperCase() + t.emergencyContact.relationship.slice(1)} />
-              <Row label="Phone" value={t.emergencyContact.phone} />
-              <Row label="Accompanying you" value={t.emergencyContact.accompanies ? "Yes" : "No"} />
+              <Row label={tr("Name")} value={t.emergencyContact.name} hint={t.emergencyContact.relationship.charAt(0).toUpperCase() + t.emergencyContact.relationship.slice(1)} />
+              <Row label={tr("Phone")} value={t.emergencyContact.phone} />
+              <Row label={tr("Accompanying you")} value={t.emergencyContact.accompanies ? "Yes" : "No"} />
             </View>
           </>
         ) : null}
 
         <View style={{ marginTop: 22 }}>
           {t.canCancel ? (
-            <Button label="Cancel transport" variant="outlinePill" tone="danger" onPress={confirmCancel} loading={cancel.isPending} disabled={cancel.isPending} />
+            <Button label={tr("Cancel transport")} variant="outlinePill" tone="danger" onPress={confirmCancel} loading={cancel.isPending} disabled={cancel.isPending} />
           ) : null}
           {t.status === "cancelled" ? (
-            <Button label="Request transport again" variant="pill" onPress={() => navigation.navigate("MedicalTransport")} />
+            <Button label={tr("Request transport again")} variant="pill" onPress={() => navigation.navigate("MedicalTransport")} />
           ) : null}
           {t.canReview && !t.reviewed ? (
             <Button
-              label="Rate this transport"
+              label={tr("Rate this transport")}
               variant="pill"
               onPress={() => navigation.navigate("RateVisit", { targetType: "transport_provider", requestId: t.id, targetName: t.provider.name })}
               style={{ marginTop: 10 }}
             />
           ) : null}
-          {t.reviewed ? <Text style={styles.reviewed}>You've rated this transport. Thank you!</Text> : null}
+          {t.reviewed ? <Text style={styles.reviewed}>{tr("You've rated this transport. Thank you!")}</Text> : null}
           <Button
-            label="Back to appointments"
+            label={tr("Back to appointments")}
             variant="outlinePill"
             onPress={() => navigation.navigate("MainTabs", { screen: "AppointmentsTab" } as never)}
             style={{ marginTop: 10 }}

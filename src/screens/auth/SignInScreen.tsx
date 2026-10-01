@@ -19,13 +19,15 @@ import { endpoints } from "../../api/endpoints";
 import { ApiError } from "../../api/errors";
 import { useSession } from "../../state/Session";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function SignInScreen({ navigation }: RootScreenProps<"SignIn">) {
+  const tr = useT();
   const { adopt } = useSession();
   // Social sign-in has no backend yet. It must not pretend to work (it used to open the app with no
   // session), so it says so and points to email.
   const socialUnavailable = (name: string) =>
-    Alert.alert(`${name} sign-in isn't available yet`, "Please continue with your email address instead.");
+    Alert.alert(tr("{name} sign-in isn't available yet", { name }), tr("Please continue with your email address instead."));
   const [email, setEmail] = useState("");
   const [touched, setTouched] = useState(false);
   const [serverError, setServerError] = useState<string | undefined>();
@@ -63,8 +65,8 @@ export default function SignInScreen({ navigation }: RootScreenProps<"SignIn">) 
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
         <View style={styles.body}>
           <LogoMark size={52} style={styles.logo} />
-          <Text style={styles.title}>Hi there!</Text>
-          <Text style={styles.subtitle}>Sign in to your account</Text>
+          <Text style={styles.title}>{tr("Hi there!")}</Text>
+          <Text style={styles.subtitle}>{tr("Sign in to your account")}</Text>
 
           <View style={styles.socials}>
             <SocialButton provider="google" mode="in" onPress={() => socialUnavailable("Google")} />
@@ -74,14 +76,14 @@ export default function SignInScreen({ navigation }: RootScreenProps<"SignIn">) 
 
           <View style={styles.dividerRow}>
             <View style={styles.divider} />
-            <Text style={styles.dividerText}>OR SIGN IN WITH EMAIL</Text>
+            <Text style={styles.dividerText}>{tr("OR SIGN IN WITH EMAIL")}</Text>
             <View style={styles.divider} />
           </View>
 
-          <Text style={styles.fieldLabel}>Email /Username</Text>
+          <Text style={styles.fieldLabel}>{tr("Email /Username")}</Text>
           <TextInput
             style={[styles.input, !!error && styles.inputError]}
-            placeholder="Enter email address"
+            placeholder={tr("Enter email address")}
             placeholderTextColor={colors.tertiaryText}
             value={email}
             onChangeText={(t) => { setEmail(t); if (serverError) setServerError(undefined); }}
@@ -94,7 +96,7 @@ export default function SignInScreen({ navigation }: RootScreenProps<"SignIn">) 
             returnKeyType="go"
             onSubmitEditing={submit}
             selectionColor={colors.primary}
-            accessibilityLabel="Email or username"
+            accessibilityLabel={tr("Email or username")}
           />
           {error ? (
             <Text style={styles.errorText} accessibilityLiveRegion="polite">
@@ -102,7 +104,7 @@ export default function SignInScreen({ navigation }: RootScreenProps<"SignIn">) 
             </Text>
           ) : null}
           <Button
-            label="Continue"
+            label={tr("Continue")}
             variant="pill"
             disabled={email.trim().length === 0}
             loading={busy}
@@ -114,9 +116,9 @@ export default function SignInScreen({ navigation }: RootScreenProps<"SignIn">) 
           style={styles.footer}
           onPress={() => navigation.navigate("SignUpEmail")}
           accessibilityRole="link"
-          accessibilityLabel="Don't have an account? Sign up"
+          accessibilityLabel={tr("Don't have an account? Sign up")}
         >
-            <Text style={styles.footerText}>Dont have an account? Sign up</Text>
+            <Text style={styles.footerText}>{tr("Dont have an account? Sign up")}</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

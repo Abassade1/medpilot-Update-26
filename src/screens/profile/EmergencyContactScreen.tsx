@@ -12,10 +12,12 @@ import { ApiError } from "../../api/errors";
 import { MAX_NAME, validateName, validatePhone } from "../../utils/validation";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export default function EmergencyContactScreen({ navigation }: RootScreenProps<"EmergencyContact">) {
+  const tr = useT();
   const existing = useEmergencyContact();
   const reference = useReference();
   const save = usePutEmergencyContact();
@@ -53,11 +55,11 @@ export default function EmergencyContactScreen({ navigation }: RootScreenProps<"
     save.mutate(
       { firstName: first.trim(), lastName: last.trim(), phone: phone.trim(), relationship: relationship! },
       {
-        onSuccess: () => { setToast("Emergency contact saved"); setTimeout(() => navigation.goBack(), 900); },
+        onSuccess: () => { setToast(tr("Emergency contact saved")); setTimeout(() => navigation.goBack(), 900); },
         onError: (err) => {
           const e = err as ApiError;
           if (e.fields && Object.keys(e.fields).length) setServerFields(e.fields);
-          else setFormError(e.message || "We couldn't save this contact. Please try again.");
+          else setFormError(e.message || tr("We couldn't save this contact. Please try again."));
         },
       },
     );
@@ -65,26 +67,26 @@ export default function EmergencyContactScreen({ navigation }: RootScreenProps<"
 
   return (
     <ScreenContainer>
-      <AppHeader title="Emergency contact" />
+      <AppHeader title={tr("Emergency contact")} />
       <ToastBanner visible={!!toast} message={toast ?? ""} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <Text style={styles.intro}>We'll share this with the hospital only when you book an appointment.</Text>
-          <TextField label="Firstname" value={first} onChangeText={(t) => { setFirst(t); setServerFields((s) => ({ ...s, firstName: "" })); }}
+          <Text style={styles.intro}>{tr("We'll share this with the hospital only when you book an appointment.")}</Text>
+          <TextField label={tr("Firstname")} value={first} onChangeText={(t) => { setFirst(t); setServerFields((s) => ({ ...s, firstName: "" })); }}
             onBlur={() => touch("firstName")} error={shown("firstName")} maxLength={MAX_NAME} autoCapitalize="words" />
-          <TextField label="Lastname" value={last} onChangeText={(t) => { setLast(t); setServerFields((s) => ({ ...s, lastName: "" })); }}
+          <TextField label={tr("Lastname")} value={last} onChangeText={(t) => { setLast(t); setServerFields((s) => ({ ...s, lastName: "" })); }}
             onBlur={() => touch("lastName")} error={shown("lastName")} maxLength={MAX_NAME} autoCapitalize="words" />
-          <TextField label="Phone number" value={phone} onChangeText={(t) => { setPhone(t); setServerFields((s) => ({ ...s, phone: "" })); }}
+          <TextField label={tr("Phone number")} value={phone} onChangeText={(t) => { setPhone(t); setServerFields((s) => ({ ...s, phone: "" })); }}
             onBlur={() => touch("phone")} error={shown("phone")} keyboardType="phone-pad" maxLength={20} left={<PhonePrefix />} />
-          <Text style={styles.label}>Relationship</Text>
+          <Text style={styles.label}>{tr("Relationship")}</Text>
           {(reference.data?.relationships ?? []).map((r) => (
             <RadioRow key={r} label={cap(r)} selected={relationship === r} onPress={() => { setRelationship(r); touch("relationship"); }} bordered />
           ))}
           {shown("relationship") ? <Text style={styles.error}>{shown("relationship")}</Text> : null}
           {formError ? <Text style={styles.error} accessibilityLiveRegion="polite">{formError}</Text> : null}
           <View style={{ marginTop: 18 }}>
-            <Button label="Save contact" variant="pill" onPress={submit} loading={save.isPending} disabled={save.isPending} />
-            <Button label="Cancel" variant="outlinePill" onPress={() => navigation.goBack()} style={{ marginTop: 10 }} />
+            <Button label={tr("Save contact")} variant="pill" onPress={submit} loading={save.isPending} disabled={save.isPending} />
+            <Button label={tr("Cancel")} variant="outlinePill" onPress={() => navigation.goBack()} style={{ marginTop: 10 }} />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

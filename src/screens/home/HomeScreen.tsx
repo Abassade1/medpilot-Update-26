@@ -24,8 +24,10 @@ import ListStateView from "../../components/ListStateView";
 import { openService } from "../../utils/serviceRoutes";
 import type { ServiceDto } from "../../api/types";
 import { colors, MAX_CONTENT_WIDTH, radii, spacing } from "../../theme";
+import { useT } from "../../i18n";
 
 export default function HomeScreen() {
+  const tr = useT();
   const navigation = useNavigation();
   const home = useHome();
   const me = useMe();
@@ -59,20 +61,20 @@ export default function HomeScreen() {
         <TouchableOpacity
           onPress={() => navigation.navigate("Profile")}
           accessibilityRole="button"
-          accessibilityLabel="Open your profile"
+          accessibilityLabel={tr("Open your profile")}
         >
           <Image source={assetSource(me.data?.profile?.avatarAsset, images.avatar)} style={styles.avatar} />
         </TouchableOpacity>
         <View style={styles.headerInfo}>
           <Text style={styles.hello}>
-            👋🏽 Hi, {me.data?.profile?.fullName ?? "there"}
+            👋🏽 {tr("Hi, {name}", { name: me.data?.profile?.fullName ?? tr("there") })}
           </Text>
           <TouchableOpacity
             style={styles.locationRow}
             activeOpacity={0.7}
             onPress={() => navigation.navigate("EditProfile")}
             accessibilityRole="button"
-            accessibilityLabel="Change your location"
+            accessibilityLabel={tr("Change your location")}
           >
             <Ionicons name="location-sharp" size={13} color={colors.primary} />
             <Text style={styles.location}>{me.data?.profile?.locationLabel ?? "—"}</Text>
@@ -85,8 +87,8 @@ export default function HomeScreen() {
           accessibilityRole="button"
           accessibilityLabel={
             notifications.data?.unreadCount
-              ? `Notifications, ${notifications.data.unreadCount} unread`
-              : "Notifications"
+              ? tr("Notifications, {n} unread", { n: notifications.data.unreadCount })
+              : tr("Notifications")
           }
         >
           <Ionicons name="notifications" size={22} color={colors.primary} />
@@ -141,7 +143,7 @@ export default function HomeScreen() {
 
       {/* Services */}
       <View style={styles.section}>
-        <SectionHeader title="Services" onViewAll={() => navigation.navigate("Services")} />
+        <SectionHeader title={tr("Services")} onViewAll={() => navigation.navigate("Services")} />
       </View>
       <ScrollView
         horizontal
@@ -166,7 +168,7 @@ export default function HomeScreen() {
 
       {/* Medical Packages */}
       <View style={styles.section}>
-        <SectionHeader title="Medical Packages" onViewAll={() => navigation.navigate("MedicalPackages")} />
+        <SectionHeader title={tr("Medical Packages")} onViewAll={() => navigation.navigate("MedicalPackages")} />
       </View>
       <ScrollView
         horizontal
@@ -184,7 +186,7 @@ export default function HomeScreen() {
             <LinearGradient colors={["transparent", "rgba(2,8,20,0.85)"]} style={styles.heroGradient} />
             <View style={styles.packageTextWrap}>
               <Text style={styles.packageTitle}>{pkg.title.replace(" specialist", " Treatment")}</Text>
-              <Text style={styles.packageSubtitle}>{pkg.hospital?.name ?? "View package"}</Text>
+              <Text style={styles.packageSubtitle}>{pkg.hospital?.name ?? tr("View package")}</Text>
             </View>
           </TouchableOpacity>
         ))}
@@ -192,7 +194,7 @@ export default function HomeScreen() {
 
       {/* Independent Specialist */}
       <View style={styles.section}>
-        <SectionHeader title="Independent Specialist" onViewAll={() => navigation.navigate("Specialists")} />
+        <SectionHeader title={tr("Independent Specialist")} onViewAll={() => navigation.navigate("Specialists")} />
       </View>
       <ScrollView
         horizontal
@@ -220,8 +222,8 @@ export default function HomeScreen() {
 
       {/* Top Facilities */}
       <View style={[styles.section, { marginBottom: 0 }]}>
-        <SectionHeader title="Top Facilities" onViewAll={() => navigation.navigate("Hospitals")} />
-        {home.isPending && <ListStateView kind="loading" message="Loading facilities…" />}
+        <SectionHeader title={tr("Top Facilities")} onViewAll={() => navigation.navigate("Hospitals")} />
+        {home.isPending && <ListStateView kind="loading" message={tr("Loading facilities…")} />}
         {home.isError && <ListStateView kind="error" onRetry={() => void home.refetch()} />}
         {(home.data?.hospitals ?? []).map((h) => (
           <FacilityRow

@@ -8,15 +8,17 @@ import { useProviderBookings } from "../../api/queries";
 import { formatDate, formatTime } from "../../utils/dates";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 const TABS = [["", "All"], ["pending", "Pending"], ["confirmed", "Confirmed"], ["completed", "Completed"], ["cancelled", "Cancelled"]] as const;
 
 export default function ProviderBookingsScreen({ navigation, route }: RootScreenProps<"ProviderBookings">) {
+  const tr = useT();
   const [status, setStatus] = useState<string>(route.params?.status ?? "");
   const q = useProviderBookings(status || undefined);
   return (
     <ScreenContainer>
-      <AppHeader title="Bookings" />
+      <AppHeader title={tr("Bookings")} />
       <View style={styles.chips}>
         {TABS.map(([v, label]) => (
           <TouchableOpacity key={v} style={[styles.chip, status === v && styles.chipOn]} onPress={() => setStatus(v)} accessibilityRole="button" accessibilityState={{ selected: status === v }}>
@@ -24,19 +26,19 @@ export default function ProviderBookingsScreen({ navigation, route }: RootScreen
           </TouchableOpacity>
         ))}
       </View>
-      {q.isLoading ? <ListStateView kind="loading" message="Loading bookings…" /> : q.isError ? (
-        <ListStateView kind="error" message="We couldn't load bookings." onRetry={() => void q.refetch()} />
+      {q.isLoading ? <ListStateView kind="loading" message={tr("Loading bookings…")} /> : q.isError ? (
+        <ListStateView kind="error" message={tr("We couldn't load bookings.")} onRetry={() => void q.refetch()} />
       ) : (
         <FlatList
           data={q.data}
           keyExtractor={(b) => b.id}
           contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: 30, flexGrow: 1 }}
           refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />}
-          ListEmptyComponent={<ListStateView kind="empty" title="No bookings here" message="When members book your services, they appear here." />}
+          ListEmptyComponent={<ListStateView kind="empty" title={tr("No bookings here")} message={tr("When members book your services, they appear here.")} />}
           renderItem={({ item: b }) => (
             <TouchableOpacity style={styles.card} onPress={() => navigation.navigate("ProviderBookingDetail", { bookingId: b.id })} accessibilityRole="button" accessibilityLabel={`${b.customer.name}, ${b.listing?.name ?? "booking"}`}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.name}>{b.listing?.name ?? "Booking"}</Text>
+                <Text style={styles.name}>{b.listing?.name ?? tr("Booking")}</Text>
                 <Text style={styles.meta}>{b.customer.name}</Text>
                 <Text style={styles.meta}>{formatDate(b.date)}{b.time ? ` at ${formatTime(b.time)}` : ""}</Text>
               </View>

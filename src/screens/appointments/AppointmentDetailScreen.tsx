@@ -14,6 +14,7 @@ import { ApiError } from "../../api/errors";
 import { formatDate, formatInstant, formatTime } from "../../utils/dates";
 import { colors, radii, shadows, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 const STATUS_NOTE: Record<string, { icon: React.ComponentProps<typeof Ionicons>["name"]; text: string; tone: "info" | "ok" | "bad" }> = {
   pending: { icon: "time-outline", text: "Waiting for the hospital to confirm. We'll notify you as soon as they do.", tone: "info" },
@@ -23,6 +24,7 @@ const STATUS_NOTE: Record<string, { icon: React.ComponentProps<typeof Ionicons>[
 };
 
 export default function AppointmentDetailScreen({ navigation, route }: RootScreenProps<"AppointmentDetail">) {
+  const tr = useT();
   const { appointmentId, notice } = route.params;
   const query = useAppointment(appointmentId);
   const cancel = useCancelAppointment(appointmentId);
@@ -48,16 +50,16 @@ export default function AppointmentDetailScreen({ navigation, route }: RootScree
   if (!a) {
     return (
       <ScreenContainer>
-        <AppHeader title="Appointment" />
+        <AppHeader title={tr("Appointment")} />
         {query.isError ? (
           <ListStateView
             kind="error"
-            title={(query.error as ApiError)?.status === 404 ? "Appointment not found" : undefined}
-            message={(query.error as ApiError)?.status === 404 ? "It may have been removed." : "We couldn't load this appointment."}
+            title={(query.error as ApiError)?.status === 404 ? tr("Appointment not found") : undefined}
+            message={(query.error as ApiError)?.status === 404 ? tr("It may have been removed.") : tr("We couldn't load this appointment.")}
             onRetry={(query.error as ApiError)?.status === 404 ? undefined : () => void query.refetch()}
           />
         ) : (
-          <ListStateView kind="loading" message="Loading appointment…" />
+          <ListStateView kind="loading" message={tr("Loading appointment…")} />
         )}
       </ScreenContainer>
     );
@@ -68,23 +70,23 @@ export default function AppointmentDetailScreen({ navigation, route }: RootScree
 
   const confirmCancel = () => {
     Alert.alert(
-      "Cancel this appointment?",
+      tr("Cancel this appointment?"),
       a.status === "confirmed"
-        ? "The hospital has already confirmed this appointment. Cancelling releases your slot and can't be undone."
-        : "This will withdraw your request. You can book again at any time.",
+        ? tr("The hospital has already confirmed this appointment. Cancelling releases your slot and can't be undone.")
+        : tr("This will withdraw your request. You can book again at any time."),
       [
-        { text: "Keep appointment", style: "cancel" },
+        { text: tr("Keep appointment"), style: "cancel" },
         {
-          text: "Cancel appointment",
+          text: tr("Cancel appointment"),
           style: "destructive",
           onPress: () =>
             cancel.mutate(undefined, {
               onError: (err) =>
                 Alert.alert(
-                  "Couldn't cancel",
+                  tr("Couldn't cancel"),
                   (err as ApiError).isOffline
-                    ? "You appear to be offline. Check your connection and try again."
-                    : (err as ApiError).message || "Something went wrong. Please try again.",
+                    ? tr("You appear to be offline. Check your connection and try again.")
+                    : (err as ApiError).message || tr("Something went wrong. Please try again."),
                 ),
             }),
         },
@@ -94,7 +96,7 @@ export default function AppointmentDetailScreen({ navigation, route }: RootScree
 
   return (
     <ScreenContainer>
-      <AppHeader title="Appointment" />
+      <AppHeader title={tr("Appointment")} />
       <ToastBanner visible={!!toast} message={toast ?? ""} />
       <ScrollView
         contentContainerStyle={styles.content}
@@ -125,39 +127,39 @@ export default function AppointmentDetailScreen({ navigation, route }: RootScree
         <View style={[styles.note, styles[`note_${note.tone}`]]} accessibilityLiveRegion="polite">
           <Ionicons name={note.icon} size={18} color={noteColor(note.tone)} />
           <Text style={[styles.noteText, { color: noteColor(note.tone) }]}>
-            {a.status === "confirmed" && confirmedSlot ? `${note.text} Your slot: ${confirmedSlot}.` : note.text}
+            {a.status === "confirmed" && confirmedSlot ? `${tr(note.text)} ${tr("Your slot: {slot}.", { slot: confirmedSlot })}` : tr(note.text)}
           </Text>
         </View>
 
-        <Text style={styles.section}>Appointment</Text>
+        <Text style={styles.section}>{tr("Appointment")}</Text>
         <View style={styles.card}>
-          <Row label="Type" value={a.appointmentTypeLabel} />
-          <Row label="Requested date" value={formatDate(a.requestedDate)} />
+          <Row label={tr("Type")} value={a.appointmentTypeLabel} />
+          <Row label={tr("Requested date")} value={formatDate(a.requestedDate)} />
           <Row
-            label="Preferred time"
+            label={tr("Preferred time")}
             value={a.requestedTime ? formatTime(a.requestedTime) : "Not specified"}
-            hint={!a.requestedTime ? "The hospital will propose a time." : undefined}
+            hint={!a.requestedTime ? tr("The hospital will propose a time.") : undefined}
           />
           {a.contactPerson ? (
-            <Row label="Contact person" value={a.contactPerson.name} hint={a.contactPerson.role} />
+            <Row label={tr("Contact person")} value={a.contactPerson.name} hint={a.contactPerson.role} />
           ) : (
-            <Row label="Contact person" value="Assigned once confirmed" muted />
+            <Row label={tr("Contact person")} value="Assigned once confirmed" muted />
           )}
         </View>
 
-        <Text style={styles.section}>Medical information</Text>
+        <Text style={styles.section}>{tr("Medical information")}</Text>
         <View style={styles.card}>
-          <Row label="Under treatment" value={a.underTreatment ? "Yes" : "No"} />
-          {a.underTreatment && a.conditionNote ? <Row label="Condition" value={a.conditionNote} /> : null}
+          <Row label={tr("Under treatment")} value={a.underTreatment ? "Yes" : "No"} />
+          {a.underTreatment && a.conditionNote ? <Row label={tr("Condition")} value={a.conditionNote} /> : null}
         </View>
 
         {a.emergencyContact ? (
           <>
-            <Text style={styles.section}>Emergency contact</Text>
+            <Text style={styles.section}>{tr("Emergency contact")}</Text>
             <View style={styles.card}>
-              <Row label="Name" value={a.emergencyContact.name} hint={cap(a.emergencyContact.relationship)} />
-              <Row label="Phone" value={a.emergencyContact.phone} />
-              <Row label="Accompanying you" value={a.emergencyContact.accompanies ? "Yes" : "No"} />
+              <Row label={tr("Name")} value={a.emergencyContact.name} hint={cap(a.emergencyContact.relationship)} />
+              <Row label={tr("Phone")} value={a.emergencyContact.phone} />
+              <Row label={tr("Accompanying you")} value={a.emergencyContact.accompanies ? "Yes" : "No"} />
             </View>
           </>
         ) : null}
@@ -165,7 +167,7 @@ export default function AppointmentDetailScreen({ navigation, route }: RootScree
         <View style={styles.actions}>
           {a.canReschedule ? (
             <Button
-              label="Reschedule"
+              label={tr("Reschedule")}
               variant="pill"
               onPress={() => navigation.navigate("RescheduleAppointment", { appointmentId })}
               disabled={cancel.isPending}
@@ -173,7 +175,7 @@ export default function AppointmentDetailScreen({ navigation, route }: RootScree
           ) : null}
           {a.canCancel ? (
             <Button
-              label="Cancel appointment"
+              label={tr("Cancel appointment")}
               variant="outlinePill"
               onPress={confirmCancel}
               loading={cancel.isPending}
@@ -184,22 +186,22 @@ export default function AppointmentDetailScreen({ navigation, route }: RootScree
           ) : null}
           {a.status === "cancelled" ? (
             <Button
-              label="Book again"
+              label={tr("Book again")}
               variant="pill"
               onPress={() => navigation.navigate("BookAppointment", { hospitalId: a.hospital.id })}
             />
           ) : null}
           {a.canReview && !a.reviewed ? (
             <Button
-              label="Rate this visit"
+              label={tr("Rate this visit")}
               variant="pill"
               onPress={() => navigation.navigate("RateVisit", { targetType: "hospital", requestId: a.id, targetName: a.hospital.name })}
               style={{ marginTop: 10 }}
             />
           ) : null}
-          {a.reviewed ? <Text style={styles.reviewed}>You've rated this visit. Thank you!</Text> : null}
+          {a.reviewed ? <Text style={styles.reviewed}>{tr("You've rated this visit. Thank you!")}</Text> : null}
           <Button
-            label="Back to appointments"
+            label={tr("Back to appointments")}
             variant="outlinePill"
             onPress={() => navigation.navigate("MainTabs", { screen: "AppointmentsTab" } as never)}
             style={{ marginTop: 10 }}

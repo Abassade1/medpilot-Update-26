@@ -1,6 +1,7 @@
 import React from "react";
 import { Text, StyleSheet, View } from "react-native";
 import { colors } from "../theme";
+import { useT } from "../i18n";
 
 type Status = "pending" | "confirmed" | "cancelled" | "completed" | "draft" | "review" | "published" | "unpublished" | "archived" | "verified" | "unverified" | "rejected";
 
@@ -22,10 +23,11 @@ const STYLE: Record<Status, { label: string; fg: string; bg: string }> = {
 
 /** One status treatment for appointments, transport and service requests alike. */
 export default function StatusPill({ status }: { status: string }) {
+  const tr = useT();
   const s = STYLE[(status as Status) in STYLE ? (status as Status) : "pending"];
   return (
-    <View style={[styles.pill, { backgroundColor: s.bg }]} accessibilityLabel={`Status: ${s.label}`}>
-      <Text style={[styles.text, { color: s.fg }]}>{s.label}</Text>
+    <View style={[styles.pill, { backgroundColor: s.bg }]} accessibilityLabel={tr("Status: {status}", { status: tr(s.label) })}>
+      <Text style={[styles.text, { color: s.fg }]}>{tr(s.label)}</Text>
     </View>
   );
 }

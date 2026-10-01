@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import type { ActivityDto, ActivityTypeDto } from "../api/types";
 import { colors, radii } from "../theme";
+import { useT } from "../i18n";
 
 interface Props {
   activity: ActivityDto;
@@ -32,6 +33,7 @@ const statusStyle: Record<StatusCode, { label: string; color: string; bg: string
 };
 
 export default function ActivityRow({ activity, onPress }: Props) {
+  const tr = useT();
   const t = typeStyle[activity.type];
   const s = activity.status ? statusStyle[activity.status] : null;
 
@@ -43,7 +45,7 @@ export default function ActivityRow({ activity, onPress }: Props) {
       disabled={!onPress}
       accessibilityRole="button"
       accessibilityLabel={`${activity.title}. ${activity.subtitle}. ${activity.time}${
-        s ? `. ${s.label}` : ""
+        s ? `. ${tr(s.label)}` : ""
       }`}
     >
       <View style={[styles.tile, { backgroundColor: t.bg }]}>
@@ -63,7 +65,7 @@ export default function ActivityRow({ activity, onPress }: Props) {
         <Text style={styles.time}>{activity.time}</Text>
         {s && (
           <View style={[styles.pill, { backgroundColor: s.bg }]}>
-            <Text style={[styles.pillLabel, { color: s.color }]}>{s.label}</Text>
+            <Text style={[styles.pillLabel, { color: s.color }]}>{tr(s.label)}</Text>
           </View>
         )}
       </View>

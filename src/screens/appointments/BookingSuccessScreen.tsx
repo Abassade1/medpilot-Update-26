@@ -6,11 +6,13 @@ import Button from "../../components/Button";
 import { images } from "../../data/assets";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function BookingSuccessScreen({
   navigation,
   route,
 }: RootScreenProps<"BookingSuccess">) {
+  const tr = useT();
   const reference = route.params?.reference;
   const kind = route.params?.kind ?? "appointment";
   const detail = route.params?.detail;
@@ -39,9 +41,9 @@ export default function BookingSuccessScreen({
         </View>
         <Text style={styles.title}>{headline}</Text>
         <Text style={styles.subtitle}>{message}</Text>
-        {reference ? <Text style={styles.reference}>Booking ID {reference}</Text> : null}
+        {reference ? <Text style={styles.reference}>{tr("Booking ID {reference}", { reference })}</Text> : null}
         <Button
-          label="Done"
+          label={tr("Done")}
           variant="pill"
           onPress={() => navigation.navigate("MainTabs")}
           style={{ marginTop: 26 }}
@@ -51,7 +53,7 @@ export default function BookingSuccessScreen({
           onPress={openDetail}
           accessibilityRole="button"
         >
-          <Text style={styles.linkText}>{detail ? "View details" : "View appointments"}</Text>
+          <Text style={styles.linkText}>{detail ? tr("View details") : tr("View appointments")}</Text>
         </TouchableOpacity>
       </View>
     </ScreenContainer>

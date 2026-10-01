@@ -21,6 +21,7 @@ import { useActivities } from "../../api/queries";
 import type { ActivityDto, ActivityTypeDto } from "../../api/types";
 import { RootNavigation } from "../../navigation/types";
 import { colors, spacing } from "../../theme";
+import { useT } from "../../i18n";
 
 type Filter = ActivityTypeDto | "all";
 
@@ -40,6 +41,7 @@ const activityFilters: { id: Filter; label: string }[] = [
  * opens the screen that owns that activity.
  */
 export default function ActivitiesScreen() {
+  const tr = useT();
   const navigation = useNavigation<RootNavigation>();
   const [filter, setFilter] = useState<Filter>("all");
 
@@ -91,7 +93,7 @@ export default function ActivitiesScreen() {
   return (
     <ScreenContainer>
       <AppHeader
-        title="Activities"
+        title={tr("Activities")}
         showBack={false}
       />
 
@@ -104,7 +106,7 @@ export default function ActivitiesScreen() {
           {activityFilters.map((f) => (
             <Chip
               key={f.id}
-              label={f.label}
+              label={tr(f.label)}
               selected={filter === f.id}
               onPress={() => setFilter(f.id)}
               style={styles.filterChip}
@@ -128,15 +130,15 @@ export default function ActivitiesScreen() {
         }
         ListEmptyComponent={
           query.isPending ? (
-            <ListStateView kind="loading" message="Loading your activity…" />
+            <ListStateView kind="loading" message={tr("Loading your activity…")} />
           ) : query.isError ? (
             <ListStateView kind="error" onRetry={() => void query.refetch()} />
           ) : (
           <View style={styles.empty}>
             <Image source={images.tabActivities} style={styles.emptyIcon} resizeMode="contain" />
-            <Text style={styles.emptyTitle}>Nothing here yet</Text>
+            <Text style={styles.emptyTitle}>{tr("Nothing here yet")}</Text>
             <Text style={styles.emptySubtitle}>
-              Activities of this type will show up here once you start using MedPilot services.
+              {tr("Activities of this type will show up here once you start using MedPilot services.")}
             </Text>
           </View>
           )

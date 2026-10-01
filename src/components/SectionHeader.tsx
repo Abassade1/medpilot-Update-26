@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from "react-native";
 import { colors, spacing } from "../theme";
+import { useT } from "../i18n";
 
 interface Props {
   title: string;
@@ -9,12 +10,13 @@ interface Props {
 }
 
 export default function SectionHeader({ title, onViewAll, style }: Props) {
+  const tr = useT();
   return (
     <View style={[styles.row, style]}>
       <Text style={styles.title}>{title}</Text>
       {onViewAll && (
         <TouchableOpacity onPress={onViewAll} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={styles.viewAll}>View all</Text>
+          <Text style={styles.viewAll}>{tr("View all")}</Text>
         </TouchableOpacity>
       )}
     </View>

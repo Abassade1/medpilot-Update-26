@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, ScrollView, StyleProp, ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radii, spacing, shadows } from "../theme";
+import { useT } from "../i18n";
 
 interface Props {
   label?: string;
@@ -22,6 +23,7 @@ export default function SelectField({
   onSelect,
   containerStyle,
 }: Props) {
+  const tr = useT();
   const [open, setOpen] = useState(false);
 
   return (
@@ -29,7 +31,7 @@ export default function SelectField({
       {label ? (
         <Text style={styles.label}>
           {label}
-          {optional ? <Text style={styles.optional}> (Optional)</Text> : null}
+          {optional ? <Text style={styles.optional}> {tr("(Optional)")}</Text> : null}
         </Text>
       ) : null}
       <TouchableOpacity
@@ -38,11 +40,11 @@ export default function SelectField({
         onPress={() => setOpen(true)}
         accessibilityRole="button"
         accessibilityLabel={label ?? placeholder}
-        accessibilityValue={{ text: value ?? "Not selected" }}
-        accessibilityHint="Opens a list of options"
+        accessibilityValue={{ text: value ? tr(value) : tr("Not selected") }}
+        accessibilityHint={tr("Opens a list of options")}
         accessibilityState={{ expanded: open }}
       >
-        <Text style={[styles.value, !value && { color: colors.tertiaryText }]}>{value || placeholder}</Text>
+        <Text style={[styles.value, !value && { color: colors.tertiaryText }]}>{value ? tr(value) : placeholder}</Text>
         <Ionicons name="chevron-down" size={16} color={colors.secondaryText} />
       </TouchableOpacity>
 
@@ -63,7 +65,7 @@ export default function SelectField({
                 }}
               >
                 <Text style={[styles.optionText, opt === value && { color: colors.primary, fontWeight: "600" }]}>
-                  {opt}
+                  {tr(opt)}
                 </Text>
                 {opt === value && <Ionicons name="checkmark" size={16} color={colors.primary} />}
               </TouchableOpacity>

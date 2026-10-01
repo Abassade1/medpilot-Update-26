@@ -15,6 +15,7 @@ import { ApiError } from "../../api/errors";
 import { centsToDollars, dollarsToCents } from "../../utils/money";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 interface Form {
   name: string; category: string; subcategory: string; description: string;
@@ -30,6 +31,7 @@ const empty: Form = {
 };
 
 export default function ListingFormScreen({ navigation, route }: RootScreenProps<"ListingForm">) {
+  const tr = useT();
   const { listingId } = route.params;
   const me = useMyProvider();
   const tax = useTaxonomy();
@@ -64,12 +66,12 @@ export default function ListingFormScreen({ navigation, route }: RootScreenProps
 
   const provider = me.data?.provider;
   const loading = me.isLoading || tax.isLoading || (!!listingId && existing.isLoading);
-  if (loading) return <Shell><ListStateView kind="loading" message="Loading…" /></Shell>;
+  if (loading) return <Shell><ListStateView kind="loading" message={tr("Loading…")} /></Shell>;
   if (me.isError || tax.isError || (!!listingId && existing.isError)) {
-    return <Shell><ListStateView kind="error" message="We couldn't load this form." onRetry={() => { void me.refetch(); void tax.refetch(); void existing.refetch(); }} /></Shell>;
+    return <Shell><ListStateView kind="error" message={tr("We couldn't load this form.")} onRetry={() => { void me.refetch(); void tax.refetch(); void existing.refetch(); }} /></Shell>;
   }
   if (!provider) {
-    return <Shell><ListStateView kind="empty" title="Set up your provider profile first" actionLabel="Set up profile" onAction={() => navigation.replace("ProviderProfile")} /></Shell>;
+    return <Shell><ListStateView kind="empty" title={tr("Set up your provider profile first")} actionLabel={tr("Set up profile")} onAction={() => navigation.replace("ProviderProfile")} /></Shell>;
   }
 
   const type = tax.data!.providerTypes.find((t) => t.code === provider.type)!;
@@ -103,7 +105,7 @@ export default function ListingFormScreen({ navigation, route }: RootScreenProps
   const fail = (e: unknown) => {
     const x = e as ApiError;
     if (x.fields) setErrors(x.fields);
-    setFormError(x.isOffline ? "You appear to be offline. Check your connection and try again." : x.fields ? "Fix the highlighted fields." : x.message || "Something went wrong.");
+    setFormError(x.isOffline ? tr("You appear to be offline. Check your connection and try again.") : x.fields ? tr("Fix the highlighted fields.") : x.message || tr("Something went wrong."));
   };
 
   const persist = (then?: (savedId: string) => void) => {
@@ -128,21 +130,21 @@ export default function ListingFormScreen({ navigation, route }: RootScreenProps
     set("includes")(form.includes.some((i) => i.listingId === sid) ? form.includes.filter((i) => i.listingId !== sid) : [...form.includes, { label: name, listingId: sid }]);
 
   return (
-    <Shell title={id ? `Edit ${effKind}` : `New ${effKind}`}>
+    <Shell title={id ? tr("Edit {kind}", { kind: tr(effKind) }) : tr("New {kind}", { kind: tr(effKind) })}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {l ? <View style={styles.row}><StatusPill status={l.status} />{l.rejectionNote ? <Text style={styles.rej}>{l.rejectionNote}</Text> : null}</View> : null}
-          {locked ? <Text style={styles.warn}>This is live or in review. Unpublish it before editing.</Text> : null}
+          {locked ? <Text style={styles.warn}>{tr("This is live or in review. Unpublish it before editing.")}</Text> : null}
           <View pointerEvents={locked ? "none" : "auto"} style={locked ? { opacity: 0.55 } : undefined}>
-            <TextField label={effKind === "package" ? "Package name" : "Service name"} value={form.name} onChangeText={set("name")} maxLength={140} error={err("name")} />
-            <SelectField label="Category" placeholder="Select a category" value={cat?.label ?? null} options={type.categories.map((c) => c.label)}
+            <TextField label={effKind === "package" ? tr("Package name") : tr("Service name")} value={form.name} onChangeText={set("name")} maxLength={140} error={err("name")} />
+            <SelectField label={tr("Category")} placeholder={tr("Select a category")} value={cat?.label ?? null} options={type.categories.map((c) => c.label)}
               onSelect={(lab) => { const c = type.categories.find((x) => x.label === lab)!; setForm((f) => ({ ...f, category: c.code, subcategory: "" })); setErrors((e) => ({ ...e, category: "" })); }} />
             {err("category") ? <Text style={styles.err}>{err("category")}</Text> : null}
             {cat && cat.subcategories.length ? (
-              <SelectField label="Subcategory" optional placeholder="Select" value={cat.subcategories.find((s) => s.code === form.subcategory)?.label ?? null} options={cat.subcategories.map((s) => s.label)}
+              <SelectField label={tr("Subcategory")} optional placeholder={tr("Select")} value={cat.subcategories.find((s) => s.code === form.subcategory)?.label ?? null} options={cat.subcategories.map((s) => s.label)}
                 onSelect={(lab) => set("subcategory")(cat.subcategories.find((s) => s.label === lab)!.code)} />
             ) : null}
-            <TextField label="Description" value={form.description} onChangeText={set("description")} multiline maxLength={4000} error={err("description")} />
+            <TextField label={tr("Description")} value={form.description} onChangeText={set("description")} multiline maxLength={4000} error={err("description")} />
 
             {dynamic.length ? <Text style={styles.h}>{type.label} details</Text> : null}
             {dynamic.map((d) => (
@@ -152,55 +154,55 @@ export default function ListingFormScreen({ navigation, route }: RootScreenProps
 
             {effKind === "package" ? (
               <>
-                <Text style={styles.h}>What's included</Text>
+                <Text style={styles.h}>{tr("What's included")}</Text>
                 {pickable.length ? pickable.map((s) => (
                   <CheckRow key={s.id} label={s.name} checked={form.includes.some((i) => i.listingId === s.id)} onPress={() => toggleInclude(s.id, s.name)} />
-                )) : <Text style={styles.hint}>You have no services yet. Create services first, then combine them here.</Text>}
-                <TextField label="Add another inclusion" optional placeholder="e.g. Airport pickup" maxLength={140}
+                )) : <Text style={styles.hint}>{tr("You have no services yet. Create services first, then combine them here.")}</Text>}
+                <TextField label={tr("Add another inclusion")} optional placeholder={tr("e.g. Airport pickup")} maxLength={140}
                   onSubmitEditing={(e) => { const t = e.nativeEvent.text.trim(); if (t) set("includes")([...form.includes, { label: t }]); }} />
                 {form.includes.filter((i) => !i.listingId).map((i, n) => <Text key={n} style={styles.hint}>• {i.label}</Text>)}
                 {err("includes") ? <Text style={styles.err}>{err("includes")}</Text> : null}
               </>
             ) : null}
 
-            <Text style={styles.h}>Pricing and capacity</Text>
-            <SelectField label="Price type" value={tax.data!.priceTypes.find((p) => p.value === form.priceType)?.label ?? null} options={tax.data!.priceTypes.map((p) => p.label)}
+            <Text style={styles.h}>{tr("Pricing and capacity")}</Text>
+            <SelectField label={tr("Price type")} value={tax.data!.priceTypes.find((p) => p.value === form.priceType)?.label ?? null} options={tax.data!.priceTypes.map((p) => p.label)}
               onSelect={(lab) => set("priceType")(tax.data!.priceTypes.find((p) => p.label === lab)!.value)} />
-            {form.priceType !== "quote" ? <TextField label="Price (USD)" value={form.price} onChangeText={set("price")} keyboardType="decimal-pad" error={err("price") || err("priceAmount")} /> : null}
-            <TextField label="Duration (minutes)" optional value={form.duration} onChangeText={(t) => set("duration")(t.replace(/\D/g, ""))} keyboardType="number-pad" maxLength={5} error={err("durationMinutes")} />
-            <TextField label="Bookings per time slot" value={form.capacity} onChangeText={(t) => set("capacity")(t.replace(/\D/g, ""))} keyboardType="number-pad" maxLength={3} error={err("capacity")} />
+            {form.priceType !== "quote" ? <TextField label={tr("Price (USD)")} value={form.price} onChangeText={set("price")} keyboardType="decimal-pad" error={err("price") || err("priceAmount")} /> : null}
+            <TextField label={tr("Duration (minutes)")} optional value={form.duration} onChangeText={(t) => set("duration")(t.replace(/\D/g, ""))} keyboardType="number-pad" maxLength={5} error={err("durationMinutes")} />
+            <TextField label={tr("Bookings per time slot")} value={form.capacity} onChangeText={(t) => set("capacity")(t.replace(/\D/g, ""))} keyboardType="number-pad" maxLength={3} error={err("capacity")} />
 
-            <Text style={styles.h}>Where it's offered</Text>
+            <Text style={styles.h}>{tr("Where it's offered")}</Text>
             {tax.data!.locationModes.map((m) => (
               <CheckRow key={m.value} label={m.label} checked={form.locationModes.includes(m.value)}
                 onPress={() => set("locationModes")(form.locationModes.includes(m.value) ? form.locationModes.filter((x) => x !== m.value) : [...form.locationModes, m.value])} />
             ))}
             {err("locationModes") ? <Text style={styles.err}>{err("locationModes")}</Text> : null}
-            <TextField label="Country" optional value={form.country} onChangeText={set("country")} error={err("country")} />
-            <TextField label="Region or state" optional value={form.region} onChangeText={set("region")} />
-            <TextField label="City" optional value={form.city} onChangeText={set("city")} error={err("city")} />
-            <TextField label="Service radius (km)" optional value={form.radius} onChangeText={(t) => set("radius")(t.replace(/\D/g, ""))} keyboardType="number-pad" maxLength={5} error={err("serviceRadiusKm")} />
+            <TextField label={tr("Country")} optional value={form.country} onChangeText={set("country")} error={err("country")} />
+            <TextField label={tr("Region or state")} optional value={form.region} onChangeText={set("region")} />
+            <TextField label={tr("City")} optional value={form.city} onChangeText={set("city")} error={err("city")} />
+            <TextField label={tr("Service radius (km)")} optional value={form.radius} onChangeText={(t) => set("radius")(t.replace(/\D/g, ""))} keyboardType="number-pad" maxLength={5} error={err("serviceRadiusKm")} />
 
-            <Text style={styles.h}>Requirements and policies</Text>
-            <TextField label="What the customer needs" optional value={form.requirements} onChangeText={set("requirements")} multiline />
-            <TextField label="Preparation" optional value={form.preparation} onChangeText={set("preparation")} multiline />
-            <TextField label="Cancellation policy" optional value={form.cancellationPolicy} onChangeText={set("cancellationPolicy")} multiline />
-            <TextField label="Terms and conditions" optional value={form.terms} onChangeText={set("terms")} multiline />
-            <ImagePickerGallery label="Photos" values={form.images} onChange={set("images")} onError={setFormError} />
+            <Text style={styles.h}>{tr("Requirements and policies")}</Text>
+            <TextField label={tr("What the customer needs")} optional value={form.requirements} onChangeText={set("requirements")} multiline />
+            <TextField label={tr("Preparation")} optional value={form.preparation} onChangeText={set("preparation")} multiline />
+            <TextField label={tr("Cancellation policy")} optional value={form.cancellationPolicy} onChangeText={set("cancellationPolicy")} multiline />
+            <TextField label={tr("Terms and conditions")} optional value={form.terms} onChangeText={set("terms")} multiline />
+            <ImagePickerGallery label={tr("Photos")} values={form.images} onChange={set("images")} onError={setFormError} />
           </View>
 
           {formError ? <Text style={styles.err} accessibilityLiveRegion="polite">{formError}</Text> : null}
           {msg ? <Text style={styles.ok} accessibilityLiveRegion="polite">{msg}</Text> : null}
           {!locked ? (
             <>
-              <Button label="Save draft" variant="outlinePill" onPress={() => persist()} loading={save.isPending} disabled={busy} style={{ marginTop: 14 }} />
-              <Button label="Publish" variant="pill" onPress={publish} loading={act.isPending} disabled={busy} style={{ marginTop: 10 }} />
+              <Button label={tr("Save draft")} variant="outlinePill" onPress={() => persist()} loading={save.isPending} disabled={busy} style={{ marginTop: 14 }} />
+              <Button label={tr("Publish")} variant="pill" onPress={publish} loading={act.isPending} disabled={busy} style={{ marginTop: 10 }} />
             </>
           ) : null}
           {id ? (
             <>
-              <Button label="Preview as a member" variant="outlinePill" onPress={() => navigation.navigate("ListingDetail", { listingId: id, preview: true })} style={{ marginTop: 10 }} />
-              <Button label="Set availability" variant="outlinePill" onPress={() => navigation.navigate("ListingAvailability", { listingId: id })} style={{ marginTop: 10 }} />
+              <Button label={tr("Preview as a member")} variant="outlinePill" onPress={() => navigation.navigate("ListingDetail", { listingId: id, preview: true })} style={{ marginTop: 10 }} />
+              <Button label={tr("Set availability")} variant="outlinePill" onPress={() => navigation.navigate("ListingAvailability", { listingId: id })} style={{ marginTop: 10 }} />
             </>
           ) : null}
         </ScrollView>

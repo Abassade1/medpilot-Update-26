@@ -28,6 +28,7 @@ import {
 } from "../../api/purchases";
 import { useQueryClient } from "@tanstack/react-query";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 const PLAN_IMAGE = { basic: images.woman1, pro: images.woman2 } as const;
 
@@ -38,6 +39,7 @@ const describe = (err: unknown): string => {
 };
 
 export default function UpgradeScreen({ navigation }: RootScreenProps<"Upgrade">) {
+  const tr = useT();
   const plansQuery = usePlans();
   const subscription = useSubscription();
   const qc = useQueryClient();
@@ -62,7 +64,7 @@ export default function UpgradeScreen({ navigation }: RootScreenProps<"Upgrade">
       navigation.goBack();
     } catch (err) {
       if (err instanceof PurchaseCancelledError) return; // silent: the user chose to stop
-      Alert.alert("Upgrade unavailable", describe(err));
+      Alert.alert(tr("Upgrade unavailable"), describe(err));
     } finally {
       setPurchasing(false);
     }
@@ -75,16 +77,16 @@ export default function UpgradeScreen({ navigation }: RootScreenProps<"Upgrade">
     try {
       const owned = await restorePurchases();
       if (owned.length === 0) {
-        Alert.alert("Nothing to restore", "We couldn't find an active subscription on this account.");
+        Alert.alert(tr("Nothing to restore"), tr("We couldn't find an active subscription on this account."));
         return;
       }
       for (const evidence of owned) {
         await endpoints.billing.verifyReceipt(evidence).catch(() => {});
       }
       await qc.invalidateQueries({ queryKey: qk.subscription });
-      Alert.alert("Purchases restored", "Your subscription has been restored.");
+      Alert.alert(tr("Purchases restored"), tr("Your subscription has been restored."));
     } catch (err) {
-      Alert.alert("Couldn't restore", describe(err));
+      Alert.alert(tr("Couldn't restore"), describe(err));
     } finally {
       setPurchasing(false);
     }
@@ -95,11 +97,11 @@ export default function UpgradeScreen({ navigation }: RootScreenProps<"Upgrade">
   if (plans.length === 0) {
     return (
       <ScreenContainer>
-        <AppHeader title="Upgrade" right={<LogoMark size={26} />} />
+        <AppHeader title={tr("Upgrade")} right={<LogoMark size={26} />} />
         {plansQuery.isError ? (
           <ListStateView kind="error" onRetry={() => void plansQuery.refetch()} />
         ) : (
-          <ListStateView kind="loading" message="Loading plans…" />
+          <ListStateView kind="loading" message={tr("Loading plans…")} />
         )}
       </ScreenContainer>
     );
@@ -107,7 +109,7 @@ export default function UpgradeScreen({ navigation }: RootScreenProps<"Upgrade">
 
   return (
     <ScreenContainer>
-      <AppHeader title="Upgrade" right={<LogoMark size={26} />} />
+      <AppHeader title={tr("Upgrade")} right={<LogoMark size={26} />} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {plans.map((plan) => {
           const isCurrent = plan.code === currentPlan;
@@ -126,7 +128,7 @@ export default function UpgradeScreen({ navigation }: RootScreenProps<"Upgrade">
                 ))}
                 {isCurrent ? (
                   <View style={styles.cardFooter}>
-                    <Text style={styles.footerLink}>Your current plan</Text>
+                    <Text style={styles.footerLink}>{tr("Your current plan")}</Text>
                   </View>
                 ) : (
                   <TouchableOpacity
@@ -134,7 +136,7 @@ export default function UpgradeScreen({ navigation }: RootScreenProps<"Upgrade">
                     disabled={purchasing}
                     onPress={() => void upgrade(plan.id)}
                     accessibilityRole="button"
-                    accessibilityLabel={`Upgrade to ${plan.name}`}
+                    accessibilityLabel={tr("Upgrade to {plan}", { plan: plan.name })}
                     accessibilityState={{ disabled: purchasing }}
                   >
                     {purchasing ? (
@@ -143,7 +145,7 @@ export default function UpgradeScreen({ navigation }: RootScreenProps<"Upgrade">
                       <Ionicons name="shield-checkmark-outline" size={14} color={colors.primary} />
                     )}
                     <Text style={[styles.footerLink, { marginLeft: 5 }]}>
-                      {purchasing ? "Confirming…" : "Upgrade Now"}
+                      {purchasing ? tr("Confirming…") : tr("Upgrade Now")}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -157,10 +159,10 @@ export default function UpgradeScreen({ navigation }: RootScreenProps<"Upgrade">
           onPress={() => void restore()}
           disabled={purchasing}
           accessibilityRole="button"
-          accessibilityLabel="Restore purchases"
+          accessibilityLabel={tr("Restore purchases")}
           accessibilityState={{ disabled: purchasing }}
         >
-          <Text style={styles.restoreText}>Restore purchases</Text>
+          <Text style={styles.restoreText}>{tr("Restore purchases")}</Text>
         </TouchableOpacity>
       </ScrollView>
     </ScreenContainer>

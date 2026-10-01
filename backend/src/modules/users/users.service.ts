@@ -38,7 +38,7 @@ export class UsersService {
       pushEnabled: p?.pushEnabled ?? true,
       emailUpdates: p?.emailUpdates ?? true,
       appointmentReminders: p?.appointmentReminders ?? true,
-      language: (p?.language ?? "en") as "en" | "fr",
+      language: (p?.language ?? "en") as "en" | "fr" | "ar",
     };
   }
 

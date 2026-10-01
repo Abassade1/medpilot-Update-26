@@ -15,10 +15,12 @@ import { assetSource } from "../../api/assets";
 import ListStateView from "../../components/ListStateView";
 import { colors, radii, shadows, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT, rtlFlip } from "../../i18n";
 
 const TABS = ["Hospital", "Transportation", "Cost summary"] as const;
 
 export default function PackageDetailScreen({ navigation, route }: RootScreenProps<"PackageDetail">) {
+  const tr = useT();
   const query = usePackage(route.params.packageId);
   const pkg = query.data;
   const hospital = pkg?.hospital;
@@ -32,7 +34,7 @@ export default function PackageDetailScreen({ navigation, route }: RootScreenPro
         query.isError ? (
           <ListStateView kind="error" onRetry={() => void query.refetch()} />
         ) : (
-          <ListStateView kind="loading" message="Loading package…" />
+          <ListStateView kind="loading" message={tr("Loading package…")} />
         )
       ) : (
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
@@ -43,7 +45,7 @@ export default function PackageDetailScreen({ navigation, route }: RootScreenPro
             style={[styles.backBtn, { top: insets.top + 8 }]}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="chevron-back" size={20} color={colors.primary} />
+            <Ionicons style={rtlFlip()} name="chevron-back" size={20} color={colors.primary} />
           </TouchableOpacity>
           <View style={styles.heroText}>
             <Text style={styles.heroTitle}>{pkg.title}</Text>
@@ -71,19 +73,19 @@ export default function PackageDetailScreen({ navigation, route }: RootScreenPro
               </View>
             </View>
             <PlaceBadges name={hospital.name} location={hospital.country} rating={hospital.rating} />
-            <Text style={styles.sectionTitle}>About us</Text>
+            <Text style={styles.sectionTitle}>{tr("About us")}</Text>
             <ExpandableText text={hospital.about} style={styles.about} />
             <View style={{ marginTop: 12 }}>
-              <InfoRow label="Care system" value={hospital.careSystem} />
+              <InfoRow label={tr("Care system")} value={hospital.careSystem} />
               <InfoRow
-                label="Open Hours"
+                label={tr("Open Hours")}
                 value={hospital.openHours}
                 valueColor={colors.success}
                 subValue={hospital.openHoursNote ?? undefined}
               />
-              <InfoRow label="Helipad:" value={hospital.helipadCode ?? "—"} />
+              <InfoRow label={tr("Helipad:")} value={hospital.helipadCode ?? "—"} />
             </View>
-            <Text style={styles.sectionTitle}>Specialists</Text>
+            <Text style={styles.sectionTitle}>{tr("Specialists")}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
               {hospital.specialists.map((sp) => (
                 <SpecialistCard key={sp.id} specialist={sp} />
@@ -102,11 +104,11 @@ export default function PackageDetailScreen({ navigation, route }: RootScreenPro
               </View>
             </View>
             {provider ? <PlaceBadges name={provider.name} location={provider.location} rating={provider.rating} verified={provider.verified} /> : null}
-            <Text style={styles.sectionTitle}>About</Text>
+            <Text style={styles.sectionTitle}>{tr("About")}</Text>
             <ExpandableText text={provider?.description ?? ""} style={styles.about} />
-            <Text style={styles.sectionTitle}>Route</Text>
+            <Text style={styles.sectionTitle}>{tr("Route")}</Text>
             <Text style={styles.routes}>{provider?.routes}</Text>
-            <Text style={styles.sectionTitle}>Available Aircrafts</Text>
+            <Text style={styles.sectionTitle}>{tr("Available Aircrafts")}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
               {(provider?.aircraft ?? []).map((a) => (
                 <View key={a.id} style={styles.aircraftCard}>
@@ -123,19 +125,19 @@ export default function PackageDetailScreen({ navigation, route }: RootScreenPro
 
         {tab === 2 && (
           <View style={styles.body}>
-            <Text style={styles.sectionTitle}>Cost summary</Text>
+            <Text style={styles.sectionTitle}>{tr("Cost summary")}</Text>
             <View style={{ marginTop: 8 }}>
-              <InfoRow label="Treatment package" value={pkg.costSummary.treatmentLabel} />
-              <InfoRow label="Transportation" value={pkg.costSummary.transportationLabel} />
-              <InfoRow label="Accommodation" value={pkg.costSummary.accommodation} valueColor={colors.success} />
-              <InfoRow label="Feeding" value={pkg.costSummary.feeding} valueColor={colors.success} />
-              <InfoRow label="Total (estimate)" value={pkg.costSummary.totalLabel} />
+              <InfoRow label={tr("Treatment package")} value={pkg.costSummary.treatmentLabel} />
+              <InfoRow label={tr("Transportation")} value={pkg.costSummary.transportationLabel} />
+              <InfoRow label={tr("Accommodation")} value={pkg.costSummary.accommodation} valueColor={colors.success} />
+              <InfoRow label={tr("Feeding")} value={pkg.costSummary.feeding} valueColor={colors.success} />
+              <InfoRow label={tr("Total (estimate)")} value={pkg.costSummary.totalLabel} />
             </View>
           </View>
         )}
 
         <Button
-          label="Book Appointment"
+          label={tr("Book Appointment")}
           onPress={() => navigation.navigate("BookAppointment", { hospitalId: hospital.id })}
           style={styles.cta}
         />

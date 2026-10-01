@@ -12,8 +12,10 @@ import { assetSource } from "../../api/assets";
 import { ApiError } from "../../api/errors";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT, rtlFlip } from "../../i18n";
 
 export default function SpecialistProfileScreen({ navigation, route }: RootScreenProps<"SpecialistProfile">) {
+  const tr = useT();
   const { specialistId } = route.params;
   const query = useSpecialistProfile(specialistId);
   const s = query.data;
@@ -22,10 +24,10 @@ export default function SpecialistProfileScreen({ navigation, route }: RootScree
     const notFound = (query.error as ApiError | null)?.status === 404;
     return (
       <ScreenContainer>
-        <AppHeader title="Specialist" />
+        <AppHeader title={tr("Specialist")} />
         {query.isError ? (
-          <ListStateView kind="error" title={notFound ? "Specialist not found" : undefined}
-            message={notFound ? "This profile is no longer available." : "We couldn't load this profile."}
+          <ListStateView kind="error" title={notFound ? tr("Specialist not found") : undefined}
+            message={notFound ? tr("This profile is no longer available.") : tr("We couldn't load this profile.")}
             onRetry={notFound ? undefined : () => void query.refetch()} />
         ) : <ListStateView kind="loading" />}
       </ScreenContainer>
@@ -36,7 +38,7 @@ export default function SpecialistProfileScreen({ navigation, route }: RootScree
 
   return (
     <ScreenContainer>
-      <AppHeader title="Specialist" />
+      <AppHeader title={tr("Specialist")} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.head}>
           <Image source={assetSource(s.photoAsset)} style={styles.photo} />
@@ -52,41 +54,41 @@ export default function SpecialistProfileScreen({ navigation, route }: RootScree
           <Row icon="location-outline" text={s.locationLabel} />
           <Row icon="time-outline" text={s.availabilityLabel} />
           {s.languages ? <Row icon="language-outline" text={s.languages} /> : null}
-          {s.yearsExperience ? <Row icon="ribbon-outline" text={`${s.yearsExperience} years' experience`} /> : null}
+          {s.yearsExperience ? <Row icon="ribbon-outline" text={tr("{n} years' experience", { n: s.yearsExperience })} /> : null}
         </View>
 
-        {s.bio ? (<><Text style={styles.section}>About</Text><Text style={styles.bio}>{s.bio}</Text></>) : null}
+        {s.bio ? (<><Text style={styles.section}>{tr("About")}</Text><Text style={styles.bio}>{s.bio}</Text></>) : null}
 
-        <Text style={styles.section}>Services</Text>
-        {s.services.length === 0 ? <Text style={styles.empty}>No services listed yet. You can still send a message.</Text> : s.services.map((sv) => (
+        <Text style={styles.section}>{tr("Services")}</Text>
+        {s.services.length === 0 ? <Text style={styles.empty}>{tr("No services listed yet. You can still send a message.")}</Text> : s.services.map((sv) => (
           <TouchableOpacity key={sv.id} style={styles.svc} disabled={!s.acceptingRequests} onPress={() => book(sv.id)}
-            accessibilityRole="button" accessibilityLabel={`${sv.name}, ${sv.priceLabel ?? "price on request"}. Book`}>
+            accessibilityRole="button" accessibilityLabel={`${sv.name}, ${sv.priceLabel ?? tr("price on request")}. ${tr("Book")}`}>
             <View style={{ flex: 1 }}>
               <Text style={styles.svcName}>{sv.name}</Text>
               <Text style={styles.svcDesc}>{sv.description}</Text>
               <Text style={styles.svcMeta}>{sv.durationLabel}</Text>
             </View>
             <View style={{ alignItems: "flex-end" }}>
-              <Text style={styles.price}>{sv.priceLabel ?? "On request"}</Text>
-              {s.acceptingRequests ? <Ionicons name="chevron-forward" size={16} color={colors.tertiaryText} /> : null}
+              <Text style={styles.price}>{sv.priceLabel ?? tr("On request")}</Text>
+              {s.acceptingRequests ? <Ionicons style={rtlFlip()} name="chevron-forward" size={16} color={colors.tertiaryText} /> : null}
             </View>
           </TouchableOpacity>
         ))}
 
-        <Text style={styles.section}>Reviews</Text>
+        <Text style={styles.section}>{tr("Reviews")}</Text>
         <ReviewsList targetType="independent_specialist" targetId={s.id} />
 
         <View style={{ marginTop: 18 }}>
           {s.acceptingRequests ? (
             <>
-              {s.services.length > 0 ? <Button label="Book a service" variant="pill" onPress={() => book()} /> : null}
-              <Button label="Connect with specialist" variant={s.services.length > 0 ? "outlinePill" : "pill"}
+              {s.services.length > 0 ? <Button label={tr("Book a service")} variant="pill" onPress={() => book()} /> : null}
+              <Button label={tr("Connect with specialist")} variant={s.services.length > 0 ? "outlinePill" : "pill"}
                 onPress={() => navigation.navigate("SpecialistRequest", { specialistId, kind: "connect" })} style={{ marginTop: s.services.length > 0 ? 10 : 0 }} />
             </>
           ) : (
-            <Text style={styles.unavailable}>{s.name} isn't accepting new requests right now. Check back soon or browse other specialists.</Text>
+            <Text style={styles.unavailable}>{tr("{name} isn't accepting new requests right now. Check back soon or browse other specialists.", { name: s.name })}</Text>
           )}
-          <Button label="Browse other specialists" variant="outlinePill" onPress={() => navigation.navigate("Specialists", { categoryId: s.categoryId, title: s.categoryTitle })} style={{ marginTop: 10 }} />
+          <Button label={tr("Browse other specialists")} variant="outlinePill" onPress={() => navigation.navigate("Specialists", { categoryId: s.categoryId, title: s.categoryTitle })} style={{ marginTop: 10 }} />
         </View>
       </ScrollView>
     </ScreenContainer>

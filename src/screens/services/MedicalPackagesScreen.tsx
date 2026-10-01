@@ -12,8 +12,10 @@ import { usePackages } from "../../api/queries";
 import { assetSource } from "../../api/assets";
 import { colors, radii, shadows, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function MedicalPackagesScreen({ navigation }: RootScreenProps<"MedicalPackages">) {
+  const tr = useT();
   const packagesQuery = usePackages();
   return (
     <ScreenContainer>
@@ -27,11 +29,11 @@ export default function MedicalPackagesScreen({ navigation }: RootScreenProps<"M
         ListEmptyComponent={
           packagesQuery.isPending ? <ListStateView kind="loading" /> :
           packagesQuery.isError ? <ListStateView kind="error" onRetry={() => void packagesQuery.refetch()} /> :
-          <ListStateView kind="empty" title="Nothing to show" message="No packages are available right now." />
+          <ListStateView kind="empty" title={tr("Nothing to show")} message={tr("No packages are available right now.")} />
         }
         ListHeaderComponent={
           <View>
-            <Text style={styles.title}>Medical Packages</Text>
+            <Text style={styles.title}>{tr("Medical Packages")}</Text>
             <SearchBar style={{ marginTop: 14, marginBottom: 18 }} />
           </View>
         }
@@ -66,7 +68,7 @@ export default function MedicalPackagesScreen({ navigation }: RootScreenProps<"M
                 <Text style={styles.desc} numberOfLines={2}>
                   {item.description}
                 </Text>
-                <Text style={styles.includeLabel}>Package Include</Text>
+                <Text style={styles.includeLabel}>{tr("Package Include")}</Text>
                 <Text style={styles.include}>{item.packageInclude.join(" | ")}</Text>
               </View>
             </TouchableOpacity>

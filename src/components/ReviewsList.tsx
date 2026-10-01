@@ -5,6 +5,7 @@ import { useReviews } from "../api/queries";
 import type { ReviewTargetType } from "../api/types";
 import { formatDate } from "../utils/dates";
 import { colors, radii } from "../theme";
+import { useT } from "../i18n";
 
 function Stars({ value, size = 13 }: { value: number; size?: number }) {
   return (
@@ -18,14 +19,15 @@ function Stars({ value, size = 13 }: { value: number; size?: number }) {
 
 /** Rating summary and the newest member reviews for a hospital, clinic, provider or specialist. */
 export default function ReviewsList({ targetType, targetId }: { targetType: ReviewTargetType; targetId: string }) {
+  const tr = useT();
   const query = useReviews(targetType, targetId);
 
   if (query.isLoading) return <ActivityIndicator color={colors.primary} style={{ marginVertical: 12 }} />;
   // Reviews are supplementary; a failed load shouldn't take over a booking screen.
-  if (query.isError || !query.data) return <Text style={styles.muted}>Reviews aren't available right now.</Text>;
+  if (query.isError || !query.data) return <Text style={styles.muted}>{tr("Reviews aren't available right now.")}</Text>;
 
   const { total, average, items } = query.data;
-  if (total === 0) return <Text style={styles.muted}>No reviews yet. Members can rate a visit once it's complete.</Text>;
+  if (total === 0) return <Text style={styles.muted}>{tr("No reviews yet. Members can rate a visit once it's complete.")}</Text>;
 
   return (
     <View>

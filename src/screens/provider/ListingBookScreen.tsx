@@ -13,8 +13,10 @@ import { addDays, formatDateLong, formatTime, utcTodayIso } from "../../utils/da
 import { BOOKING_WINDOW_DAYS } from "../../utils/validation";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function ListingBookScreen({ navigation, route }: RootScreenProps<"ListingBook">) {
+  const tr = useT();
   const { listingId } = route.params;
   const q = useListingDetail(listingId);
   const [date, setDate] = useState<string | null>(null);
@@ -29,7 +31,7 @@ export default function ListingBookScreen({ navigation, route }: RootScreenProps
   const l = q.data;
 
   if (!l) {
-    return <ScreenContainer><AppHeader title="Book" />{q.isError ? <ListStateView kind="error" message="This listing isn't available." onRetry={() => void q.refetch()} /> : <ListStateView kind="loading" message="Loading…" />}</ScreenContainer>;
+    return <ScreenContainer><AppHeader title={tr("Book")} />{q.isError ? <ListStateView kind="error" message={tr("This listing isn't available.")} onRetry={() => void q.refetch()} /> : <ListStateView kind="loading" message={tr("Loading…")} />}</ScreenContainer>;
   }
 
   const submit = () => {
@@ -42,42 +44,42 @@ export default function ListingBookScreen({ navigation, route }: RootScreenProps
         setKey(newIdempotencyKey()); // a failed attempt must not be replayed as the same request
         if (x.fields) setFieldErrors(x.fields);
         if (x.status === 409) { setTime(null); void slots.refetch(); }
-        setError(x.isOffline ? "You appear to be offline. Check your connection and try again." : x.message || "We couldn't complete the booking.");
+        setError(x.isOffline ? tr("You appear to be offline. Check your connection and try again.") : x.message || tr("We couldn't complete the booking."));
       },
     });
   };
 
   return (
     <ScreenContainer>
-      <AppHeader title="Book" />
+      <AppHeader title={tr("Book")} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Text style={styles.name}>{l.name}</Text>
           <Text style={styles.meta}>{l.providerProfile.name} · {l.priceLabel}{l.durationMinutes ? ` · ${l.durationMinutes} min` : ""}</Text>
-          <DateField label="Date" value={date} onChange={(v) => { setDate(v); setTime(null); setError(null); }} min={addDays(utcTodayIso(), 1)} max={addDays(utcTodayIso(), BOOKING_WINDOW_DAYS)}
-            minMessage="Choose a date after today" maxMessage="Choose a date within the next year" requiredMessage="Choose a date" error={fieldErrors.date} containerStyle={{ marginTop: 16 }} />
+          <DateField label={tr("Date")} value={date} onChange={(v) => { setDate(v); setTime(null); setError(null); }} min={addDays(utcTodayIso(), 1)} max={addDays(utcTodayIso(), BOOKING_WINDOW_DAYS)}
+            minMessage={tr("Choose a date after today")} maxMessage={tr("Choose a date within the next year")} requiredMessage={tr("Choose a date")} error={fieldErrors.date} containerStyle={{ marginTop: 16 }} />
           {date ? (
             <View style={{ marginBottom: 12 }}>
-              <Text style={styles.label}>Available times on {formatDateLong(date)}</Text>
-              {slots.isLoading ? <Text style={styles.meta}>Checking times…</Text> : slots.isError ? (
-                <Text style={styles.err}>We couldn't load times. <Text style={styles.link} onPress={() => void slots.refetch()}>Try again</Text></Text>
+              <Text style={styles.label}>{tr("Available times on {date}", { date: formatDateLong(date) })}</Text>
+              {slots.isLoading ? <Text style={styles.meta}>{tr("Checking times…")}</Text> : slots.isError ? (
+                <Text style={styles.err}>{tr("We couldn't load times.")} <Text style={styles.link} onPress={() => void slots.refetch()}>{tr("Try again")}</Text></Text>
               ) : slots.data && slots.data.slots.length ? (
                 <View style={styles.slots}>
                   {slots.data.slots.map((s) => (
-                    <TouchableOpacity key={s.time} style={[styles.slot, time === s.time && styles.slotOn]} onPress={() => { setTime(s.time); setError(null); }} accessibilityRole="button" accessibilityState={{ selected: time === s.time }} accessibilityLabel={`${formatTime(s.time)}, ${s.remaining} left`}>
+                    <TouchableOpacity key={s.time} style={[styles.slot, time === s.time && styles.slotOn]} onPress={() => { setTime(s.time); setError(null); }} accessibilityRole="button" accessibilityState={{ selected: time === s.time }} accessibilityLabel={tr("{time}, {n} left", { time: formatTime(s.time), n: s.remaining })}>
                       <Text style={[styles.slotText, time === s.time && { color: "#fff" }]}>{formatTime(s.time)}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
-              ) : <Text style={styles.meta}>{slots.data?.reason || "No times are free on this day. Try another date."}</Text>}
+              ) : <Text style={styles.meta}>{slots.data?.reason || tr("No times are free on this day. Try another date.")}</Text>}
               {fieldErrors.time ? <Text style={styles.err}>{fieldErrors.time}</Text> : null}
             </View>
           ) : null}
-          <TextField label="Contact phone" optional value={phone} onChangeText={setPhone} keyboardType="phone-pad" error={fieldErrors.contactPhone} />
-          <TextField label="Notes for the provider" optional value={notes} onChangeText={setNotes} multiline maxLength={500} error={fieldErrors.notes} />
-          {l.requirements ? <Text style={styles.meta}>Please note: {l.requirements}</Text> : null}
+          <TextField label={tr("Contact phone")} optional value={phone} onChangeText={setPhone} keyboardType="phone-pad" error={fieldErrors.contactPhone} />
+          <TextField label={tr("Notes for the provider")} optional value={notes} onChangeText={setNotes} multiline maxLength={500} error={fieldErrors.notes} />
+          {l.requirements ? <Text style={styles.meta}>{tr("Please note: {text}", { text: l.requirements })}</Text> : null}
           {error ? <Text style={styles.err} accessibilityLiveRegion="polite">{error}</Text> : null}
-          <Button label="Request booking" variant="pill" onPress={submit} loading={book.isPending} disabled={!date || !time || book.isPending} style={{ marginTop: 16 }} />
+          <Button label={tr("Request booking")} variant="pill" onPress={submit} loading={book.isPending} disabled={!date || !time || book.isPending} style={{ marginTop: 16 }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </ScreenContainer>

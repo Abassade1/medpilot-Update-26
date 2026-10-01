@@ -25,11 +25,13 @@ import { useMultiStepBack } from "../../hooks/useMultiStepBack";
 import { addDays, utcTodayIso } from "../../utils/dates";
 import { BOOKING_WINDOW_DAYS } from "../../utils/validation";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function BookAppointmentScreen({
   navigation,
   route,
 }: RootScreenProps<"BookAppointment">) {
+  const tr = useT();
   const [step, setStep] = useState(1);
   const reference = useReference();
   const createAppointment = useCreateAppointment();
@@ -149,7 +151,7 @@ export default function BookAppointmentScreen({
 
   return (
     <ScreenContainer>
-      <AppHeader title="Book Appointment" onBack={back} />
+      <AppHeader title={tr("Book Appointment")} onBack={back} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -161,13 +163,13 @@ export default function BookAppointmentScreen({
         contentContainerStyle={styles.content}
       >
         <Text style={styles.step}>
-          <Text style={styles.stepCurrent}>{step}</Text> of 3
+          <Text style={styles.stepCurrent}>{step}</Text> {tr("of 3")}
         </Text>
         <Text style={styles.title}>{titles[step - 1]}</Text>
 
         {step === 1 && (
           <View>
-            <Text style={styles.fieldLabel}>Select type of Appointment</Text>
+            <Text style={styles.fieldLabel}>{tr("Select type of Appointment")}</Text>
             {appointmentTypes.map((t) => (
               <RadioRow
                 key={t.code}
@@ -178,7 +180,7 @@ export default function BookAppointmentScreen({
               />
             ))}
             <DateField
-              label="Appointment Date"
+              label={tr("Appointment Date")}
               value={date}
               onChange={(v) => { setDate(v); setServerDateError(null); }}
               min={minDate}
@@ -190,7 +192,7 @@ export default function BookAppointmentScreen({
               containerStyle={{ marginTop: 10 }}
             />
             <DateField
-              label="Preferred time"
+              label={tr("Preferred time")}
               optional
               mode="time"
               value={time}
@@ -203,30 +205,30 @@ export default function BookAppointmentScreen({
         {step === 2 && (
           <View>
             <Text style={styles.question}>
-              Are you currently under treatment for any medical condition?
+              {tr("Are you currently under treatment for any medical condition?")}
             </Text>
             <RadioRow
-              label="Yes"
+              label={tr("Yes")}
               selected={underTreatment === true}
               onPress={() => setUnderTreatment(true)}
               style={{ marginTop: 14 }}
             />
             <RadioRow
-              label="No"
+              label={tr("No")}
               selected={underTreatment === false}
               onPress={() => setUnderTreatment(false)}
               style={{ marginTop: 12 }}
             />
-            <Text style={[styles.fieldLabel, { marginTop: 20 }]}>If Yes, Please specify</Text>
+            <Text style={[styles.fieldLabel, { marginTop: 20 }]}>{tr("If Yes, Please specify")}</Text>
             <TextField
-              placeholder="Medical condition"
+              placeholder={tr("Medical condition")}
               value={condition}
               onChangeText={setCondition}
               autoCapitalize="sentences"
               maxLength={200}
               returnKeyType="done"
               multiline
-              accessibilityLabel="Describe your medical condition"
+              accessibilityLabel={tr("Describe your medical condition")}
             />
           </View>
         )}
@@ -235,8 +237,8 @@ export default function BookAppointmentScreen({
           <View>
             <View style={styles.nameRow}>
               <TextField
-                label="Firstname"
-                placeholder="Firstname"
+                label={tr("Firstname")}
+                placeholder={tr("Firstname")}
                 value={firstname}
                 onChangeText={setFirstname}
                 autoCapitalize="words"
@@ -246,8 +248,8 @@ export default function BookAppointmentScreen({
                 containerStyle={styles.nameField}
               />
               <TextField
-                label="Lastname"
-                placeholder="Lastname"
+                label={tr("Lastname")}
+                placeholder={tr("Lastname")}
                 value={lastname}
                 onChangeText={setLastname}
                 autoCapitalize="words"
@@ -258,8 +260,8 @@ export default function BookAppointmentScreen({
               />
             </View>
             <TextField
-              label="Phone number"
-              placeholder="Phone number"
+              label={tr("Phone number")}
+              placeholder={tr("Phone number")}
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
@@ -270,7 +272,7 @@ export default function BookAppointmentScreen({
               left={<PhonePrefix />}
             />
             <SelectField
-              label="Relationship"
+              label={tr("Relationship")}
               value={relationship}
               options={relationships.map(titleCase)}
               onSelect={setRelationship}
@@ -279,7 +281,7 @@ export default function BookAppointmentScreen({
               <View style={[styles.checkbox, accompany && styles.checkboxChecked]}>
                 {accompany && <Ionicons name="checkmark" size={12} color="#fff" />}
               </View>
-              <Text style={styles.accompanyText}>My Emergency Contact will accompany me</Text>
+              <Text style={styles.accompanyText}>{tr("My Emergency Contact will accompany me")}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -287,7 +289,7 @@ export default function BookAppointmentScreen({
         <View style={styles.bottom}>
           {submitError ? <Text style={styles.error}>{submitError}</Text> : null}
           <Button
-            label={step === 3 ? "Submit" : step === 2 ? "Proceed" : "Next"}
+            label={step === 3 ? tr("Submit") : step === 2 ? tr("Proceed") : tr("Next")}
             variant="pill"
             disabled={!canNext || createAppointment.isPending}
             loading={createAppointment.isPending}

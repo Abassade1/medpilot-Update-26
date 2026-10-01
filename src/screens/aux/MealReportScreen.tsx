@@ -13,6 +13,7 @@ import { endpoints } from "../../api/endpoints";
 import { useQuery } from "@tanstack/react-query";
 import { useSubscription } from "../../api/queries";
 import { RootScreenProps } from "../../navigation/types";
+import { useT, rtlFlip } from "../../i18n";
 
 /** Emoji are presentation, so they stay client-side rather than in the payload. */
 const DETAIL_EMOJI: Record<string, string> = {
@@ -28,6 +29,7 @@ const R = (SIZE - STROKE) / 2;
 const CIRC = 2 * Math.PI * R;
 
 export default function MealReportScreen({ navigation, route }: RootScreenProps<"MealReport">) {
+  const tr = useT();
   const [showUpsell, setShowUpsell] = useState(false);
   const [openDetail, setOpenDetail] = useState<string | null>(null);
   const mealQuery = useQuery({
@@ -60,11 +62,11 @@ export default function MealReportScreen({ navigation, route }: RootScreenProps<
   if (!meal) {
     return (
       <ScreenContainer>
-        <AppHeader title="Meal Analysis Report" right={<LogoMark size={26} />} />
+        <AppHeader title={tr("Meal Analysis Report")} right={<LogoMark size={26} />} />
         {mealQuery.isError ? (
           <ListStateView kind="error" onRetry={() => void mealQuery.refetch()} />
         ) : (
-          <ListStateView kind="loading" message="Loading your report…" />
+          <ListStateView kind="loading" message={tr("Loading your report…")} />
         )}
       </ScreenContainer>
     );
@@ -72,7 +74,7 @@ export default function MealReportScreen({ navigation, route }: RootScreenProps<
 
   return (
     <ScreenContainer>
-      <AppHeader title="Meal Analysis Report" right={<LogoMark size={26} />} />
+      <AppHeader title={tr("Meal Analysis Report")} right={<LogoMark size={26} />} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.chartWrap}>
           <Svg width={SIZE} height={SIZE}>
@@ -92,7 +94,7 @@ export default function MealReportScreen({ navigation, route }: RootScreenProps<
           </Svg>
           <View style={styles.chartCenter}>
             <Text style={styles.calories}>{meal.caloriesEstimate ?? "—"}</Text>
-            <Text style={styles.caloriesLabel}>Estimated Calories</Text>
+            <Text style={styles.caloriesLabel}>{tr("Estimated Calories")}</Text>
             <Text style={styles.delta}>
               {meal.baselineDeltaPct == null
                 ? ""
@@ -111,7 +113,7 @@ export default function MealReportScreen({ navigation, route }: RootScreenProps<
         </View>
 
         <View style={styles.detailCard}>
-          <Text style={styles.detailTitle}>Detailed Analysis</Text>
+          <Text style={styles.detailTitle}>{tr("Detailed Analysis")}</Text>
           {detailRows.map((row) => (
             <TouchableOpacity
               key={row.code}
@@ -136,6 +138,7 @@ export default function MealReportScreen({ navigation, route }: RootScreenProps<
                 ) : null}
               </View>
               <Ionicons
+                style={openDetail === row.code ? undefined : rtlFlip()}
                 name={openDetail === row.code ? "chevron-down" : "chevron-forward"}
                 size={16}
                 color={colors.tertiaryText}
@@ -147,7 +150,7 @@ export default function MealReportScreen({ navigation, route }: RootScreenProps<
         {meal.disclaimer ? <Text style={styles.disclaimer}>{meal.disclaimer}</Text> : null}
 
         <Button
-          label="Rescan"
+          label={tr("Rescan")}
           variant="outlinePill"
           icon={<Ionicons name="refresh" size={15} color={colors.primary} />}
           onPress={() => navigation.replace("MealCamera")}
@@ -156,13 +159,12 @@ export default function MealReportScreen({ navigation, route }: RootScreenProps<
       </ScrollView>
 
       <BottomSheet visible={showUpsell} onClose={() => setShowUpsell(false)} maxHeightRatio={0.45}>
-        <Text style={styles.upsellTitle}>Access all features</Text>
+        <Text style={styles.upsellTitle}>{tr("Access all features")}</Text>
         <Text style={styles.upsellBody}>
-          Get unlimited access to the meal analysis & International specialist from $10/month —
-          cancel anytime.
+          {tr("Get unlimited access to the meal analysis & International specialist from $10/month — cancel anytime.")}
         </Text>
         <Button
-          label="Upgrade"
+          label={tr("Upgrade")}
           onPress={() => {
             setShowUpsell(false);
             navigation.navigate("Upgrade");
@@ -170,7 +172,7 @@ export default function MealReportScreen({ navigation, route }: RootScreenProps<
           style={{ marginTop: 22, marginHorizontal: 24, borderRadius: 24 }}
         />
         <TouchableOpacity style={styles.cancelLink} onPress={() => setShowUpsell(false)}>
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={styles.cancelText}>{tr("Cancel")}</Text>
         </TouchableOpacity>
       </BottomSheet>
     </ScreenContainer>

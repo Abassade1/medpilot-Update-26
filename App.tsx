@@ -3,6 +3,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import RootNavigator from "./src/navigation";
 import { SessionProvider } from "./src/state/Session";
+import { LanguageProvider } from "./src/i18n";
 import ErrorBoundary from "./src/components/ErrorBoundary";
 import { ApiError } from "./src/api/errors";
 
@@ -25,11 +26,13 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
-        <SessionProvider>
-          <ErrorBoundary>
-            <RootNavigator />
-          </ErrorBoundary>
-        </SessionProvider>
+        <LanguageProvider>
+          <SessionProvider>
+            <ErrorBoundary>
+              <RootNavigator />
+            </ErrorBoundary>
+          </SessionProvider>
+        </LanguageProvider>
       </QueryClientProvider>
     </SafeAreaProvider>
   );

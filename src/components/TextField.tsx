@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radii, spacing } from "../theme";
+import { useT } from "../i18n";
 
 interface Props extends TextInputProps {
   label?: string;
@@ -31,6 +32,7 @@ const TextField = forwardRef<TextInput, Props>(function TextField(
   { label, optional, error, secure, containerStyle, left, right, onFocus, onBlur, ...inputProps },
   ref
 ) {
+  const tr = useT();
   const [hidden, setHidden] = useState(!!secure);
   const [focused, setFocused] = useState(false);
 
@@ -39,7 +41,7 @@ const TextField = forwardRef<TextInput, Props>(function TextField(
       {label ? (
         <Text style={styles.label}>
           {label}
-          {optional ? <Text style={styles.optional}> (Optional)</Text> : null}
+          {optional ? <Text style={styles.optional}> {tr("(Optional)")}</Text> : null}
         </Text>
       ) : null}
       <View
@@ -74,7 +76,7 @@ const TextField = forwardRef<TextInput, Props>(function TextField(
             onPress={() => setHidden((h) => !h)}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             accessibilityRole="button"
-            accessibilityLabel={hidden ? "Show password" : "Hide password"}
+            accessibilityLabel={hidden ? tr("Show password") : tr("Hide password")}
           >
             <Ionicons
               name={hidden ? "eye-off-outline" : "eye-outline"}

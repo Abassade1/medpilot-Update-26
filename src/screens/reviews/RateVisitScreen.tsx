@@ -9,8 +9,10 @@ import { useSubmitReview } from "../../api/queries";
 import { ApiError } from "../../api/errors";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function RateVisitScreen({ navigation, route }: RootScreenProps<"RateVisit">) {
+  const tr = useT();
   const { targetType, requestId, targetName } = route.params;
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
@@ -24,13 +26,13 @@ export default function RateVisitScreen({ navigation, route }: RootScreenProps<"
       { targetType, requestId, rating, comment: comment.trim() || undefined },
       {
         onSuccess: () => {
-          Alert.alert("Thanks for your review!", "Your rating helps other members choose with confidence.", [
-            { text: "Done", onPress: () => navigation.goBack() },
+          Alert.alert(tr("Thanks for your review!"), tr("Your rating helps other members choose with confidence."), [
+            { text: tr("Done"), onPress: () => navigation.goBack() },
           ]);
         },
         onError: (err) => {
           const e = err as ApiError;
-          setError(e.isOffline ? "You appear to be offline. Check your connection and try again." : e.message || "We couldn't submit your review. Please try again.");
+          setError(e.isOffline ? tr("You appear to be offline. Check your connection and try again.") : e.message || tr("We couldn't submit your review. Please try again."));
         },
       },
     );
@@ -38,26 +40,26 @@ export default function RateVisitScreen({ navigation, route }: RootScreenProps<"
 
   return (
     <ScreenContainer>
-      <AppHeader title="Rate your visit" />
+      <AppHeader title={tr("Rate your visit")} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <Text style={styles.target}>{targetName}</Text>
-          <Text style={styles.sub}>How was your experience?</Text>
+          <Text style={styles.sub}>{tr("How was your experience?")}</Text>
 
           <View style={styles.card}>
             <RatingInput value={rating} onChange={setRating} />
           </View>
 
           <TextField
-            label="Comments" optional value={comment} onChangeText={setComment} multiline maxLength={500}
-            placeholder="Tell other members what stood out"
+            label={tr("Comments")} optional value={comment} onChangeText={setComment} multiline maxLength={500}
+            placeholder={tr("Tell other members what stood out")}
             containerStyle={{ marginTop: 6 }}
           />
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <Button
-            label="Submit review" onPress={onSubmit} disabled={!rating || submit.isPending}
+            label={tr("Submit review")} onPress={onSubmit} disabled={!rating || submit.isPending}
             loading={submit.isPending} style={styles.submit}
           />
         </ScrollView>

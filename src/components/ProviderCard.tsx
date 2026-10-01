@@ -4,6 +4,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import Rating from "./Rating";
 import { colors, radii, shadows } from "../theme";
+import { useT } from "../i18n";
 
 interface Props {
   image: ImageSourcePropType;
@@ -33,6 +34,7 @@ export default function ProviderCard({
   routes,
   onPress,
 }: Props) {
+  const tr = useT();
   return (
     <TouchableOpacity
       style={styles.card}
@@ -45,7 +47,7 @@ export default function ProviderCard({
         <Image source={image} style={styles.image} />
         <LinearGradient colors={["transparent", "rgba(2,8,20,0.75)"]} style={styles.scrim} />
         <View style={styles.priceOverlay}>
-          <Text style={styles.priceLabel}>Service from</Text>
+          <Text style={styles.priceLabel}>{tr("Service from")}</Text>
           <Text style={styles.price}>{price}</Text>
         </View>
       </View>

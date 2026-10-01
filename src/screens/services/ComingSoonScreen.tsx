@@ -6,21 +6,23 @@ import AppHeader from "../../components/AppHeader";
 import Button from "../../components/Button";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 /** A service that is announced but not yet offered: clearly labelled, not bookable, with a way out. */
 export default function ComingSoonScreen({ navigation, route }: RootScreenProps<"ComingSoon">) {
+  const tr = useT();
   const { title, description } = route.params;
   return (
     <ScreenContainer>
       <AppHeader title={title} />
       <View style={styles.body}>
         <View style={styles.icon}><Ionicons name="hourglass-outline" size={38} color={colors.primary} /></View>
-        <View style={styles.pill}><Text style={styles.pillText}>Coming soon</Text></View>
+        <View style={styles.pill}><Text style={styles.pillText}>{tr("Coming soon")}</Text></View>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.text}>{description}</Text>
-        <Text style={styles.note}>This service isn't available to book yet. We'll let you know when it launches.</Text>
-        <Button label="Back to Home" variant="pill" onPress={() => navigation.navigate("MainTabs")} style={{ marginTop: 26 }} />
-        <Button label="Browse other services" variant="outlinePill" onPress={() => navigation.navigate("Services")} style={{ marginTop: 10 }} />
+        <Text style={styles.note}>{tr("This service isn't available to book yet. We'll let you know when it launches.")}</Text>
+        <Button label={tr("Back to Home")} variant="pill" onPress={() => navigation.navigate("MainTabs")} style={{ marginTop: 26 }} />
+        <Button label={tr("Browse other services")} variant="outlinePill" onPress={() => navigation.navigate("Services")} style={{ marginTop: 10 }} />
       </View>
     </ScreenContainer>
   );

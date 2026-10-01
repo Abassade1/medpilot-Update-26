@@ -4,6 +4,7 @@ import LogoBox from "./LogoBox";
 import { assetSource } from "../api/assets";
 import type { HospitalCard } from "../api/types";
 import { colors } from "../theme";
+import { useT } from "../i18n";
 
 interface Props {
   hospital: HospitalCard;
@@ -16,6 +17,7 @@ function initials(name: string): string {
 }
 
 export default function FacilityRow({ hospital, onPress }: Props) {
+  const tr = useT();
   return (
     <TouchableOpacity
       style={styles.row}
@@ -35,7 +37,7 @@ export default function FacilityRow({ hospital, onPress }: Props) {
       </View>
       <View style={styles.meta}>
         <Text style={styles.country}>{hospital.country}</Text>
-        <Text style={styles.specialists}>{hospital.specialistCount} Specialists</Text>
+        <Text style={styles.specialists}>{tr("{n} Specialists", { n: hospital.specialistCount })}</Text>
       </View>
     </TouchableOpacity>
   );

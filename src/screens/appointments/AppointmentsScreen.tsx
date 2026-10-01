@@ -21,10 +21,13 @@ import ListStateView from "../../components/ListStateView";
 import { useAppointments, useServiceRequests, useTransportBookings } from "../../api/queries";
 import { assetSource } from "../../api/assets";
 import { colors, radii, shadows, spacing } from "../../theme";
+import { useT } from "../../i18n";
 
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const FILTERS = ["all", "pending", "confirmed", "completed", "cancelled"] as const;
 
 export default function AppointmentsScreen() {
+  const tr = useT();
   const navigation = useNavigation<any>();
   const [tab, setTab] = useState(0);
   const [status, setStatus] = useState<(typeof FILTERS)[number]>("all");
@@ -49,7 +52,7 @@ export default function AppointmentsScreen() {
   return (
     <ScreenContainer>
       <AppHeader
-        title="Appointments"
+        title={tr("Appointments")}
         showBack={false}
         right={
           tab !== 0 ? undefined : (
@@ -57,7 +60,7 @@ export default function AppointmentsScreen() {
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             onPress={() => { setShowSearch((v) => !v); if (showSearch) setSearch(""); }}
             accessibilityRole="button"
-            accessibilityLabel={showSearch ? "Close search" : "Search appointments"}
+            accessibilityLabel={showSearch ? tr("Close search") : tr("Search appointments")}
           >
             <Ionicons name={showSearch ? "close" : "search"} size={20} color={colors.primary} />
           </TouchableOpacity>
@@ -79,12 +82,12 @@ export default function AppointmentsScreen() {
       >
         <View style={styles.sectionRow}>
           <Text style={styles.sectionTitle}>
-            {tab === 0 ? "Medical Appointments" : tab === 1 ? "Transportation booking" : "Pet & specialist requests"}
+            {tab === 0 ? tr("Medical Appointments") : tab === 1 ? tr("Transportation booking") : tr("Pet & specialist requests")}
           </Text>
           {tab === 0 ? (
-          <TouchableOpacity style={styles.filterBtn} onPress={() => setShowFilter((v) => !v)} accessibilityRole="button" accessibilityLabel="Filter by status">
+          <TouchableOpacity style={styles.filterBtn} onPress={() => setShowFilter((v) => !v)} accessibilityRole="button" accessibilityLabel={tr("Filter by status")}>
             <Ionicons name="options-outline" size={15} color={colors.primary} />
-            <Text style={styles.filterText}>{status === "all" ? "Filter" : status}</Text>
+            <Text style={styles.filterText}>{status === "all" ? tr("Filter") : tr(cap(status))}</Text>
           </TouchableOpacity>
           ) : null}
         </View>
@@ -92,7 +95,7 @@ export default function AppointmentsScreen() {
           <TextInput
             value={search}
             onChangeText={setSearch}
-            placeholder="Search hospital, type or booking ID"
+            placeholder={tr("Search hospital, type or booking ID")}
             autoFocus
             style={{ borderWidth: 1, borderColor: colors.borderLight, borderRadius: radii.sm, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10, fontSize: 14 }}
           />
@@ -107,35 +110,35 @@ export default function AppointmentsScreen() {
                 accessibilityState={{ selected: status === f }}
                 style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 18, marginRight: 8, borderWidth: 1, borderColor: status === f ? colors.primary : colors.borderLight, backgroundColor: status === f ? colors.primaryLight : "#fff" }}
               >
-                <Text style={{ fontSize: 12.5, fontWeight: "600", color: status === f ? colors.primary : colors.secondaryText, textTransform: "capitalize" }}>{f}</Text>
+                <Text style={{ fontSize: 12.5, fontWeight: "600", color: status === f ? colors.primary : colors.secondaryText, textTransform: "capitalize" }}>{f === "all" ? tr("All") : tr(cap(f))}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         ) : null}
 
         {active.isPending ? (
-          <ListStateView kind="loading" message="Loading your bookings…" />
+          <ListStateView kind="loading" message={tr("Loading your bookings…")} />
         ) : active.isError ? (
           <ListStateView kind="error" onRetry={() => void active.refetch()} />
         ) : rows.length === 0 ? (
           <ListStateView
             kind="empty"
-            title={tab === 0 ? "No appointments yet" : tab === 1 ? "No transport booked" : "No requests yet"}
+            title={tab === 0 ? tr("No appointments yet") : tab === 1 ? tr("No transport booked") : tr("No requests yet")}
             message={
               tab === 0
-                ? "Book a hospital appointment and it will appear here."
+                ? tr("Book a hospital appointment and it will appear here.")
                 : tab === 1
-                ? "Request medical transport and it will appear here."
-                : "Pet and independent-specialist requests will appear here."
+                ? tr("Request medical transport and it will appear here.")
+                : tr("Pet and independent-specialist requests will appear here.")
             }
-            actionLabel={tab === 0 ? "Find a hospital" : tab === 1 ? "Request transport" : "Browse services"}
+            actionLabel={tab === 0 ? tr("Find a hospital") : tab === 1 ? tr("Request transport") : tr("Browse services")}
             onAction={() => navigation.navigate(tab === 0 ? "Hospitals" : tab === 1 ? "MedicalTransport" : "Services")}
           />
         ) : tab === 0 && visible.length === 0 ? (
           <ListStateView
             kind="empty"
-            title="No matching appointments"
-            message="Try a different search or status filter."
+            title={tr("No matching appointments")}
+            message={tr("Try a different search or status filter.")}
           />
         ) : tab === 0 ? (
           visible.map((a) => (
@@ -177,7 +180,7 @@ export default function AppointmentsScreen() {
               <View style={styles.divider} />
               <View style={styles.cardBottom}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.smallLabel}>Contact Person</Text>
+                  <Text style={styles.smallLabel}>{tr("Contact Person")}</Text>
                   {a.contactPerson ? (
                     <View style={styles.contactRow}>
                       <Image
@@ -190,11 +193,11 @@ export default function AppointmentsScreen() {
                       </View>
                     </View>
                   ) : (
-                    <Text style={styles.contactRole}>Assigned once confirmed</Text>
+                    <Text style={styles.contactRole}>{tr("Assigned once confirmed")}</Text>
                   )}
                 </View>
                 <View style={{ alignItems: "flex-end" }}>
-                  <Text style={styles.smallLabel}>Booking ID</Text>
+                  <Text style={styles.smallLabel}>{tr("Booking ID")}</Text>
                   <Text style={styles.bookingId}>{a.reference}</Text>
                 </View>
               </View>
@@ -216,7 +219,7 @@ export default function AppointmentsScreen() {
                   <Text style={styles.appointmentMeta} numberOfLines={1}>{r.kindLabel}{r.service ? ` | ${r.service.name}` : ""}</Text>
                   <View style={styles.dateRow}>
                     <MaterialCommunityIcons name="calendar-month-outline" size={13} color={colors.primary} />
-                    <Text style={styles.dateText}>{r.preferredDate ? formatDate(r.preferredDate) : "Flexible"}</Text>
+                    <Text style={styles.dateText}>{r.preferredDate ? formatDate(r.preferredDate) : tr("Flexible")}</Text>
                     <View style={{ marginLeft: "auto" }}><StatusPill status={r.status} /></View>
                   </View>
                 </View>
@@ -238,10 +241,10 @@ export default function AppointmentsScreen() {
               <View style={styles.flightRow}>
                 <View style={styles.flightEnd}>
                   <Text style={styles.flightCode} numberOfLines={1}>{t.pickup.city ?? t.pickup.region ?? t.pickup.country}</Text>
-                  <Text style={styles.flightCity} numberOfLines={1}>{t.pickup.city || t.pickup.region ? t.pickup.country : t.pickup.siteType === "airport" ? "Airport" : "Helipad"}</Text>
+                  <Text style={styles.flightCity} numberOfLines={1}>{t.pickup.city || t.pickup.region ? t.pickup.country : t.pickup.siteType === "airport" ? tr("Airport") : tr("Helipad")}</Text>
                 </View>
                 <View style={styles.flightMiddle}>
-                  <Text style={styles.flightDuration}>{t.returnTrip ? "Return" : "One way"}</Text>
+                  <Text style={styles.flightDuration}>{t.returnTrip ? tr("Return") : tr("One way")}</Text>
                   <View style={styles.flightPathRow}>
                     <View style={styles.flightDot} />
                     <View style={styles.flightLine} />
@@ -252,18 +255,18 @@ export default function AppointmentsScreen() {
                 </View>
                 <View style={[styles.flightEnd, { alignItems: "flex-end" }]}>
                   <Text style={styles.flightCode} numberOfLines={1}>{t.dropoff.city ?? t.dropoff.region ?? t.dropoff.country}</Text>
-                  <Text style={styles.flightCity} numberOfLines={1}>{t.dropoff.city || t.dropoff.region ? t.dropoff.country : t.dropoff.siteType === "airport" ? "Airport" : "Helipad"}</Text>
+                  <Text style={styles.flightCity} numberOfLines={1}>{t.dropoff.city || t.dropoff.region ? t.dropoff.country : t.dropoff.siteType === "airport" ? tr("Airport") : tr("Helipad")}</Text>
                 </View>
               </View>
               <View style={styles.divider} />
               <View style={styles.cardBottom}>
                 <View>
-                  <Text style={styles.smallLabel}>Departure Date</Text>
+                  <Text style={styles.smallLabel}>{tr("Departure Date")}</Text>
                   <Text style={styles.bookingId}>{formatDate(t.pickup.date)}</Text>
                 </View>
                 <View style={{ alignItems: "flex-end" }}>
-                  <Text style={styles.smallLabel}>Flight Number</Text>
-                  <Text style={styles.bookingId}>{t.flightNumber ?? "Not assigned yet"}</Text>
+                  <Text style={styles.smallLabel}>{tr("Flight Number")}</Text>
+                  <Text style={styles.bookingId}>{t.flightNumber ?? tr("Not assigned yet")}</Text>
                 </View>
               </View>
               <View style={styles.divider} />

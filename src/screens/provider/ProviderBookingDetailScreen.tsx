@@ -11,8 +11,10 @@ import { ApiError } from "../../api/errors";
 import { formatDate, formatTime } from "../../utils/dates";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function ProviderBookingDetailScreen({ route }: RootScreenProps<"ProviderBookingDetail">) {
+  const tr = useT();
   const { bookingId } = route.params;
   const q = useProviderBooking(bookingId);
   const act = useBookingAction(bookingId);
@@ -24,8 +26,8 @@ export default function ProviderBookingDetailScreen({ route }: RootScreenProps<"
   if (!b) {
     return (
       <ScreenContainer>
-        <AppHeader title="Booking" />
-        {q.isError ? <ListStateView kind="error" message="We couldn't load this booking." onRetry={() => void q.refetch()} /> : <ListStateView kind="loading" message="Loading…" />}
+        <AppHeader title={tr("Booking")} />
+        {q.isError ? <ListStateView kind="error" message={tr("We couldn't load this booking.")} onRetry={() => void q.refetch()} /> : <ListStateView kind="loading" message={tr("Loading…")} />}
       </ScreenContainer>
     );
   }
@@ -35,42 +37,42 @@ export default function ProviderBookingDetailScreen({ route }: RootScreenProps<"
     setError(null);
     act.mutate({ action, reason: why }, {
       onSuccess: () => { setAsking(null); setReason(""); },
-      onError: (e) => { const x = e as ApiError; setError(x.isOffline ? "You appear to be offline." : x.message || "That didn't work."); },
+      onError: (e) => { const x = e as ApiError; setError(x.isOffline ? tr("You appear to be offline.") : x.message || tr("That didn't work.")); },
     });
   };
 
   return (
     <ScreenContainer>
-      <AppHeader title="Booking" />
+      <AppHeader title={tr("Booking")} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.head}>
           <Text style={styles.ref}>{b.reference}</Text>
           <StatusPill status={b.status} />
         </View>
-        <Row label="Service" value={b.listing?.name ?? "—"} />
-        <Row label="Date" value={b.date ? `${formatDate(b.date)}${b.time ? ` at ${formatTime(b.time)}` : ""}` : "—"} />
-        <Row label="Price" value={b.priceLabel ?? "—"} />
-        <Row label="Customer" value={b.customer.name} />
-        <Row label="Phone" value={b.customer.phone ?? "Not provided"} />
-        {b.notes ? <Row label="Notes" value={b.notes} /> : null}
-        {b.cancelledReason ? <Row label="Reason" value={b.cancelledReason} /> : null}
+        <Row label={tr("Service")} value={b.listing?.name ?? "—"} />
+        <Row label={tr("Date")} value={b.date ? `${formatDate(b.date)}${b.time ? ` at ${formatTime(b.time)}` : ""}` : "—"} />
+        <Row label={tr("Price")} value={b.priceLabel ?? "—"} />
+        <Row label={tr("Customer")} value={b.customer.name} />
+        <Row label={tr("Phone")} value={b.customer.phone ?? "Not provided"} />
+        {b.notes ? <Row label={tr("Notes")} value={b.notes} /> : null}
+        {b.cancelledReason ? <Row label={tr("Reason")} value={b.cancelledReason} /> : null}
 
         {error ? <Text style={styles.err} accessibilityLiveRegion="polite">{error}</Text> : null}
         {asking ? (
           <View style={styles.box}>
-            <TextField label={asking === "decline" ? "Reason for declining" : "Reason for cancelling"} optional value={reason} onChangeText={setReason} multiline maxLength={300} />
-            <Button label={asking === "decline" ? "Decline booking" : "Cancel booking"} tone="danger" variant="outlinePill" loading={act.isPending} disabled={act.isPending} onPress={() => run(asking, reason.trim() || undefined)} />
-            <Button label="Back" variant="outlinePill" onPress={() => setAsking(null)} style={{ marginTop: 8 }} />
+            <TextField label={asking === "decline" ? tr("Reason for declining") : tr("Reason for cancelling")} optional value={reason} onChangeText={setReason} multiline maxLength={300} />
+            <Button label={asking === "decline" ? tr("Decline booking") : tr("Cancel booking")} tone="danger" variant="outlinePill" loading={act.isPending} disabled={act.isPending} onPress={() => run(asking, reason.trim() || undefined)} />
+            <Button label={tr("Back")} variant="outlinePill" onPress={() => setAsking(null)} style={{ marginTop: 8 }} />
           </View>
         ) : (
           <View style={{ marginTop: 18 }}>
-            {b.canConfirm ? <Button label="Accept booking" variant="pill" loading={act.isPending} disabled={act.isPending} onPress={() => run("confirm")} /> : null}
-            {b.canComplete ? <Button label="Mark as completed" variant="pill" loading={act.isPending} disabled={act.isPending} onPress={() => run("complete")} /> : null}
-            {b.canDecline ? <Button label="Decline" variant="outlinePill" tone="danger" onPress={() => setAsking("decline")} style={{ marginTop: 10 }} /> : null}
-            {b.canCancel ? <Button label="Cancel booking" variant="outlinePill" tone="danger" onPress={() => Alert.alert("Cancel this booking?", "The member will be notified and the slot is freed.", [{ text: "Keep it", style: "cancel" }, { text: "Continue", style: "destructive", onPress: () => setAsking("cancel") }])} style={{ marginTop: 10 }} /> : null}
+            {b.canConfirm ? <Button label={tr("Accept booking")} variant="pill" loading={act.isPending} disabled={act.isPending} onPress={() => run("confirm")} /> : null}
+            {b.canComplete ? <Button label={tr("Mark as completed")} variant="pill" loading={act.isPending} disabled={act.isPending} onPress={() => run("complete")} /> : null}
+            {b.canDecline ? <Button label={tr("Decline")} variant="outlinePill" tone="danger" onPress={() => setAsking("decline")} style={{ marginTop: 10 }} /> : null}
+            {b.canCancel ? <Button label={tr("Cancel booking")} variant="outlinePill" tone="danger" onPress={() => Alert.alert(tr("Cancel this booking?"), tr("The member will be notified and the slot is freed."), [{ text: tr("Keep it"), style: "cancel" }, { text: tr("Continue"), style: "destructive", onPress: () => setAsking("cancel") }])} style={{ marginTop: 10 }} /> : null}
           </View>
         )}
-        <Text style={styles.hint}>Rescheduling isn't supported yet. Decline or cancel, and the member can book a new time.</Text>
+        <Text style={styles.hint}>{tr("Rescheduling isn't supported yet. Decline or cancel, and the member can book a new time.")}</Text>
       </ScrollView>
     </ScreenContainer>
   );

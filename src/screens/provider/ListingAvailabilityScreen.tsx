@@ -10,11 +10,13 @@ import { ApiError } from "../../api/errors";
 import { formatDate, formatTime } from "../../utils/dates";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 interface W { weekday: number; start: string; end: string }
 
 export default function ListingAvailabilityScreen({ navigation, route }: RootScreenProps<"ListingAvailability">) {
+  const tr = useT();
   const { listingId } = route.params;
   const q = useProviderAvailability(listingId);
   const listing = useProviderListing(listingId);
@@ -30,8 +32,8 @@ export default function ListingAvailabilityScreen({ navigation, route }: RootScr
     if (q.data && !seeded.current) { seeded.current = true; setWindows(q.data.windows); setBlackouts(q.data.blackouts); }
   }, [q.data]);
 
-  if (q.isLoading) return <Shell><ListStateView kind="loading" message="Loading availability…" /></Shell>;
-  if (q.isError) return <Shell><ListStateView kind="error" message="We couldn't load availability." onRetry={() => void q.refetch()} /></Shell>;
+  if (q.isLoading) return <Shell><ListStateView kind="loading" message={tr("Loading availability…")} /></Shell>;
+  if (q.isError) return <Shell><ListStateView kind="error" message={tr("We couldn't load availability.")} onRetry={() => void q.refetch()} /></Shell>;
 
   const edit = (i: number, patch: Partial<W>) => { setWindows((w) => w.map((x, n) => (n === i ? { ...x, ...patch } : x))); setErrors({}); setMsg(null); };
   const duration = listing.data?.durationMinutes;
@@ -49,28 +51,28 @@ export default function ListingAvailabilityScreen({ navigation, route }: RootScr
     <Shell>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.name}>{listing.data?.name}</Text>
-        <Text style={styles.hint}>Members can book slots inside these weekly hours{duration ? `, every ${duration} minutes` : ""}. Each slot takes up to {listing.data?.capacity ?? 1} booking(s).</Text>
+        <Text style={styles.hint}>{tr("Members can book slots inside these weekly hours{every}. Each slot takes up to {n} booking(s).", { every: duration ? tr(", every {m} minutes", { m: duration }) : "", n: listing.data?.capacity ?? 1 })}</Text>
         {DAYS.map((day, d) => {
           const rows = windows.map((w, i) => ({ w, i })).filter((r) => r.w.weekday === d);
           return (
             <View key={day} style={styles.day}>
               <View style={styles.dayHead}>
-                <Text style={styles.dayName}>{day}</Text>
-                <TouchableOpacity onPress={() => { setWindows((w) => [...w, { weekday: d, start: "09:00", end: "17:00" }]); setMsg(null); }} accessibilityRole="button" accessibilityLabel={`Add hours on ${day}`}>
-                  <Text style={styles.link}>+ Add hours</Text>
+                <Text style={styles.dayName}>{tr(day)}</Text>
+                <TouchableOpacity onPress={() => { setWindows((w) => [...w, { weekday: d, start: "09:00", end: "17:00" }]); setMsg(null); }} accessibilityRole="button" accessibilityLabel={tr("Add hours on {day}", { day: tr(day) })}>
+                  <Text style={styles.link}>{tr("+ Add hours")}</Text>
                 </TouchableOpacity>
               </View>
-              {rows.length === 0 ? <Text style={styles.closed}>Closed</Text> : null}
+              {rows.length === 0 ? <Text style={styles.closed}>{tr("Closed")}</Text> : null}
               {rows.map(({ w, i }) => {
                 const bad = errors[`windows.${i}.end`] || errors[`windows.${i}.start`];
                 return (
                   <View key={i}>
                     <View style={styles.win}>
                       <DateField mode="time" value={w.start} onChange={(v) => v && edit(i, { start: v })} containerStyle={styles.time} />
-                      <Text style={styles.to}>to</Text>
+                      <Text style={styles.to}>{tr("to")}</Text>
                       <DateField mode="time" value={w.end} onChange={(v) => v && edit(i, { end: v })} containerStyle={styles.time} />
-                      <TouchableOpacity onPress={() => { setWindows((x) => x.filter((_, n) => n !== i)); setMsg(null); }} accessibilityRole="button" accessibilityLabel={`Remove ${formatTime(w.start)} to ${formatTime(w.end)} on ${day}`}>
-                        <Text style={styles.remove}>Remove</Text>
+                      <TouchableOpacity onPress={() => { setWindows((x) => x.filter((_, n) => n !== i)); setMsg(null); }} accessibilityRole="button" accessibilityLabel={tr("Remove {from} to {to} on {day}", { from: formatTime(w.start), to: formatTime(w.end), day: tr(day) })}>
+                        <Text style={styles.remove}>{tr("Remove")}</Text>
                       </TouchableOpacity>
                     </View>
                     {bad ? <Text style={styles.err}>{bad}</Text> : null}
@@ -81,27 +83,28 @@ export default function ListingAvailabilityScreen({ navigation, route }: RootScr
           );
         })}
 
-        <Text style={styles.h}>Blackout dates</Text>
-        <Text style={styles.hint}>Days you are unavailable, such as holidays.</Text>
+        <Text style={styles.h}>{tr("Blackout dates")}</Text>
+        <Text style={styles.hint}>{tr("Days you are unavailable, such as holidays.")}</Text>
         {blackouts.map((b) => (
           <View key={b} style={styles.blk}>
             <Text style={styles.dayName}>{formatDate(b)}</Text>
-            <TouchableOpacity onPress={() => setBlackouts((x) => x.filter((y) => y !== b))} accessibilityRole="button" accessibilityLabel={`Remove blackout ${formatDate(b)}`}><Text style={styles.remove}>Remove</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => setBlackouts((x) => x.filter((y) => y !== b))} accessibilityRole="button" accessibilityLabel={tr("Remove blackout {date}", { date: formatDate(b) })}><Text style={styles.remove}>{tr("Remove")}</Text></TouchableOpacity>
           </View>
         ))}
-        <DateField label="Add a blackout date" optional value={newBlackout}
+        <DateField label={tr("Add a blackout date")} optional value={newBlackout}
           onChange={(v) => { if (v && !blackouts.includes(v)) { setBlackouts((x) => [...x, v].sort()); setMsg(null); } setNewBlackout(null); }} />
         {errors.blackouts || errors.form ? <Text style={styles.err}>{errors.blackouts || errors.form}</Text> : null}
         {msg ? <Text style={styles.ok} accessibilityLiveRegion="polite">{msg}</Text> : null}
-        <Button label="Save availability" variant="pill" onPress={onSave} loading={save.isPending} disabled={save.isPending} style={{ marginTop: 16 }} />
-        <Button label="Done" variant="outlinePill" onPress={() => navigation.goBack()} style={{ marginTop: 10 }} />
+        <Button label={tr("Save availability")} variant="pill" onPress={onSave} loading={save.isPending} disabled={save.isPending} style={{ marginTop: 16 }} />
+        <Button label={tr("Done")} variant="outlinePill" onPress={() => navigation.goBack()} style={{ marginTop: 10 }} />
       </ScrollView>
     </Shell>
   );
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return <ScreenContainer><AppHeader title="Availability" />{children}</ScreenContainer>;
+  const tr = useT();
+  return <ScreenContainer><AppHeader title={tr("Availability")} />{children}</ScreenContainer>;
 }
 
 const styles = StyleSheet.create({

@@ -9,8 +9,10 @@ import { validateEmail } from "../../utils/validation";
 import { endpoints } from "../../api/endpoints";
 import { ApiError } from "../../api/errors";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function SignUpEmailScreen({ navigation }: RootScreenProps<"SignUpEmail">) {
+  const tr = useT();
   const [email, setEmail] = useState("");
   const [touched, setTouched] = useState(false);
   const [serverError, setServerError] = useState<string | undefined>();
@@ -42,13 +44,13 @@ export default function SignUpEmailScreen({ navigation }: RootScreenProps<"SignU
 
   return (
     <ScreenContainer>
-      <AppHeader title="Create Account" />
+      <AppHeader title={tr("Create Account")} />
       <View style={styles.body}>
-        <Text style={styles.hint}>You'll need to confirm this email later</Text>
-        <Text style={styles.title}>Whats your email?</Text>
+        <Text style={styles.hint}>{tr("You'll need to confirm this email later")}</Text>
+        <Text style={styles.title}>{tr("Whats your email?")}</Text>
         <TextField
-          label="Email address"
-          placeholder="Enter email address"
+          label={tr("Email address")}
+          placeholder={tr("Enter email address")}
           value={email}
           onChangeText={(t) => { setEmail(t); if (serverError) setServerError(undefined); }}
           onBlur={() => setTouched(true)}
@@ -65,14 +67,14 @@ export default function SignUpEmailScreen({ navigation }: RootScreenProps<"SignU
 
         <View style={styles.bottom}>
           <Button
-            label="Next"
+            label={tr("Next")}
             variant="pill"
             disabled={!email.trim()}
             loading={busy}
             onPress={submit}
           />
           <TouchableOpacity style={styles.footer} onPress={() => navigation.navigate("SignIn")}>
-            <Text style={styles.footerText}>Already have an account? Sign in</Text>
+            <Text style={styles.footerText}>{tr("Already have an account? Sign in")}</Text>
           </TouchableOpacity>
         </View>
       </View>

@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ViewStyle } from "react-native";
 import { colors } from "../theme";
+import { useT } from "../i18n";
 
 interface Props {
   tabs: string[];
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function SegmentTabs({ tabs, active, onChange, scrollable = false, style }: Props) {
+  const tr = useT();
   const content = tabs.map((tab, i) => {
     const isActive = i === active;
     return (
@@ -20,11 +22,11 @@ export default function SegmentTabs({ tabs, active, onChange, scrollable = false
         onPress={() => onChange(i)}
         activeOpacity={0.7}
         accessibilityRole="tab"
-        accessibilityLabel={tab}
+        accessibilityLabel={tr(tab)}
         accessibilityState={{ selected: isActive }}
       >
         <Text style={[styles.label, isActive && styles.labelActive]} numberOfLines={1}>
-          {tab}
+          {tr(tab)}
         </Text>
         <View style={[styles.underline, isActive && styles.underlineActive]} />
       </TouchableOpacity>

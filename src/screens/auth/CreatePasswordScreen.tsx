@@ -12,8 +12,10 @@ import { useSession } from "../../state/Session";
 import { getInstallId } from "../../utils/device";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function CreatePasswordScreen({ navigation }: RootScreenProps<"CreatePassword">) {
+  const tr = useT();
   const { refreshSetup } = useSession();
   const [saving, setSaving] = useState(false);
   const [password, setPassword] = useState("");
@@ -54,7 +56,7 @@ export default function CreatePasswordScreen({ navigation }: RootScreenProps<"Cr
       await refreshSetup();
       return true;
     } catch (e) {
-      Alert.alert("Couldn't set your password", e instanceof ApiError ? e.message : "Please try again.");
+      Alert.alert(tr("Couldn't set your password"), e instanceof ApiError ? e.message : tr("Please try again."));
       return false;
     } finally {
       setSaving(false);
@@ -65,22 +67,22 @@ export default function CreatePasswordScreen({ navigation }: RootScreenProps<"Cr
     async (label: string) => {
       if (authenticating) return; // guards repeated taps
       if (!biometry.available) {
-        Alert.alert(`${label} unavailable`, "This device doesn't support biometric sign-in.");
+        Alert.alert(tr("{label} unavailable", { label }), tr("This device doesn't support biometric sign-in."));
         return;
       }
       if (!biometry.enrolled) {
         Alert.alert(
-          `Set up ${label} first`,
-          `No biometrics are enrolled on this device. Add them in Settings to use ${label}.`
+          tr("Set up {label} first", { label }),
+          tr("No biometrics are enrolled on this device. Add them in Settings to use {label}.", { label })
         );
         return;
       }
       setAuthenticating(true);
       try {
         const res = await LocalAuthentication.authenticateAsync({
-          promptMessage: `Use ${label} to secure MedPilot`,
-          fallbackLabel: "Use password",
-          cancelLabel: "Cancel",
+          promptMessage: tr("Use {label} to secure MedPilot", { label }),
+          fallbackLabel: tr("Use password"),
+          cancelLabel: tr("Cancel"),
         });
         if (res.success) {
           // Biometrics unlock a locally stored session; the password is still
@@ -92,11 +94,11 @@ export default function CreatePasswordScreen({ navigation }: RootScreenProps<"Cr
           await endpoints.me.setBiometric({ installId, enabled: true }).catch(() => {});
           navigation.navigate("SetupChecklist");
         } else if (res.error !== "user_cancel" && res.error !== "system_cancel") {
-          Alert.alert("Authentication failed", "We couldn't verify you. Please try again.");
+          Alert.alert(tr("Authentication failed"), tr("We couldn't verify you. Please try again."));
         }
         // user_cancel / system_cancel: stay put silently
       } catch {
-        Alert.alert(`${label} unavailable`, "Biometric authentication isn't available right now.");
+        Alert.alert(tr("{label} unavailable", { label }), tr("Biometric authentication isn't available right now."));
       } finally {
         setAuthenticating(false);
       }
@@ -108,14 +110,13 @@ export default function CreatePasswordScreen({ navigation }: RootScreenProps<"Cr
     <ScreenContainer scroll>
       <View style={styles.body}>
         <Image source={images.illusPassword} style={styles.illustration} resizeMode="contain" />
-        <Text style={styles.title}>Create Password</Text>
+        <Text style={styles.title}>{tr("Create Password")}</Text>
         <Text style={styles.hint}>
-          At least 8 characters long but 10 or more is better. A combination of uppercase letters,
-          lowercase letters, numbers, and symbols.
+          {tr("At least 8 characters long but 10 or more is better. A combination of uppercase letters, lowercase letters, numbers, and symbols.")}
         </Text>
         <TextField
-          label="Password"
-          placeholder="Password"
+          label={tr("Password")}
+          placeholder={tr("Password")}
           secure
           value={password}
           onChangeText={setPassword}
@@ -127,7 +128,7 @@ export default function CreatePasswordScreen({ navigation }: RootScreenProps<"Cr
           containerStyle={{ marginTop: 16 }}
         />
         <Button
-          label="Set Password"
+          label={tr("Set Password")}
           variant="pill"
           disabled={!valid}
           loading={saving}
@@ -139,7 +140,7 @@ export default function CreatePasswordScreen({ navigation }: RootScreenProps<"Cr
 
         <View style={styles.dividerRow}>
           <View style={styles.divider} />
-          <Text style={styles.dividerText}>OR CONNECT WITH YOUR</Text>
+          <Text style={styles.dividerText}>{tr("OR CONNECT WITH YOUR")}</Text>
           <View style={styles.divider} />
         </View>
 
@@ -149,32 +150,32 @@ export default function CreatePasswordScreen({ navigation }: RootScreenProps<"Cr
             onPress={() => authenticate("Face ID")}
             disabled={authenticating}
             accessibilityRole="button"
-            accessibilityLabel="Set up Face ID"
+            accessibilityLabel={tr("Set up Face ID")}
             accessibilityState={{ disabled: authenticating }}
           >
             <Image
               source={images.faceId}
               style={[styles.bioIcon, !biometry.available && styles.bioIconOff]}
             />
-            <Text style={styles.bioLabel}>Face ID</Text>
+            <Text style={styles.bioLabel}>{tr("Face ID")}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.bioItem}
             onPress={() => authenticate("Optic ID")}
             disabled={authenticating}
             accessibilityRole="button"
-            accessibilityLabel="Set up Optic ID"
+            accessibilityLabel={tr("Set up Optic ID")}
             accessibilityState={{ disabled: authenticating }}
           >
             <Image
               source={images.opticId}
               style={[styles.bioIcon, !biometry.available && styles.bioIconOff]}
             />
-            <Text style={styles.bioLabel}>Optic ID</Text>
+            <Text style={styles.bioLabel}>{tr("Optic ID")}</Text>
           </TouchableOpacity>
         </View>
         {!biometry.available && (
-          <Text style={styles.bioNote}>Biometric sign-in isn't available on this device.</Text>
+          <Text style={styles.bioNote}>{tr("Biometric sign-in isn't available on this device.")}</Text>
         )}
       </View>
     </ScreenContainer>

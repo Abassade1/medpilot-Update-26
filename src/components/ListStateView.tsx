@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Button from "./Button";
 import { colors, spacing } from "../theme";
+import { useT } from "../i18n";
 
 type Kind = "loading" | "empty" | "error";
 
@@ -28,13 +29,14 @@ const defaults: Record<Kind, { icon: React.ComponentProps<typeof Ionicons>["name
 
 /** Shared loading / empty / error presentation for list screens. */
 export default function ListStateView({ kind, title, message, onRetry, actionLabel, onAction }: Props) {
+  const tr = useT();
   const d = defaults[kind];
 
   if (kind === "loading") {
     return (
-      <View style={styles.wrap} accessibilityRole="progressbar" accessibilityLabel="Loading">
+      <View style={styles.wrap} accessibilityRole="progressbar" accessibilityLabel={tr("Loading")}>
         <ActivityIndicator color={colors.primary} />
-        <Text style={styles.message}>{message ?? "Loading…"}</Text>
+        <Text style={styles.message}>{tr(message ?? "Loading…")}</Text>
       </View>
     );
   }
@@ -42,13 +44,13 @@ export default function ListStateView({ kind, title, message, onRetry, actionLab
   return (
     <View style={styles.wrap} accessibilityLiveRegion="polite">
       <Ionicons name={d.icon} size={40} color={colors.disabled} />
-      <Text style={styles.title}>{title ?? d.title}</Text>
-      <Text style={styles.message}>{message ?? d.message}</Text>
+      <Text style={styles.title}>{tr(title ?? d.title)}</Text>
+      <Text style={styles.message}>{tr(message ?? d.message)}</Text>
       {kind === "empty" && actionLabel && onAction && (
         <Button label={actionLabel} variant="pill" onPress={onAction} style={{ marginTop: 18 }} />
       )}
       {kind === "error" && onRetry && (
-        <Button label="Try again" variant="outlinePill" onPress={onRetry} style={{ marginTop: 18 }} />
+        <Button label={tr("Try again")} variant="outlinePill" onPress={onRetry} style={{ marginTop: 18 }} />
       )}
     </View>
   );

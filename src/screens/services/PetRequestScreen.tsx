@@ -15,6 +15,7 @@ import { BOOKING_WINDOW_DAYS } from "../../utils/validation";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
 import type { PetType } from "../../api/types";
+import { useT } from "../../i18n";
 
 const PET_TYPES: { code: PetType; label: string }[] = [
   { code: "dog", label: "Dog" }, { code: "cat", label: "Cat" }, { code: "horse", label: "Horse" },
@@ -23,6 +24,7 @@ const PET_TYPES: { code: PetType; label: string }[] = [
 const MAX_SITTING_DAYS = 30;
 
 export default function PetRequestScreen({ navigation, route }: RootScreenProps<"PetRequest">) {
+  const tr = useT();
   const { clinicId, kind } = route.params;
   const clinic = usePetClinic(clinicId);
   const send = useRequestPet(clinicId);
@@ -43,7 +45,7 @@ export default function PetRequestScreen({ navigation, route }: RootScreenProps<
   if (!clinic.data) {
     return (
       <ScreenContainer>
-        <AppHeader title={sitting ? "Pet sitting" : "Book appointment"} />
+        <AppHeader title={sitting ? tr("Pet sitting") : tr("Book appointment")} />
         {clinic.isError ? <ListStateView kind="error" onRetry={() => void clinic.refetch()} /> : <ListStateView kind="loading" />}
       </ScreenContainer>
     );
@@ -92,7 +94,7 @@ export default function PetRequestScreen({ navigation, route }: RootScreenProps<
         onError: (err) => {
           const e = err as ApiError;
           if (e.fields && Object.keys(e.fields).length) setFieldErrors(e.fields);
-          else setFormError(e.isOffline ? e.message : e.message || "We couldn't send your request. Please try again.");
+          else setFormError(e.isOffline ? e.message : e.message || tr("We couldn't send your request. Please try again."));
         },
       },
     );
@@ -100,14 +102,14 @@ export default function PetRequestScreen({ navigation, route }: RootScreenProps<
 
   return (
     <ScreenContainer>
-      <AppHeader title={sitting ? "Pet sitting" : "Book appointment"} />
+      <AppHeader title={sitting ? tr("Pet sitting") : tr("Book appointment")} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <Text style={styles.clinic}>{clinic.data.name}</Text>
 
-          <Text style={styles.label}>Service</Text>
+          <Text style={styles.label}>{tr("Service")}</Text>
           {services.length === 0 ? (
-            <Text style={styles.error}>This provider has no {sitting ? "sitting" : "appointment"} services listed.</Text>
+            <Text style={styles.error}>{tr("This provider has no {kind} services listed.", { kind: sitting ? tr("sitting") : tr("appointment") })}</Text>
           ) : (
             services.map((sv) => (
               <RadioRow key={sv.id} label={sv.name} sublabel={`${sv.priceLabel ?? "Price on request"} · ${sv.durationLabel}`}
@@ -116,33 +118,33 @@ export default function PetRequestScreen({ navigation, route }: RootScreenProps<
           )}
           {show("serviceId") ? <Text style={styles.error}>{show("serviceId")}</Text> : null}
 
-          <TextField label="Pet's name" value={petName} onChangeText={setPetName} maxLength={60} error={show("petName")} containerStyle={{ marginTop: 14 }} />
-          <Text style={styles.label}>Type of pet</Text>
+          <TextField label={tr("Pet's name")} value={petName} onChangeText={setPetName} maxLength={60} error={show("petName")} containerStyle={{ marginTop: 14 }} />
+          <Text style={styles.label}>{tr("Type of pet")}</Text>
           <View style={styles.wrap}>
             {PET_TYPES.map((t) => (
-              <RadioRow key={t.code} label={t.label} selected={petType === t.code} onPress={() => setPetType(t.code)} bordered style={styles.half} />
+              <RadioRow key={t.code} label={tr(t.label)} selected={petType === t.code} onPress={() => setPetType(t.code)} bordered style={styles.half} />
             ))}
           </View>
           {show("petType") ? <Text style={styles.error}>{show("petType")}</Text> : null}
 
-          <DateField label={sitting ? "Start date" : "Date"} value={date}
+          <DateField label={sitting ? tr("Start date") : tr("Date")} value={date}
             onChange={(v) => { setDate(v); if (endDate && v && endDate < v) setEndDate(null); }}
             min={minDate} max={maxDate} minMessage="Choose a date after today" maxMessage="Choose a date within the next year"
             error={show("preferredDate")} containerStyle={{ marginTop: 14 }} />
           {sitting ? (
-            <DateField label="End date" optional value={endDate} onChange={setEndDate} clearable
+            <DateField label={tr("End date")} optional value={endDate} onChange={setEndDate} clearable
               min={endMin} max={endMax < maxDate ? endMax : maxDate}
               minMessage="The end date can't be before the start date"
               maxMessage={`Sitting can be booked for up to ${MAX_SITTING_DAYS} days at a time`}
               error={fieldErrors.endDate} />
           ) : null}
-          <DateField label="Preferred time" optional mode="time" value={time} onChange={setTime} clearable error={fieldErrors.preferredTime} />
-          <TextField label="Notes for the provider" optional value={message} onChangeText={setMessage} multiline maxLength={500}
-            placeholder="Allergies, medication, behaviour…" error={fieldErrors.message} />
+          <DateField label={tr("Preferred time")} optional mode="time" value={time} onChange={setTime} clearable error={fieldErrors.preferredTime} />
+          <TextField label={tr("Notes for the provider")} optional value={message} onChangeText={setMessage} multiline maxLength={500}
+            placeholder={tr("Allergies, medication, behaviour…")} error={fieldErrors.message} />
 
           {date ? <Text style={styles.summary}>{formatDate(date)}{sitting && endDate ? ` → ${formatDate(endDate)}` : ""}</Text> : null}
           {formError ? <Text style={styles.error} accessibilityLiveRegion="polite">{formError}</Text> : null}
-          <Button label={sitting ? "Send sitting request" : "Request appointment"} variant="pill" onPress={submit}
+          <Button label={sitting ? tr("Send sitting request") : tr("Request appointment")} variant="pill" onPress={submit}
             loading={send.isPending} disabled={send.isPending || services.length === 0} style={{ marginTop: 18 }} />
         </ScrollView>
       </KeyboardAvoidingView>

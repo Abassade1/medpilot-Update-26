@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "../i18n";
 import { StyleSheet, Text, View } from "react-native";
 import Button from "./Button";
 import { colors, spacing } from "../theme";
@@ -22,9 +23,9 @@ export default class ErrorBoundary extends React.Component<{ children: React.Rea
     if (!this.state.failed) return this.props.children;
     return (
       <View style={styles.wrap}>
-        <Text style={styles.title}>Something went wrong</Text>
-        <Text style={styles.text}>The app hit an unexpected problem. Your data is safe. Try again to pick up where you left off.</Text>
-        <Button label="Try again" variant="pill" onPress={() => this.setState({ failed: false })} style={{ marginTop: 20 }} />
+        <Text style={styles.title}>{t("Something went wrong")}</Text>
+        <Text style={styles.text}>{t("The app hit an unexpected problem. Your data is safe. Try again to pick up where you left off.")}</Text>
+        <Button label={t("Try again")} variant="pill" onPress={() => this.setState({ failed: false })} style={{ marginTop: 20 }} />
       </View>
     );
   }

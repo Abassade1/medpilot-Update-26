@@ -9,8 +9,10 @@ import { endpoints } from "../../api/endpoints";
 import { ApiError } from "../../api/errors";
 import { useSession } from "../../state/Session";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function PasswordScreen({ navigation, route }: RootScreenProps<"Password">) {
+  const tr = useT();
   const { adopt } = useSession();
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | undefined>();
@@ -21,12 +23,12 @@ export default function PasswordScreen({ navigation, route }: RootScreenProps<"P
     endpoints.auth
       .forgotPassword(route.params.email)
       .then(() =>
-        Alert.alert("Check your email", `If ${route.params.email} has an account, we've sent a link to reset the password.`, [
-          { text: "OK", style: "cancel" },
-          { text: "I have the code", onPress: () => navigation.navigate("ResetPassword", { email: route.params.email }) },
+        Alert.alert(tr("Check your email"), tr("If {email} has an account, we've sent a link to reset the password.", { email: route.params.email }), [
+          { text: tr("OK"), style: "cancel" },
+          { text: tr("I have the code"), onPress: () => navigation.navigate("ResetPassword", { email: route.params.email }) },
         ]),
       )
-      .catch((e) => Alert.alert("Couldn't send the email", e instanceof ApiError && e.isOffline ? e.message : "Please try again in a moment."));
+      .catch((e) => Alert.alert(tr("Couldn't send the email"), e instanceof ApiError && e.isOffline ? e.message : tr("Please try again in a moment.")));
   };
 
   const submit = async () => {
@@ -41,9 +43,9 @@ export default function PasswordScreen({ navigation, route }: RootScreenProps<"P
     } catch (e) {
       if (e instanceof ApiError) {
         // 401 renders in the same inline slot the design specified
-        setError(e.code === "unauthenticated" ? "Incorrect password" : e.message);
+        setError(e.code === "unauthenticated" ? tr("Incorrect password") : e.message);
       } else {
-        setError("Something went wrong. Please try again.");
+        setError(tr("Something went wrong. Please try again."));
       }
     } finally {
       setBusy(false);
@@ -52,13 +54,13 @@ export default function PasswordScreen({ navigation, route }: RootScreenProps<"P
 
   return (
     <ScreenContainer>
-      <AppHeader title="Sign in" />
+      <AppHeader title={tr("Sign in")} />
       <View style={styles.body}>
         <Text style={styles.email}>{route.params.email}</Text>
-        <Text style={styles.title}>Enter your password!</Text>
+        <Text style={styles.title}>{tr("Enter your password!")}</Text>
         <TextField
-          label="Password"
-          placeholder="Password"
+          label={tr("Password")}
+          placeholder={tr("Password")}
           secure
           value={password}
           onChangeText={(t) => {
@@ -75,14 +77,14 @@ export default function PasswordScreen({ navigation, route }: RootScreenProps<"P
           onSubmitEditing={submit}
           containerStyle={{ marginTop: 18 }}
         />
-        <TouchableOpacity style={styles.forgot} onPress={forgot} accessibilityRole="link" accessibilityLabel="Forgot your password?">
-          <Text style={styles.forgotText}>Forgot your password?</Text>
+        <TouchableOpacity style={styles.forgot} onPress={forgot} accessibilityRole="link" accessibilityLabel={tr("Forgot your password?")}>
+          <Text style={styles.forgotText}>{tr("Forgot your password?")}</Text>
         </TouchableOpacity>
 
         <View style={styles.bottom}>
-          <Button label="Sign in" variant="pill" disabled={password.length === 0} loading={busy} onPress={submit} />
+          <Button label={tr("Sign in")} variant="pill" disabled={password.length === 0} loading={busy} onPress={submit} />
           <TouchableOpacity style={styles.footer} onPress={() => navigation.navigate("SignUpEmail")}>
-            <Text style={styles.footerText}>Dont have an account? Sign up</Text>
+            <Text style={styles.footerText}>{tr("Dont have an account? Sign up")}</Text>
           </TouchableOpacity>
         </View>
       </View>

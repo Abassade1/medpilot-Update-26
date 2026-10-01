@@ -7,8 +7,10 @@ import ListStateView from "../../components/ListStateView";
 import { useDiscover, useListingFacets } from "../../api/queries";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function DiscoverScreen({ navigation, route }: RootScreenProps<"Discover">) {
+  const tr = useT();
   const p = route.params;
   const [text, setText] = useState(p?.q ?? "");
   const [q, setQ] = useState(p?.q ?? "");
@@ -39,7 +41,7 @@ export default function DiscoverScreen({ navigation, route }: RootScreenProps<"D
 
   return (
     <ScreenContainer>
-      <AppHeader title="Find services" />
+      <AppHeader title={tr("Find services")} />
       <FlatList
         data={res.data}
         keyExtractor={(l) => l.id}
@@ -48,16 +50,16 @@ export default function DiscoverScreen({ navigation, route }: RootScreenProps<"D
         refreshControl={<RefreshControl refreshing={res.isRefetching} onRefresh={() => void res.refetch()} />}
         ListHeaderComponent={
           <View>
-            <TextField placeholder="Search services, providers, specialities" value={text} onChangeText={setText} returnKeyType="search" containerStyle={{ marginBottom: 8 }} />
+            <TextField placeholder={tr("Search services, providers, specialities")} value={text} onChangeText={setText} returnKeyType="search" containerStyle={{ marginBottom: 8 }} />
             <View style={styles.chips}>
-              <Chip on={!kind} label="All" onPress={() => setKind("")} />
-              <Chip on={kind === "service"} label="Services" onPress={() => setKind("service")} />
-              <Chip on={kind === "package"} label="Packages" onPress={() => setKind("package")} />
-              <Chip on={bookable} label="Bookable now" onPress={() => setBookable((b) => !b)} />
+              <Chip on={!kind} label={tr("All")} onPress={() => setKind("")} />
+              <Chip on={kind === "service"} label={tr("Services")} onPress={() => setKind("service")} />
+              <Chip on={kind === "package"} label={tr("Packages")} onPress={() => setKind("package")} />
+              <Chip on={bookable} label={tr("Bookable now")} onPress={() => setBookable((b) => !b)} />
             </View>
             <View style={styles.chips}>
               {(facets.data?.types ?? []).map((t) => (
-                <Chip key={t.code} on={type === t.code} label={`${t.label} (${t.count})`} onPress={() => { setType(type === t.code ? "" : t.code); setCategory(""); }} />
+                <Chip key={t.code} on={type === t.code} label={`${tr(t.label)} (${t.count})`} onPress={() => { setType(type === t.code ? "" : t.code); setCategory(""); }} />
               ))}
             </View>
             {cats.length ? (
@@ -66,29 +68,29 @@ export default function DiscoverScreen({ navigation, route }: RootScreenProps<"D
               </View>
             ) : null}
             <View style={styles.two}>
-              <TextField placeholder="City" value={city} onChangeText={setCity} containerStyle={{ flex: 1, marginRight: 8 }} />
-              <TextField placeholder="Max price" value={priceMax} onChangeText={(t) => setPriceMax(t.replace(/\D/g, ""))} keyboardType="number-pad" maxLength={6} containerStyle={{ flex: 1 }} />
+              <TextField placeholder={tr("City")} value={city} onChangeText={setCity} containerStyle={{ flex: 1, marginRight: 8 }} />
+              <TextField placeholder={tr("Max price")} value={priceMax} onChangeText={(t) => setPriceMax(t.replace(/\D/g, ""))} keyboardType="number-pad" maxLength={6} containerStyle={{ flex: 1 }} />
             </View>
             <View style={styles.chips}>
-              <Chip on={sort === "newest"} label="Newest" onPress={() => setSort("newest")} />
-              <Chip on={sort === "price_asc"} label="Price: low to high" onPress={() => setSort("price_asc")} />
-              <Chip on={sort === "price_desc"} label="Price: high to low" onPress={() => setSort("price_desc")} />
-              {active ? <Chip on={false} label="Clear filters" onPress={clear} /> : null}
+              <Chip on={sort === "newest"} label={tr("Newest")} onPress={() => setSort("newest")} />
+              <Chip on={sort === "price_asc"} label={tr("Price: low to high")} onPress={() => setSort("price_asc")} />
+              <Chip on={sort === "price_desc"} label={tr("Price: high to low")} onPress={() => setSort("price_desc")} />
+              {active ? <Chip on={false} label={tr("Clear filters")} onPress={clear} /> : null}
             </View>
-            {res.isError ? <ListStateView kind="error" message="We couldn't load results." onRetry={() => void res.refetch()} /> : null}
-            {res.isLoading ? <ListStateView kind="loading" message="Searching…" /> : null}
+            {res.isError ? <ListStateView kind="error" message={tr("We couldn't load results.")} onRetry={() => void res.refetch()} /> : null}
+            {res.isLoading ? <ListStateView kind="loading" message={tr("Searching…")} /> : null}
           </View>
         }
-        ListEmptyComponent={res.isLoading || res.isError ? null : <ListStateView kind="empty" title="Nothing matches yet" message={active ? "Try removing a filter." : "No provider has published a service yet."} actionLabel={active ? "Clear filters" : undefined} onAction={active ? clear : undefined} />}
+        ListEmptyComponent={res.isLoading || res.isError ? null : <ListStateView kind="empty" title={tr("Nothing matches yet")} message={active ? tr("Try removing a filter.") : tr("No provider has published a service yet.")} actionLabel={active ? tr("Clear filters") : undefined} onAction={active ? clear : undefined} />}
         renderItem={({ item: l }) => (
           <TouchableOpacity style={styles.card} onPress={() => navigation.navigate("ListingDetail", { listingId: l.id })} accessibilityRole="button" accessibilityLabel={`${l.name}, ${l.provider.name}, ${l.priceLabel}`}>
             <View style={{ flex: 1 }}>
               <Text style={styles.kind}>{l.kind === "package" ? "PACKAGE" : l.categoryLabel.toUpperCase()}</Text>
               <Text style={styles.name}>{l.name}</Text>
               <Text style={styles.meta}>{l.provider.name}{l.provider.verified ? " · Verified" : ""} · {l.provider.typeLabel}</Text>
-              <Text style={styles.meta}>{[l.city, l.country].filter(Boolean).join(", ") || "Location on request"}</Text>
+              <Text style={styles.meta}>{[l.city, l.country].filter(Boolean).join(", ") || tr("Location on request")}</Text>
               <Text style={styles.price}>{l.priceLabel}{l.durationMinutes ? ` · ${l.durationMinutes} min` : ""}</Text>
-              {!l.bookable ? <Text style={styles.meta}>Not bookable online yet</Text> : null}
+              {!l.bookable ? <Text style={styles.meta}>{tr("Not bookable online yet")}</Text> : null}
             </View>
           </TouchableOpacity>
         )}

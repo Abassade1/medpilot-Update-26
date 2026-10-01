@@ -17,10 +17,12 @@ import { useDeleteRecord, useRecords } from "../../api/queries";
 import { useSession } from "../../state/Session";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB per file
 
 export default function UploadRecordsScreen({ navigation }: RootScreenProps<"UploadRecords">) {
+  const tr = useT();
   const { refreshSetup } = useSession();
   const records = useRecords();
   const deleteRecord = useDeleteRecord();
@@ -51,7 +53,7 @@ export default function UploadRecordsScreen({ navigation }: RootScreenProps<"Upl
       await records.refetch();
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : "Upload failed. Please try again.";
-      Alert.alert("Couldn't upload that file", msg);
+      Alert.alert(tr("Couldn't upload that file"), msg);
     } finally {
       setUploading((p) => p.filter((x) => x !== label));
     }
@@ -71,7 +73,7 @@ export default function UploadRecordsScreen({ navigation }: RootScreenProps<"Upl
       if (res.canceled) return; // cancelled — silent, per spec
       for (const a of res.assets) {
         if ((a.size ?? 0) > MAX_BYTES) {
-          Alert.alert("File too large", `${a.name} is over 10 MB and was skipped.`);
+          Alert.alert(tr("File too large"), tr("{name} is over 10 MB and was skipped.", { name: a.name }));
           continue;
         }
         await uploadOne({
@@ -81,7 +83,7 @@ export default function UploadRecordsScreen({ navigation }: RootScreenProps<"Upl
         });
       }
     } catch {
-      Alert.alert("Couldn't open files", "The file picker isn't available right now.");
+      Alert.alert(tr("Couldn't open files"), tr("The file picker isn't available right now."));
     } finally {
       setBusy(false);
     }
@@ -111,7 +113,7 @@ export default function UploadRecordsScreen({ navigation }: RootScreenProps<"Upl
         source: "camera_scan",
       });
     } catch {
-      Alert.alert("Camera unavailable", "The camera isn't available on this device.");
+      Alert.alert(tr("Camera unavailable"), tr("The camera isn't available on this device."));
     } finally {
       setBusy(false);
     }
@@ -123,7 +125,7 @@ export default function UploadRecordsScreen({ navigation }: RootScreenProps<"Upl
       await deleteRecord.mutateAsync(removeTarget.id);
       showToast("File removed successfully");
     } catch (e) {
-      Alert.alert("Couldn't remove that file", e instanceof ApiError ? e.message : "Please try again.");
+      Alert.alert(tr("Couldn't remove that file"), e instanceof ApiError ? e.message : tr("Please try again."));
     } finally {
       setRemoveTarget(null);
     }
@@ -139,11 +141,11 @@ export default function UploadRecordsScreen({ navigation }: RootScreenProps<"Upl
     <ScreenContainer>
       <ToastBanner message={toast ?? ""} visible={!!toast} />
       <StepFlowHeader
-        headerTitle="Medical History"
+        headerTitle={tr("Medical History")}
         step={2}
         totalSteps={2}
-        title="Upload Medical Records"
-        subtitle="Compliance with medical privacy regulations"
+        title={tr("Upload Medical Records")}
+        subtitle={tr("Compliance with medical privacy regulations")}
       />
       <View style={styles.body}>
         <TouchableOpacity
@@ -152,17 +154,17 @@ export default function UploadRecordsScreen({ navigation }: RootScreenProps<"Upl
           onPress={browse}
           disabled={busy}
           accessibilityRole="button"
-          accessibilityLabel="Browse and choose files to upload"
-          accessibilityHint="Opens your device files. Jpeg, PNG, PDF or Docx"
+          accessibilityLabel={tr("Browse and choose files to upload")}
+          accessibilityHint={tr("Opens your device files. Jpeg, PNG, PDF or Docx")}
         >
           <Ionicons name="cloud-upload-outline" size={20} color={colors.secondaryText} />
           <View style={{ marginLeft: 12, flex: 1 }}>
-            <Text style={styles.uploadTitle}>Browse and chose the files to upload</Text>
-            <Text style={styles.uploadHint}>Jpeg, PNG, PDF or Docx</Text>
+            <Text style={styles.uploadTitle}>{tr("Browse and chose the files to upload")}</Text>
+            <Text style={styles.uploadHint}>{tr("Jpeg, PNG, PDF or Docx")}</Text>
           </View>
         </TouchableOpacity>
 
-        {records.isPending && <ListStateView kind="loading" message="Loading your records…" />}
+        {records.isPending && <ListStateView kind="loading" message={tr("Loading your records…")} />}
 
         {files.map((file) => {
           const busyRow = file.status !== "ready";
@@ -182,14 +184,14 @@ export default function UploadRecordsScreen({ navigation }: RootScreenProps<"Upl
                   onPress={() => setRemoveTarget({ id: file.id, displayName: file.displayName })}
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   accessibilityRole="button"
-                  accessibilityLabel={`Remove ${file.displayName}`}
+                  accessibilityLabel={tr("Remove {name}", { name: file.displayName })}
                 >
                   <Ionicons name="trash-outline" size={17} color={colors.error} />
                 </TouchableOpacity>
               </View>
               <Text style={styles.fileMeta}>
-                {Math.max(1, Math.round(file.sizeBytes / 1024))} kb{"   ·   "}
-                {busyRow ? "Uploading…" : "Completed"}
+                {tr("{n} kb", { n: Math.max(1, Math.round(file.sizeBytes / 1024)) })}{"   ·   "}
+                {busyRow ? tr("Uploading…") : tr("Completed")}
               </Text>
               <View style={styles.progressTrack}>
                 <View style={[styles.progressFill, { width: "100%" }, !busyRow && { backgroundColor: colors.success }]} />
@@ -205,7 +207,7 @@ export default function UploadRecordsScreen({ navigation }: RootScreenProps<"Upl
               <Text style={styles.fileName} numberOfLines={1}>{name}</Text>
               <ActivityIndicator size="small" color={colors.primary} />
             </View>
-            <Text style={styles.fileMeta}>Uploading…</Text>
+            <Text style={styles.fileMeta}>{tr("Uploading…")}</Text>
             <View style={styles.progressTrack}><View style={[styles.progressFill, { width: "60%" }]} /></View>
           </View>
         ))}
@@ -216,15 +218,15 @@ export default function UploadRecordsScreen({ navigation }: RootScreenProps<"Upl
           onPress={scan}
           disabled={busy}
           accessibilityRole="button"
-          accessibilityLabel="Scan a record with the camera"
+          accessibilityLabel={tr("Scan a record with the camera")}
         >
           <MaterialCommunityIcons name="line-scan" size={18} color={colors.text} />
-          <Text style={styles.scanText}>Scan with camera</Text>
+          <Text style={styles.scanText}>{tr("Scan with camera")}</Text>
         </TouchableOpacity>
 
         <View style={styles.bottom}>
           <Button
-            label="Upload"
+            label={tr("Upload")}
             variant="pill"
             disabled={!allUploaded}
             onPress={submit}
@@ -233,25 +235,25 @@ export default function UploadRecordsScreen({ navigation }: RootScreenProps<"Upl
             style={styles.skip}
             onPress={() => navigation.navigate("SetupChecklist")}
             accessibilityRole="button"
-            accessibilityLabel="Skip uploading medical records"
+            accessibilityLabel={tr("Skip uploading medical records")}
           >
-            <Text style={styles.skipText}>Skip</Text>
+            <Text style={styles.skipText}>{tr("Skip")}</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       <BottomSheet visible={!!removeTarget} onClose={() => setRemoveTarget(null)} maxHeightRatio={0.4}>
-        <Text style={styles.sheetTitle}>Remove item?</Text>
+        <Text style={styles.sheetTitle}>{tr("Remove item?")}</Text>
         <Text style={styles.sheetSubtitle}>
-          Are you sure want to remove this item from your uploaded files
+          {tr("Are you sure want to remove this item from your uploaded files")}
         </Text>
-        <Button label="Remove Item" variant="pill" onPress={removeFile} style={{ marginTop: 20 }} />
+        <Button label={tr("Remove Item")} variant="pill" onPress={removeFile} style={{ marginTop: 20 }} />
         <TouchableOpacity
           style={styles.skip}
           onPress={() => setRemoveTarget(null)}
           accessibilityRole="button"
         >
-          <Text style={styles.skipText}>Cancel</Text>
+          <Text style={styles.skipText}>{tr("Cancel")}</Text>
         </TouchableOpacity>
       </BottomSheet>
     </ScreenContainer>

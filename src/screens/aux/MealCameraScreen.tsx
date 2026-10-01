@@ -16,6 +16,7 @@ import Button from "../../components/Button";
 import { ensurePermission } from "../../utils/permissions";
 import { colors, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 const CAMERA_REASON =
   "MedPilot uses the camera to scan your meal and estimate its nutritional breakdown.";
@@ -26,6 +27,7 @@ const CAMERA_REASON =
  * leaves the screen usable via the photo-library fallback.
  */
 export default function MealCameraScreen({ navigation }: RootScreenProps<"MealCamera">) {
+  const tr = useT();
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
@@ -73,7 +75,7 @@ export default function MealCameraScreen({ navigation }: RootScreenProps<"MealCa
       if (!photo?.uri) throw new Error("no photo");
       navigation.replace("MealAnalyzing", { imageUri: photo.uri, mimeType: "image/jpeg" });
     } catch {
-      Alert.alert("Couldn't take the photo", "Something went wrong. Please try again.");
+      Alert.alert(tr("Couldn't take the photo"), tr("Something went wrong. Please try again."));
     } finally {
       setCapturing(false);
     }
@@ -96,21 +98,21 @@ export default function MealCameraScreen({ navigation }: RootScreenProps<"MealCa
           style={[styles.roundBtn, styles.closeAbsolute, { top: insets.top + 8 }]}
           onPress={() => navigation.goBack()}
           accessibilityRole="button"
-          accessibilityLabel="Close camera"
+          accessibilityLabel={tr("Close camera")}
         >
           <Ionicons name="close" size={18} color="#fff" />
         </TouchableOpacity>
 
         <Ionicons name="camera-outline" size={46} color="#8E959F" />
-        <Text style={styles.deniedTitle}>Camera access needed</Text>
+        <Text style={styles.deniedTitle}>{tr("Camera access needed")}</Text>
         <Text style={styles.deniedBody}>{CAMERA_REASON}</Text>
-        <Button label="Allow camera" variant="pill" onPress={askForCamera} style={{ marginTop: 22 }} />
+        <Button label={tr("Allow camera")} variant="pill" onPress={askForCamera} style={{ marginTop: 22 }} />
         <TouchableOpacity
           style={styles.libraryLink}
           onPress={pickFromLibrary}
           accessibilityRole="button"
         >
-          <Text style={styles.libraryLinkText}>Choose a photo instead</Text>
+          <Text style={styles.libraryLinkText}>{tr("Choose a photo instead")}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -131,14 +133,14 @@ export default function MealCameraScreen({ navigation }: RootScreenProps<"MealCa
           style={styles.roundBtn}
           onPress={() => navigation.goBack()}
           accessibilityRole="button"
-          accessibilityLabel="Close camera"
+          accessibilityLabel={tr("Close camera")}
         >
           <Ionicons name="close" size={18} color="#fff" />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setFlash((f) => (f === "off" ? "on" : "off"))}
           accessibilityRole="button"
-          accessibilityLabel={flash === "on" ? "Turn flash off" : "Turn flash on"}
+          accessibilityLabel={flash === "on" ? tr("Turn flash off") : tr("Turn flash on")}
           accessibilityState={{ selected: flash === "on" }}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
@@ -159,7 +161,7 @@ export default function MealCameraScreen({ navigation }: RootScreenProps<"MealCa
           <TouchableOpacity
             onPress={pickFromLibrary}
             accessibilityRole="button"
-            accessibilityLabel="Choose a photo from your library"
+            accessibilityLabel={tr("Choose a photo from your library")}
           >
             <View style={styles.galleryThumb}>
               <Ionicons name="images-outline" size={18} color="#fff" />
@@ -172,7 +174,7 @@ export default function MealCameraScreen({ navigation }: RootScreenProps<"MealCa
             onPress={capture}
             disabled={capturing || !ready}
             accessibilityRole="button"
-            accessibilityLabel="Take photo"
+            accessibilityLabel={tr("Take photo")}
             accessibilityState={{ disabled: capturing || !ready }}
           >
             <View style={[styles.shutterInner, (capturing || !ready) && styles.shutterBusy]}>
@@ -183,15 +185,15 @@ export default function MealCameraScreen({ navigation }: RootScreenProps<"MealCa
           <TouchableOpacity
             onPress={() => setFacing((f) => (f === "back" ? "front" : "back"))}
             accessibilityRole="button"
-            accessibilityLabel="Switch camera"
+            accessibilityLabel={tr("Switch camera")}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons name="camera-reverse-outline" size={26} color="#fff" />
           </TouchableOpacity>
         </View>
         <View style={styles.modeRow}>
-          <Text style={[styles.mode, styles.modeActive]}>PHOTO</Text>
-          <Text style={styles.mode}>VIDEO</Text>
+          <Text style={[styles.mode, styles.modeActive]}>{tr("PHOTO")}</Text>
+          <Text style={styles.mode}>{tr("VIDEO")}</Text>
         </View>
       </View>
     </View>

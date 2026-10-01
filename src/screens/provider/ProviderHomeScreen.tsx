@@ -9,28 +9,29 @@ import StatusPill from "../../components/StatusPill";
 import { useMyProvider, useProviderDashboard } from "../../api/queries";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT, rtlFlip } from "../../i18n";
 
 type Icon = React.ComponentProps<typeof Ionicons>["name"];
 
 export default function ProviderHomeScreen({ navigation }: RootScreenProps<"ProviderHome">) {
+  const tr = useT();
   const me = useMyProvider();
   const provider = me.data?.provider;
   const dash = useProviderDashboard(!!provider);
 
-  if (me.isLoading) return <Shell><ListStateView kind="loading" message="Loading your provider account…" /></Shell>;
-  if (me.isError) return <Shell><ListStateView kind="error" message="We couldn't load your provider account." onRetry={() => void me.refetch()} /></Shell>;
+  if (me.isLoading) return <Shell><ListStateView kind="loading" message={tr("Loading your provider account…")} /></Shell>;
+  if (me.isError) return <Shell><ListStateView kind="error" message={tr("We couldn't load your provider account.")} onRetry={() => void me.refetch()} /></Shell>;
 
   if (!provider) {
     return (
       <Shell>
         <View style={styles.center}>
           <Ionicons name="storefront-outline" size={44} color={colors.primary} />
-          <Text style={styles.title}>Offer your services on MedPilot</Text>
+          <Text style={styles.title}>{tr("Offer your services on MedPilot")}</Text>
           <Text style={styles.body}>
-            Hospitals, clinics, transport companies, nurses, vets and independent specialists can publish services and
-            packages here. Members find them in the app and book directly.
+            {tr("Hospitals, clinics, transport companies, nurses, vets and independent specialists can publish services and packages here. Members find them in the app and book directly.")}
           </Text>
-          <Button label="Set up provider profile" variant="pill" onPress={() => navigation.navigate("ProviderOnboarding")} style={{ marginTop: 20, alignSelf: "stretch" }} />
+          <Button label={tr("Set up provider profile")} variant="pill" onPress={() => navigation.navigate("ProviderOnboarding")} style={{ marginTop: 20, alignSelf: "stretch" }} />
         </View>
       </Shell>
     );
@@ -61,23 +62,23 @@ export default function ProviderHomeScreen({ navigation }: RootScreenProps<"Prov
           <View style={styles.note}>
             <Text style={styles.noteText}>
               {provider.verificationStatus === "pending"
-                ? "Your verification is being reviewed. Services you publish now go to review and appear to members once approved."
+                ? tr("Your verification is being reviewed. Services you publish now go to review and appear to members once approved.")
                 : provider.verificationStatus === "rejected"
                 ? `Verification wasn't approved${provider.verificationNote ? `: ${provider.verificationNote}` : "."} Update your details and resubmit.`
-                : "Submit your verification details so your services can go live."}
+                : tr("Submit your verification details so your services can go live.")}
             </Text>
             <TouchableOpacity onPress={() => navigation.navigate("ProviderProfile")} accessibilityRole="button">
-              <Text style={styles.link}>Open profile</Text>
+              <Text style={styles.link}>{tr("Open profile")}</Text>
             </TouchableOpacity>
           </View>
         ) : null}
         {!provider.profileComplete ? (
           <View style={styles.note}>
-            <Text style={styles.noteText}>Complete your profile to publish: {Object.values(provider.profileGaps).join(", ")}.</Text>
+            <Text style={styles.noteText}>{tr("Complete your profile to publish: {gaps}.", { gaps: Object.values(provider.profileGaps).join(", ") })}</Text>
           </View>
         ) : null}
 
-        {dash.isError ? <ListStateView kind="error" message="Couldn't load your figures." onRetry={() => void dash.refetch()} /> : null}
+        {dash.isError ? <ListStateView kind="error" message={tr("Couldn't load your figures.")} onRetry={() => void dash.refetch()} /> : null}
 
         <View style={styles.grid}>
           {tiles.map((t) => (
@@ -91,7 +92,7 @@ export default function ProviderHomeScreen({ navigation }: RootScreenProps<"Prov
 
         {d?.completedValueLabel ? (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Completed bookings value</Text>
+            <Text style={styles.cardTitle}>{tr("Completed bookings value")}</Text>
             <Text style={styles.big}>{d.completedValueLabel}</Text>
             <Text style={styles.hint}>{d.completedValueNote}</Text>
           </View>
@@ -99,20 +100,20 @@ export default function ProviderHomeScreen({ navigation }: RootScreenProps<"Prov
 
         {d && d.topListings.length ? (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Most viewed</Text>
+            <Text style={styles.cardTitle}>{tr("Most viewed")}</Text>
             {d.topListings.map((l) => (
               <View key={l.id} style={styles.topRow}>
                 <Text style={styles.topName} numberOfLines={1}>{l.name}</Text>
-                <Text style={styles.hint}>{l.views} views · {l.bookings} bookings</Text>
+                <Text style={styles.hint}>{tr("{views} views · {bookings} bookings", { views: l.views, bookings: l.bookings })}</Text>
               </View>
             ))}
           </View>
         ) : null}
 
-        <Button label="Create a service" variant="pill" onPress={() => navigation.navigate("ListingForm", { kind: "service" })} style={{ marginTop: 6 }} />
-        <Button label="Create a package" variant="outlinePill" onPress={() => navigation.navigate("ListingForm", { kind: "package" })} style={{ marginTop: 10 }} />
+        <Button label={tr("Create a service")} variant="pill" onPress={() => navigation.navigate("ListingForm", { kind: "service" })} style={{ marginTop: 6 }} />
+        <Button label={tr("Create a package")} variant="outlinePill" onPress={() => navigation.navigate("ListingForm", { kind: "package" })} style={{ marginTop: 10 }} />
 
-        <Text style={styles.section}>Manage</Text>
+        <Text style={styles.section}>{tr("Manage")}</Text>
         {([
           ["Bookings", "calendar-outline", () => navigation.navigate("ProviderBookings")],
           ["Services", "medkit-outline", () => navigation.navigate("ProviderListings", { kind: "service" })],
@@ -123,19 +124,20 @@ export default function ProviderHomeScreen({ navigation }: RootScreenProps<"Prov
           <TouchableOpacity key={label} style={styles.navRow} onPress={go} accessibilityRole="button">
             <Ionicons name={icon} size={20} color={colors.primary} />
             <Text style={styles.navText}>{label}</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.tertiaryText} />
+            <Ionicons style={rtlFlip()} name="chevron-forward" size={16} color={colors.tertiaryText} />
           </TouchableOpacity>
         ))}
-        <Text style={styles.hint}>Availability is set per service or package, from its Availability action.</Text>
+        <Text style={styles.hint}>{tr("Availability is set per service or package, from its Availability action.")}</Text>
       </ScrollView>
     </Shell>
   );
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
+  const tr = useT();
   return (
     <ScreenContainer>
-      <AppHeader title="Provider portal" />
+      <AppHeader title={tr("Provider portal")} />
       {children}
     </ScreenContainer>
   );

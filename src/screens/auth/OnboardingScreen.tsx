@@ -5,12 +5,14 @@ import { LinearGradient } from "expo-linear-gradient";
 import { images } from "../../data/assets";
 import { colors, radii } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 /**
  * Onboarding — the Figma frame uses a full-screen video clip of a medical
  * procedure (placeholder: static surgery photo with dark overlay).
  */
 export default function OnboardingScreen({ navigation }: RootScreenProps<"Onboarding">) {
+  const tr = useT();
   const insets = useSafeAreaInsets();
   return (
     <View style={styles.root}>
@@ -22,17 +24,16 @@ export default function OnboardingScreen({ navigation }: RootScreenProps<"Onboar
         style={StyleSheet.absoluteFill}
       />
       <View style={[styles.content, { paddingBottom: insets.bottom + 28 }]}>
-        <Text style={styles.title}>Executive medical solutions</Text>
+        <Text style={styles.title}>{tr("Executive medical solutions")}</Text>
         <Text style={styles.subtitle}>
-          Exclusive access to trustworthy medical solutions. Together, with our partners, we
-          create accessible medical services.
+          {tr("Exclusive access to trustworthy medical solutions. Together, with our partners, we create accessible medical services.")}
         </Text>
         <TouchableOpacity
           style={styles.cta}
           activeOpacity={0.85}
           onPress={() => navigation.replace("SignIn")}
         >
-          <Text style={styles.ctaLabel}>Start Exploring</Text>
+          <Text style={styles.ctaLabel}>{tr("Start Exploring")}</Text>
         </TouchableOpacity>
       </View>
     </View>

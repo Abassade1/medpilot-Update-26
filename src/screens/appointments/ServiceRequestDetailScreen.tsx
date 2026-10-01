@@ -10,8 +10,10 @@ import { ApiError } from "../../api/errors";
 import { formatDate, formatTime } from "../../utils/dates";
 import { colors, radii, spacing } from "../../theme";
 import { RootScreenProps } from "../../navigation/types";
+import { useT } from "../../i18n";
 
 export default function ServiceRequestDetailScreen({ navigation, route }: RootScreenProps<"ServiceRequestDetail">) {
+  const tr = useT();
   const { requestId } = route.params;
   const query = useServiceRequest(requestId);
   const cancel = useCancelServiceRequest(requestId);
@@ -20,37 +22,37 @@ export default function ServiceRequestDetailScreen({ navigation, route }: RootSc
   if (!r) {
     return (
       <ScreenContainer>
-        <AppHeader title="Request" />
+        <AppHeader title={tr("Request")} />
         {query.isError ? (
           <ListStateView
             kind="error"
-            title={(query.error as ApiError)?.status === 404 ? "Request not found" : undefined}
-            message={(query.error as ApiError)?.status === 404 ? "It may have been removed." : "We couldn't load this request."}
+            title={(query.error as ApiError)?.status === 404 ? tr("Request not found") : undefined}
+            message={(query.error as ApiError)?.status === 404 ? tr("It may have been removed.") : tr("We couldn't load this request.")}
             onRetry={(query.error as ApiError)?.status === 404 ? undefined : () => void query.refetch()}
           />
         ) : (
-          <ListStateView kind="loading" message="Loading request…" />
+          <ListStateView kind="loading" message={tr("Loading request…")} />
         )}
       </ScreenContainer>
     );
   }
 
   const confirmCancel = () =>
-    Alert.alert("Cancel this request?", "The provider will be told you no longer need it.", [
-      { text: "Keep request", style: "cancel" },
+    Alert.alert(tr("Cancel this request?"), tr("The provider will be told you no longer need it."), [
+      { text: tr("Keep request"), style: "cancel" },
       {
-        text: "Cancel request",
+        text: tr("Cancel request"),
         style: "destructive",
         onPress: () =>
           cancel.mutate(undefined, {
-            onError: (e) => Alert.alert("Couldn't cancel", (e as ApiError).message || "Please try again."),
+            onError: (e) => Alert.alert(tr("Couldn't cancel"), (e as ApiError).message || tr("Please try again.")),
           }),
       },
     ]);
 
   return (
     <ScreenContainer>
-      <AppHeader title="Request" />
+      <AppHeader title={tr("Request")} />
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} />}
@@ -66,25 +68,25 @@ export default function ServiceRequestDetailScreen({ navigation, route }: RootSc
         </View>
 
         <View style={styles.card}>
-          {r.service ? <Row label="Service" value={r.service.name} hint={r.service.priceLabel ?? undefined} /> : null}
-          <Row label={r.endDate ? "From" : "Preferred date"} value={r.preferredDate ? formatDate(r.preferredDate) : "Flexible"} />
-          {r.endDate ? <Row label="Until" value={formatDate(r.endDate)} /> : null}
-          {r.preferredTime ? <Row label="Preferred time" value={formatTime(r.preferredTime)} /> : null}
-          {r.details?.petName ? <Row label="Pet" value={`${r.details.petName}${r.details.petType ? ` (${r.details.petType})` : ""}`} /> : null}
-          {r.message ? <Row label="Your note" value={r.message} /> : null}
+          {r.service ? <Row label={tr("Service")} value={r.service.name} hint={r.service.priceLabel ?? undefined} /> : null}
+          <Row label={r.endDate ? tr("From") : tr("Preferred date")} value={r.preferredDate ? formatDate(r.preferredDate) : "Flexible"} />
+          {r.endDate ? <Row label={tr("Until")} value={formatDate(r.endDate)} /> : null}
+          {r.preferredTime ? <Row label={tr("Preferred time")} value={formatTime(r.preferredTime)} /> : null}
+          {r.details?.petName ? <Row label={tr("Pet")} value={`${r.details.petName}${r.details.petType ? ` (${r.details.petType})` : ""}`} /> : null}
+          {r.message ? <Row label={tr("Your note")} value={r.message} /> : null}
         </View>
 
         {r.status === "cancelled" ? (
-          <Text style={styles.cancelled}>This request was cancelled{r.cancelledReason ? `: ${r.cancelledReason}` : "."}</Text>
+          <Text style={styles.cancelled}>{r.cancelledReason ? tr("This request was cancelled: {reason}", { reason: r.cancelledReason }) : tr("This request was cancelled.")}</Text>
         ) : null}
 
         <View style={{ marginTop: 20 }}>
           {r.canCancel ? (
-            <Button label="Cancel request" variant="outlinePill" tone="danger" onPress={confirmCancel} loading={cancel.isPending} disabled={cancel.isPending} />
+            <Button label={tr("Cancel request")} variant="outlinePill" tone="danger" onPress={confirmCancel} loading={cancel.isPending} disabled={cancel.isPending} />
           ) : null}
           {r.canReview && !r.reviewed && r.target.type !== "listing" ? (
             <Button
-              label="Rate this visit"
+              label={tr("Rate this visit")}
               variant="pill"
               onPress={() => {
                 const targetType = r.target.type;
@@ -94,9 +96,9 @@ export default function ServiceRequestDetailScreen({ navigation, route }: RootSc
               style={{ marginTop: 10 }}
             />
           ) : null}
-          {r.reviewed ? <Text style={styles.reviewed}>You've rated this visit. Thank you!</Text> : null}
+          {r.reviewed ? <Text style={styles.reviewed}>{tr("You've rated this visit. Thank you!")}</Text> : null}
           <Button
-            label="Back to appointments"
+            label={tr("Back to appointments")}
             variant="outlinePill"
             onPress={() => navigation.navigate("MainTabs", { screen: "AppointmentsTab" } as never)}
             style={{ marginTop: 10 }}
