@@ -16,6 +16,7 @@ import BookingDetail from "./routes/BookingDetail";
 import Notifications from "./routes/Notifications";
 import Settings from "./routes/Settings";
 import StaffReview from "./routes/StaffReview";
+import StaffOps from "./routes/StaffOps";
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { signedIn } = useAuth();
@@ -52,6 +53,7 @@ export default function App() {
         <Route path="notifications" element={<Notifications />} />
         <Route path="settings" element={<Settings />} />
         <Route path="staff" element={<StaffOnly><StaffReview /></StaffOnly>} />
+        <Route path="operations" element={<StaffOnly><StaffOps /></StaffOnly>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

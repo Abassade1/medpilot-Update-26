@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 import type {
   InvitePreviewDto, ListingDetailFull, ListingDto, MyRole, NotificationsDto, ProviderAvailabilityDto, ProviderBookingDto,
-  ProviderDashboardDto, ProviderProfileDto, StaffQueueDto, Taxonomy, TeamDto, TeamMemberRole,
+  ProviderDashboardDto, ProviderProfileDto, StaffBookingKind, StaffBookingsDto, StaffQueueDto, Taxonomy, TeamDto, TeamMemberRole,
 } from "./types";
 
 const qk = {
@@ -157,5 +157,18 @@ export function useDecideListing() {
     mutationFn: ({ id, decision, reason }: { id: string; decision: "approve" | "reject"; reason?: string }) =>
       api.post(`/v1/staff/listings/${id}/${decision}`, reason ? { reason } : {}),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["staff", "queue"] }),
+  });
+}
+
+// ---- staff operations (confirm, decline and complete member bookings) --------------------------------
+const STAFF_PATH: Record<StaffBookingKind, string> = { appointment: "appointments", transport: "transport", service_request: "service-requests" };
+export const useStaffBookings = (status: "pending" | "confirmed") =>
+  useQuery({ queryKey: ["staff", "bookings", status], queryFn: () => api.get<StaffBookingsDto>(`/v1/staff/bookings?status=${status}`), refetchInterval: 30_000 });
+export function useStaffBookingAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ kind, id, decision, body }: { kind: StaffBookingKind; id: string; decision: "confirm" | "cancel" | "complete"; body?: Record<string, string> }) =>
+      api.post(`/v1/staff/${STAFF_PATH[kind]}/${id}/${decision}`, body ?? {}),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["staff", "bookings"] }),
   });
 }

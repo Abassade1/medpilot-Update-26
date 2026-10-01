@@ -34,6 +34,9 @@ export default function Layout() {
           {isStaff ? (
             <>
               <div style={{ height: 1, background: "var(--border)", margin: "10px 4px" }} />
+              <NavLink to="/operations" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+                Operations
+              </NavLink>
               <NavLink to="/staff" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
                 Staff review
               </NavLink>

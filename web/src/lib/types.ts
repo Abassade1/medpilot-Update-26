@@ -92,6 +92,14 @@ export interface TeamMemberDto {
 export interface TeamDto { owner: { email: string }; members: TeamMemberDto[] }
 export interface InvitePreviewDto { providerName: string; role: TeamMemberRole; email: string }
 
+export type StaffBookingKind = "appointment" | "transport" | "service_request";
+export interface StaffBookingDto {
+  kind: StaffBookingKind; kindLabel: string; id: string; reference: string; status: string;
+  target: string; member: string; date: string | null; time: string | null; createdAt: string;
+  canDecide: boolean; canComplete: boolean;
+}
+export interface StaffBookingsDto { status: "pending" | "confirmed"; items: StaffBookingDto[] }
+
 export interface StaffQueueDto {
   providers: { id: string; name: string; type: string; typeLabel: string; info: string | null; createdAt: string }[];
   listings: { id: string; name: string; kind: "service" | "package"; providerId: string; providerName: string; providerType: string; providerTypeLabel: string; createdAt: string }[];

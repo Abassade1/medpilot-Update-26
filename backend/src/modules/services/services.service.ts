@@ -303,7 +303,8 @@ export class ServicesService {
   async staffDecideRequest(staffId: string, id: string, decision: "confirm" | "cancel", reason?: string) {
     const [r] = await this.db.select().from(s.serviceRequests)
       .where(and(eq(s.serviceRequests.id, id), isNull(s.serviceRequests.deletedAt))).limit(1);
-    if (!r) throw AppError.notFound("Request");
+    // Marketplace bookings are decided by their provider in the portal, never by operations staff.
+    if (!r || r.targetType === "listing") throw AppError.notFound("Request");
     if (r.status !== "pending") throw new AppError("conflict", "This request has already been decided");
     await this.db.update(s.serviceRequests).set(
       decision === "confirm"
