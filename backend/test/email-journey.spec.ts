@@ -139,6 +139,26 @@ describe("email journey", () => {
     expect(newPw.status).toBe(200);
   }, 60_000);
 
+  it("a reset asked for from the provider portal links back to the portal, not the mobile app", async () => {
+    inbox.length = 0;
+    const address = `portalreset-${Date.now()}@example.com`;
+    await register(address);
+    inbox.length = 0;
+
+    await request(app.getHttpServer())
+      .post("/v1/auth/password/forgot").send({ email: address, portal: true }).expect(202);
+    const decoded = inbox[0]!.body.replace(/=\r?\n/g, "").replace(/=3D/g, "=");
+    const m = /http:\/\/localhost:5173\/reset\?token=([A-Za-z0-9_%-]+)/.exec(decoded);
+    expect(m).toBeTruthy();
+    expect(decoded).not.toContain("medpilot://reset");
+
+    await request(app.getHttpServer())
+      .post("/v1/auth/password/reset").send({ token: decodeURIComponent(m![1]!), password: "P0rtalPassw0rd!" }).expect(204);
+    const login = await request(app.getHttpServer())
+      .post("/v1/auth/login").send({ email: address, password: "P0rtalPassw0rd!" });
+    expect(login.status).toBe(200);
+  }, 60_000);
+
   it("a reset token is single-use", async () => {
     inbox.length = 0;
     const address = `reset2-${Date.now()}@example.com`;

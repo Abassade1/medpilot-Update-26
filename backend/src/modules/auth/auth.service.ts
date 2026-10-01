@@ -7,7 +7,7 @@ import { uuidv7 } from "uuidv7";
 import type { Db } from "../../db/client";
 import { schema as s } from "../../db/client";
 import { AppError } from "../../common/errors";
-import { loadEnv } from "../../config/env";
+import { loadEnv, portalBaseUrl } from "../../config/env";
 import { TokenService } from "./token.service";
 import { EmailService } from "../email/email.service";
 import { AuditService } from "./audit.service";
@@ -174,7 +174,7 @@ export class AuthService {
 
   // ---- password reset ----------------------------------------------------
   /** Always succeeds from the caller's perspective — no account enumeration. */
-  async forgotPassword(emailAddr: string) {
+  async forgotPassword(emailAddr: string, portal = false) {
     const user = await this.findActiveByEmail(emailAddr);
     if (!user) return;
     const raw = "pr_" + randomBytes(24).toString("base64url");
@@ -186,7 +186,8 @@ export class AuthService {
     await this.email.send({
       to: user.email, subject: "Reset your MedPilot password",
       text: "Use the button below to choose a new password. This link expires in one hour and can be used once.",
-      actionUrl: this.linkFor("reset", raw),
+      // Portal users may not have the mobile app, so their link opens the portal's own reset page.
+      actionUrl: portal ? `${portalBaseUrl(this.env)}/reset?token=${encodeURIComponent(raw)}` : this.linkFor("reset", raw),
       actionLabel: "Choose a new password",
     });
   }

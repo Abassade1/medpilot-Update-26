@@ -72,8 +72,8 @@ export class AuthController {
   @HttpCode(202)
   @Post("password/forgot")
   async forgot(@Body() body: unknown) {
-    const { email } = validate(ForgotBody, body);
-    await this.auth.forgotPassword(email);
+    const { email, portal } = validate(ForgotBody, body);
+    await this.auth.forgotPassword(email, portal === true);
     return { message: "If that account exists, a reset email is on its way." };
   }
 

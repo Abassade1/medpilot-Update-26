@@ -3,6 +3,8 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./lib/auth";
 import Login from "./routes/Login";
 import AcceptInvite from "./routes/AcceptInvite";
+import ForgotPassword from "./routes/ForgotPassword";
+import ResetPassword from "./routes/ResetPassword";
 import Team from "./routes/Team";
 import Layout from "./routes/Layout";
 import Overview from "./routes/Overview";
@@ -36,6 +38,8 @@ export default function App() {
     <Routes>
       <Route path="/login" element={signedIn ? <Navigate to="/" replace /> : <Login />} />
       <Route path="/invite" element={<AcceptInvite />} />
+      <Route path="/forgot" element={<ForgotPassword />} />
+      <Route path="/reset" element={<ResetPassword />} />
       <Route path="/" element={<Protected><Layout /></Protected>}>
         <Route index element={<Overview />} />
         <Route path="profile" element={<Profile />} />

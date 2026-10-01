@@ -7,7 +7,7 @@ import type { Db } from "../../db/client";
 import { schema as s } from "../../db/client";
 import { AppError } from "../../common/errors";
 import { containsPattern } from "../../common/like";
-import { loadEnv } from "../../config/env";
+import { loadEnv, portalBaseUrl } from "../../config/env";
 import { AuditService } from "../auth/audit.service";
 import { EmailService } from "../email/email.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -764,8 +764,7 @@ export class VendorsService {
 
   // ---- team roster --------------------------------------------------------------------------------------
   private inviteLink(token: string): string {
-    const base = this.env.WEB_PUBLIC_URL || "http://localhost:5173";
-    return `${base.replace(/\/$/, "")}/invite?token=${encodeURIComponent(token)}`;
+    return `${portalBaseUrl(this.env)}/invite?token=${encodeURIComponent(token)}`;
   }
   private teamMemberView(m: typeof s.providerMembers.$inferSelect) {
     return {

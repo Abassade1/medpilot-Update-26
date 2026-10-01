@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { ApiError } from "../lib/api";
 
@@ -49,6 +49,7 @@ export default function Login() {
         <button type="submit" className="btn btn-primary" style={{ width: "100%" }} disabled={busy}>
           {busy ? "Signing in…" : "Sign in"}
         </button>
+        <p style={{ fontSize: 13, marginTop: 14, textAlign: "center" }}><Link to="/forgot">Forgot your password?</Link></p>
         <p style={{ fontSize: 12.5, color: "var(--secondary-text)", marginTop: 16, textAlign: "center" }}>
           Individual and independent providers manage their services from the Medpilot mobile app instead.
         </p>

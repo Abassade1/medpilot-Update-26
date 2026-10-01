@@ -55,7 +55,8 @@ export const RegisterBody = z.object({
 export const LoginBody = z.object({ email, password: z.string().min(1, "Password is required").max(64) });
 export const RefreshBody = z.object({ refreshToken: z.string().min(20).max(200) });
 export const CheckEmailBody = z.object({ email });
-export const ForgotBody = z.object({ email });
+/** `portal: true` when asked from the provider web portal, so the emailed link opens there, not in the mobile app. */
+export const ForgotBody = z.object({ email, portal: z.boolean().optional() });
 export const ResetBody = z.object({ token: z.string().min(20).max(200), password });
 export const ConfirmVerificationBody = z.object({ token: z.string().min(20).max(200) });
 

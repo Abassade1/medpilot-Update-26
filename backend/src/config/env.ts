@@ -184,6 +184,15 @@ function assertDeployableDrivers(env: z.infer<typeof EnvSchema>): void {
   }
 }
 
+/**
+ * Where the provider web portal lives: the first of WEB_PORTAL_ORIGINS. Links meant to open in the
+ * portal (team invites, portal password resets) are built from this, not from WEB_PUBLIC_URL,
+ * which is the address for links that hand off to the mobile app.
+ */
+export function portalBaseUrl(env: Pick<Env, "WEB_PORTAL_ORIGINS">): string {
+  return (env.WEB_PORTAL_ORIGINS.split(",")[0] ?? "").trim().replace(/\/$/, "");
+}
+
 let cached: Env | null = null;
 export function loadEnv(): Env {
   if (cached) return cached;
