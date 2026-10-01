@@ -1,10 +1,7 @@
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import request from "supertest";
 
-process.env.NODE_ENV = "test";
-process.env.DATABASE_URL ??= "postgres://medpilot@localhost:5433/medpilot_test";
-process.env.API_PUBLIC_URL = "http://127.0.0.1:4100";
-process.env.APP_SECRET ??= "test-secret-value-at-least-32-chars-long";
+// Baseline test settings (database, secrets) come from test/env-setup.ts, loaded before every file.
 
 let app: NestExpressApplication | null = null;
 
