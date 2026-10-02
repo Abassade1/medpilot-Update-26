@@ -67,7 +67,7 @@ export default function PetClinicDetailScreen({ navigation, route }: RootScreenP
                 disabled={!allowed}
                 onPress={() => go(kind, sv.id)}
                 accessibilityRole="button"
-                accessibilityLabel={`${sv.name}, ${sv.priceLabel ?? "price on request"}. ${kind === "sitting" ? "Request sitting" : "Book appointment"}`}
+                accessibilityLabel={`${sv.name}, ${sv.priceLabel ?? tr("price on request")}. ${kind === "sitting" ? tr("Request sitting") : tr("Book appointment")}`}
               >
                 <View style={{ flex: 1 }}>
                   <Text style={styles.svcName}>{sv.name}</Text>

@@ -118,7 +118,7 @@ export default function AppointmentDetailScreen({ navigation, route }: RootScree
           </View>
           <View style={styles.statusRow}>
             <StatusPill status={a.status} />
-            <Text style={styles.reference} selectable accessibilityLabel={`Booking ID ${a.reference}`}>
+            <Text style={styles.reference} selectable accessibilityLabel={tr("Booking ID {reference}", { reference: a.reference })}>
               {a.reference}
             </Text>
           </View>

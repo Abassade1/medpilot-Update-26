@@ -41,7 +41,7 @@ export default function ProviderCard({
       activeOpacity={0.85}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${name}, ${location}, ${rating == null ? "no reviews yet" : `rated ${rating.toFixed(1)}`}, from ${price}`}
+      accessibilityLabel={`${name}, ${location}, ${rating == null ? tr("no reviews yet") : tr("Rated {n} out of 5", { n: rating.toFixed(1) })}, ${tr("from {price}", { price })}`}
     >
       <View style={styles.imageWrap}>
         <Image source={image} style={styles.image} />

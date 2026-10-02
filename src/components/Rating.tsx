@@ -21,7 +21,7 @@ export default function Rating({ value, size = 13 }: Props) {
     );
   }
   return (
-    <View style={styles.row} accessibilityLabel={`Rated ${value.toFixed(1)} out of 5`}>
+    <View style={styles.row} accessibilityLabel={tr("Rated {n} out of 5", { n: value.toFixed(1) })}>
       <Ionicons name="star" size={size} color={colors.warning} />
       <Text style={[styles.text, { fontSize: size - 1 }]}>{value.toFixed(1)}</Text>
     </View>

@@ -8,8 +8,9 @@ import { colors, radii } from "../theme";
 import { useT } from "../i18n";
 
 function Stars({ value, size = 13 }: { value: number; size?: number }) {
+  const tr = useT();
   return (
-    <View style={styles.stars} accessibilityLabel={`${value} out of 5 stars`}>
+    <View style={styles.stars} accessibilityLabel={tr("{n} out of 5 stars", { n: value })}>
       {[1, 2, 3, 4, 5].map((n) => (
         <Ionicons key={n} name={n <= value ? "star" : "star-outline"} size={size} color={colors.warning} />
       ))}
@@ -35,7 +36,7 @@ export default function ReviewsList({ targetType, targetId }: { targetType: Revi
         <Text style={styles.average}>{average?.toFixed(1)}</Text>
         <View style={{ marginLeft: 10 }}>
           <Stars value={Math.round(average ?? 0)} size={15} />
-          <Text style={styles.count}>{total === 1 ? "1 review" : `${total} reviews`}</Text>
+          <Text style={styles.count}>{total === 1 ? tr("1 review") : tr("{n} reviews", { n: total })}</Text>
         </View>
       </View>
       {items.map((r) => (
@@ -47,7 +48,7 @@ export default function ReviewsList({ targetType, targetId }: { targetType: Revi
           {r.comment ? <Text style={styles.comment}>{r.comment}</Text> : null}
         </View>
       ))}
-      {total > items.length ? <Text style={styles.muted}>Showing the {items.length} most recent of {total} reviews.</Text> : null}
+      {total > items.length ? <Text style={styles.muted}>{tr("Showing the {shown} most recent of {total} reviews.", { shown: items.length, total })}</Text> : null}
     </View>
   );
 }

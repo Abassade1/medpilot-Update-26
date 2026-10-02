@@ -98,7 +98,7 @@ export default function TransportBookingDetailScreen({ navigation, route }: Root
           </View>
           <View style={styles.statusRow}>
             <StatusPill status={t.status === "in_transit" ? "confirmed" : t.status} />
-            <Text style={styles.ref} selectable accessibilityLabel={`Booking ID ${t.reference}`}>{t.reference}</Text>
+            <Text style={styles.ref} selectable accessibilityLabel={tr("Booking ID {reference}", { reference: t.reference })}>{t.reference}</Text>
           </View>
         </View>
 

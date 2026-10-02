@@ -145,7 +145,7 @@ export default function DateField({
         maxLength={length}
         error={shown}
         containerStyle={containerStyle}
-        accessibilityLabel={`${label ?? (isDate ? "Date" : "Time")}${
+        accessibilityLabel={`${label ?? (isDate ? tr("Date") : tr("Time"))}${
           value ? `, ${isDate ? formatDate(value) : formatTime(value)}` : ""
         }`}
         right={
@@ -155,7 +155,7 @@ export default function DateField({
                 onPress={clear}
                 hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
                 accessibilityRole="button"
-                accessibilityLabel={`Clear ${label ?? (isDate ? "date" : "time")}`}
+                accessibilityLabel={tr("Clear {label}", { label: label ?? (isDate ? tr("date") : tr("time")) })}
               >
                 <Ionicons name="close-circle" size={18} color={colors.tertiaryText} />
               </TouchableOpacity>

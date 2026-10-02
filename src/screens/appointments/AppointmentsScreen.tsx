@@ -148,7 +148,7 @@ export default function AppointmentsScreen() {
               style={styles.card}
               onPress={() => navigation.navigate("AppointmentDetail", { appointmentId: a.id })}
               accessibilityRole="button"
-              accessibilityLabel={`Appointment at ${a.hospital.name}, ${a.status}. View details`}
+              accessibilityLabel={`${tr("Appointment at {name}", { name: a.hospital.name })}, ${tr(cap(a.status))}. ${tr("View details")}`}
             >
               <View style={styles.cardTop}>
                 <LogoBox
@@ -211,7 +211,7 @@ export default function AppointmentsScreen() {
               style={styles.card}
               onPress={() => navigation.navigate("ServiceRequestDetail", { requestId: r.id })}
               accessibilityRole="button"
-              accessibilityLabel={`${r.kindLabel} with ${r.target.name}, ${r.status}. View details`}
+              accessibilityLabel={`${tr("{kind} with {name}", { kind: r.kindLabel, name: r.target.name })}, ${tr(cap(r.status))}. ${tr("View details")}`}
             >
               <View style={styles.cardTop}>
                 <View style={{ flex: 1 }}>
@@ -236,7 +236,7 @@ export default function AppointmentsScreen() {
               style={styles.card}
               onPress={() => navigation.navigate("TransportBookingDetail", { transportId: t.id })}
               accessibilityRole="button"
-              accessibilityLabel={`Transport from ${t.pickup.region ?? t.pickup.country} to ${t.dropoff.region ?? t.dropoff.country}, ${t.status}. View details`}
+              accessibilityLabel={`${tr("Transport from {from} to {to}", { from: t.pickup.region ?? t.pickup.country, to: t.dropoff.region ?? t.dropoff.country })}, ${tr(cap(t.status))}. ${tr("View details")}`}
             >
               <View style={styles.flightRow}>
                 <View style={styles.flightEnd}>

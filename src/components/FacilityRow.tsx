@@ -24,7 +24,7 @@ export default function FacilityRow({ hospital, onPress }: Props) {
       activeOpacity={0.7}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${hospital.name}, ${hospital.specialty}, ${hospital.country}, ${hospital.specialistCount} specialists`}
+      accessibilityLabel={`${hospital.name}, ${hospital.specialty}, ${hospital.country}, ${tr("{n} Specialists", { n: hospital.specialistCount })}`}
     >
       <LogoBox text={initials(hospital.name)} color={colors.surfaceAlt} image={assetSource(hospital.logoAsset)} />
       <View style={styles.info}>

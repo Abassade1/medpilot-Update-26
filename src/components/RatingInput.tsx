@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme";
+import { useT } from "../i18n";
 
 interface Props {
   value: number;
@@ -13,6 +14,7 @@ const LABELS = ["Tap a star to rate", "Poor", "Fair", "Good", "Very good", "Exce
 
 /** Tap-to-select 1-5 star rating, styled to match the read-only Rating component. */
 export default function RatingInput({ value, onChange, size = 36 }: Props) {
+  const tr = useT();
   return (
     <View>
       <View style={styles.row}>
@@ -22,14 +24,14 @@ export default function RatingInput({ value, onChange, size = 36 }: Props) {
             onPress={() => onChange(n)}
             hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
             accessibilityRole="button"
-            accessibilityLabel={`Rate ${n} out of 5 stars`}
+            accessibilityLabel={tr("Rate {n} out of 5 stars", { n })}
             accessibilityState={{ selected: value === n }}
           >
             <Ionicons name={n <= value ? "star" : "star-outline"} size={size} color={colors.warning} style={styles.star} />
           </TouchableOpacity>
         ))}
       </View>
-      <Text style={styles.label}>{LABELS[value] ?? LABELS[0]}</Text>
+      <Text style={styles.label}>{tr(LABELS[value] ?? LABELS[0]!)}</Text>
     </View>
   );
 }
